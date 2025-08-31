@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathHub - Trò chơi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>MathHub</h1>
+            </div>
+            
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Trang chủ</a>
+                <a href="index.html" class="nav-link">Hệ thống Luyện tập và Kiểm tra</a>
+
+                <a href="games.html" class="nav-link active">Trò chơi</a>
+                <a href="about.html" class="nav-link">Giới thiệu</a>
+            </nav>
+            
+            <div class="auth-section">
+                <button class="auth-btn" id="login-btn">Đăng nhập</button>
+                
+                <div class="user-info" id="user-info" style="display: none;">
+                    <div class="user-avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span class="user-name" id="user-name"></span>
+                    <div class="user-dropdown">
+                        <button class="dropdown-item" id="profile-btn">
+                            <i class="fas fa-user"></i> Hồ sơ
+                        </button>
+                        <button class="dropdown-item" id="ranking-btn">
+                            <i class="fas fa-trophy"></i> Xếp hạng
+                        </button>
+                        <button class="dropdown-item" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Games Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Khám phá thế giới trò chơi toán học</h2>
+                <p>Hàng chục trò chơi toán học thú vị từ cơ bản đến nâng cao, phù hợp với mọi lứa tuổi và trình độ.</p>
+            </div>
+            
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Math Games">
+            </div>
+        </div>
+    </section>
+
+    <!-- Games Filter Section -->
+    <section class="features" style="padding: 2rem 0;">
+        <div class="container">
+            <div class="ranking-filters" style="justify-content: center;">
+                <button class="ranking-filter active" data-filter="all">Tất cả</button>
+                <button class="ranking-filter" data-filter="lop1">Lớp 1</button>
+                <button class="ranking-filter" data-filter="lop2">Lớp 2</button>
+                <button class="ranking-filter" data-filter="lop3">Lớp 3-4</button>
+                <button class="ranking-filter" data-filter="lop5">Lớp 5-6</button>
+                <button class="ranking-filter" data-filter="nangcao">Nâng cao</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- All Games Section -->
+    <section class="popular-games">
+        <div class="container">
+            <h2>Tất cả trò chơi</h2>
+            
+            <div class="games-grid">
+                <!-- Game 1 -->
+                <div class="game-card" data-level="lop1">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Cộng trừ phạm vi 10">
+                    </div>
+                    <div class="game-content">
+                        <h3>Cộng trừ phạm vi 10</h3>
+                        <p>Làm quen với phép cộng trừ cơ bản trong phạm vi 10.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Lớp 1</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️☆ (4.2)</span>
+                        </div>
+                        <a href="games/congtrutrongphamvi10.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 2 -->
+                <div class="game-card" data-level="lop2">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1571260899304-425eee4c7efc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Bắn Bóng Số">
+                    </div>
+                    <div class="game-content">
+                        <h3>Bắn Bóng Số</h3>
+                        <p>Rèn luyện kỹ năng tính toán nhanh với trò chơi bắn bóng đầy thú vị.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Lớp 2</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️⭐️ (4.8)</span>
+                        </div>
+                        <a href="games/banbongsotoan2.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 3 -->
+                <div class="game-card" data-level="lop2">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Cộng trừ có nhớ">
+                    </div>
+                    <div class="game-content">
+                        <h3>Cộng trừ có nhớ</h3>
+                        <p>Luyện tập phép tính cộng trừ có nhớ với các bài toán thực tế.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Lớp 2</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️☆ (4.3)</span>
+                        </div>
+                        <a href="games/congtruconhotoan2.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 4 -->
+                <div class="game-card" data-level="lop3">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1587668178277-295964dbdf75?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Bảng cửu chương">
+                    </div>
+                    <div class="game-content">
+                        <h3>Bảng cửu chương</h3>
+                        <p>Học thuộc bảng cửu chương thông qua các trò chơi tương tác vui nhộn.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Lớp 3-4</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️☆ (4.5)</span>
+                        </div>
+                        <a href="games/bangcuuchuong.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 5 -->
+                <div class="game-card" data-level="lop3">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Nhân chia nâng cao">
+                    </div>
+                    <div class="game-content">
+                        <h3>Nhân chia nâng cao</h3>
+                        <p>Thực hành phép nhân chia nhiều chữ số với các thử thách hấp dẫn.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Lớp 3-4</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️☆ (4.1)</span>
+                        </div>
+                        <a href="games/nhanchianangcao.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 6 -->
+                <div class="game-card" data-level="lop5">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1509228468518-180dd4864904?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Cộng trừ số nguyên">
+                    </div>
+                    <div class="game-content">
+                        <h3>Cộng trừ số nguyên</h3>
+                        <p>Làm chủ số nguyên âm và dương với các bài tập tương tác.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Lớp 5-6</span>
+                            <span class="game-rating">⭐️⭐️⭐️☆ (3.9)</span>
+                        </div>
+                        <a href="games/congtrusonguyen.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 7 -->
+                <div class="game-card" data-level="nangcao">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1542621334-a254cf47733d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Đường đua phép tính">
+                    </div>
+                    <div class="game-content">
+                        <h3>Đường đua phép tính</h3>
+                        <p>Đua tốc độ giải các bài toán với độ khó tăng dần.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Nâng cao</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️⭐️ (4.9)</span>
+                        </div>
+                        <a href="games/duongduapheptinh.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <!-- Game 8 -->
+                <div class="game-card" data-level="nangcao">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1598751337590-7a8c04cc0bbd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Toán đố vui">
+                    </div>
+                    <div class="game-content">
+                        <h3>Toán đố vui</h3>
+                        <p>Rèn luyện tư duy logic với các bài toán đố thú vị.</p>
+                        <div class="game-meta">
+                            <span class="game-level">Nâng cao</span>
+                            <span class="game-rating">⭐️⭐️⭐️⭐️☆ (4.4)</span>
+                        </div>
+                        <a href="games/toandovui.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MathHub</h3>
+                    <p>Nền tảng học toán qua trò chơi hàng đầu Việt Nam.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Liên kết nhanh</h4>
+                    <ul>
+                        <li><a href="index.html">Trang chủ</a></li>
+                        <li><a href="games.html">Hệ thống Luyện tập và Kiểm tra</a></li>
+
+                        <li><a href="games.html">Trò chơi</a></li>
+                        <li><a href="about.html">Giới thiệu</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Hỗ trợ</h4>
+                    <ul>
+                        <li><a href="#">Hướng dẫn sử dụng</a></li>
+                        <li><a href="#">Câu hỏi thường gặp</a></li>
+                        <li><a href="#">Liên hệ</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Kết nối với chúng tôi</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-tiktok"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 MathHub. Tất cả quyền được bảo lưu.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Game filtering functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const filters = document.querySelectorAll('.ranking-filter');
+            const gameCards = document.querySelectorAll('.game-card');
+            
+            filters.forEach(filter => {
+                filter.addEventListener('click', () => {
+                    // Update active filter
+                    filters.forEach(f => f.classList.remove('active'));
+                    filter.classList.add('active');
+                    
+                    const filterValue = filter.dataset.filter;
+                    
+                    // Filter games
+                    gameCards.forEach(card => {
+                        if (filterValue === 'all' || card.dataset.level === filterValue) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    
+    <script src="auth-system.js"></script>
+    <script src="user-system.js"></script>
+</body>
+</html>

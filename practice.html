@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luyện tập & Kiểm tra - MathHub</title>
+  
+  <!-- Preconnect và dns-prefetch cho các domain bên ngoài -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://firebasestorage.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="description" content="MathHub - Hệ thống luyện tập và kiểm tra toán học. Luyện tập theo chương trình học, theo dõi tiến bộ và cải thiện kỹ năng toán học.">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  
+  <!-- MathJax for beautiful math rendering -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        packages: {'[+]': ['ams', 'boldsymbol']}
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        renderActions: {
+          // Add support for \boldsymbol for bold math
+          find: [10, function (doc) {
+            for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+              const text = node.textContent.replace(/%.*/g, '');
+              if (node.type === 'math/tex; mode=display') {
+                node.outerHTML = MathJax.tex2chtml(text, {display: true}).outerHTML;
+              } else {
+                node.outerHTML = MathJax.tex2chtml(text).outerHTML;
+              }
+            }
+          }, '']
+        }
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            // Re-render after dynamic content is loaded
+            MathJax.typesetPromise();
+          });
+        }
+      }
+    };
+  </script>
+  
+  <style>
+    /* CSS chung */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f8f9fa;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #4a90e2 0%, #2b6cb0 100%);
+      color: white;
+      padding: 15px 0;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo h1 {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    
+    .nav {
+      display: flex;
+      gap: 25px;
+    }
+    
+    .nav-link {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.3s;
+    }
+    
+    .nav-link:hover, .nav-link.active {
+      opacity: 0.9;
+      text-decoration: underline;
+    }
+    
+    .auth-section {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .auth-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .auth-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Hero section */
+    .hero {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: white;
+      padding: 50px 0;
+      text-align: center;
+    }
+    
+    .hero h2 {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+    
+    /* Features section */
+    .features {
+      padding: 50px 0;
+    }
+    
+    .features h2 {
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 28px;
+      color: #2d3748;
+    }
+    
+    /* Mode selection */
+    .mode-selection {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    
+    .mode-btn {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .mode-btn.active {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .mode-practice {
+      background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+      color: white;
+    }
+    
+    .mode-test {
+      background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+      color: white;
+    }
+    
+    .mode-thpt {
+      background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+      color: white;
+    }
+    
+    /* Test type selection */
+    .test-type-selection {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    
+    .test-type-btn {
+      padding: 12px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .test-type-btn:hover {
+      border-color: #4a90e2;
+      background: #f0f7ff;
+    }
+    
+    .test-type-btn.active {
+      border-color: #4a90e2;
+      background: #4a90e2;
+      color: white;
+    }
+    
+    /* THPT test type selection */
+    .thpt-type-selection {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    
+    .thpt-type-btn {
+      padding: 12px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .thpt-type-btn:hover {
+      border-color: #8e2de2;
+      background: #f4f0ff;
+    }
+    
+    .thpt-type-btn.active {
+      border-color: #8e2de2;
+      background: #8e2de2;
+      color: white;
+    }
+    
+    /* Selection system */
+    .selection-container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+    
+    .selection-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .selection-group {
+      margin-bottom: 15px;
+    }
+    
+    .selection-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #2d3748;
+      font-size: 16px;
+    }
+    
+    .selection-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+      background: white;
+      color: #4a5568;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    
+    .selection-group select:focus {
+      border-color: #4a90e2;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+    }
+    
+    .selection-group select:disabled {
+      background-color: #f7fafc;
+      color: #a0aec0;
+      cursor: not-allowed;
+    }
+    
+    .btn-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    .start-btn {
+      background: linear-gradient(135deg, #4a90e2 0%, #2b6cb0 100%);
+      color: white;
+      border: none;
+      padding: 14px 35px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+    
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .start-btn:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    /* Exam info */
+    .exam-info {
+      background: #e8f4ff;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 5px solid #4a90e2;
+    }
+    
+    .thpt-exam-info {
+      background: #f4f0ff;
+      border-left: 5px solid #8e2de2;
+    }
+    
+    .exam-info h3 {
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+    
+    .exam-info p {
+      color: #4a5568;
+      margin-bottom: 5px;
+    }
+    
+    /* Timer */
+    .timer-container {
+      text-align: center;
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #4a90e2;
+    }
+    
+    .thpt-timer {
+      color: #8e2de2;
+    }
+    
+    .timer-warning {
+      color: #ffc107;
+    }
+    
+    .timer-danger {
+      color: #dc3545;
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    /* Questions section */
+    .questions-container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+    
+    .question-card {
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .question-card:last-child {
+      border-bottom: none;
+    }
+    
+    .question-text {
+      font-size: 18px;
+      margin-bottom: 15px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    /* Math formula styling */
+    .math-formula {
+      display: block;
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      overflow-x: auto;
+      text-align: center;
+    }
+    
+    .math-inline {
+      display: inline-block;
+      margin: 0 3px;
+      vertical-align: middle;
+    }
+    
+    .choices-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+    }
+    
+    .choice-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .choice-item:hover {
+      border-color: #4a90e2;
+      background: #f8f9fa;
+    }
+    
+    .choice-item.selected {
+      border-color: #4a90e2;
+      background: #e8f2ff;
+    }
+    
+    .choice-item input {
+      margin-right: 10px;
+    }
+    
+    .submit-container {
+      text-align: center;
+      margin: 25px 0;
+    }
+    
+    .submit-btn {
+      background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+      color: white;
+      border: none;
+      padding: 14px 40px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Results section */
+    .results-container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .score-display {
+      font-size: 42px;
+      font-weight: 700;
+      color: #4a90e2;
+      margin: 15px 0;
+    }
+    
+    .thpt-score {
+      color: #8e2de2;
+    }
+    
+    .result-details {
+      margin: 20px 0;
+      text-align: left;
+    }
+    
+    .result-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 25px 0;
+    }
+    
+    .result-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .result-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #4a90e2;
+    }
+    
+    .thpt-result {
+      color: #8e2de2;
+    }
+    
+    .result-label {
+      color: #6c757d;
+      font-size: 14px;
+    }
+    
+    .badge-container {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .badge {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8f9fa;
+      border: 3px solid #dee2e6;
+      font-size: 32px;
+    }
+    
+    .badge.gold {
+      border-color: #ffd700;
+      background: #fff9db;
+    }
+    
+    .badge.silver {
+      border-color: #c0c0c0;
+      background: #f8f9fa;
+    }
+    
+    .badge.bronze {
+      border-color: #cd7f32;
+      background: #fef3e8;
+    }
+    
+    /* Stats section */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 25px;
+    }
+    
+    .stat-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #4a90e2;
+      margin: 10px 0;
+    }
+    
+    .stat-label {
+      color: #6c757d;
+      font-weight: 500;
+    }
+    
+    .progress-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      transition: background 0.3s;
+    }
+    
+    .progress-item:hover {
+      background: #f8f9fa;
+    }
+    
+    .progress-title {
+      flex: 2;
+      font-weight: 500;
+    }
+    
+    .progress-score {
+      flex: 1;
+      text-align: center;
+      font-weight: bold;
+      color: #4a90e2;
+    }
+    
+    .thpt-progress {
+      color: #8e2de2;
+    }
+    
+    .progress-date {
+      flex: 1;
+      text-align: right;
+      color: #777;
+      font-size: 0.9rem;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 30px;
+      color: #6c757d;
+      font-style: italic;
+    }
+    
+    /* Footer */
+    .footer {
+      background: #2d3748;
+      color: white;
+      padding: 40px 0 20px;
+      margin-top: 50px;
+    }
+    
+    .footer-content {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+    
+    .footer-section h3, .footer-section h4 {
+      margin-bottom: 15px;
+    }
+    
+    .footer-section ul {
+      list-style: none;
+    }
+    
+    .footer-section ul li {
+      margin-bottom: 10px;
+    }
+    
+    .footer-section a {
+      color: #cbd5e0;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    
+    .footer-section a:hover {
+      color: white;
+    }
+    
+    .social-links {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .social-links a {
+      font-size: 20px;
+    }
+    
+    .footer-bottom {
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #4a5568;
+    }
+    
+    /* Toast notification */
+    .toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    
+    .toast.show {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    .toast.success {
+      background-color: #38a169;
+    }
+    
+    .toast.error {
+      background-color: #e53e3e;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .header .container {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      
+      .mode-selection {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .test-type-selection, .thpt-type-selection {
+        grid-template-columns: 1fr;
+      }
+      
+      .selection-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .choices-container {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .result-summary {
+        grid-template-columns: 1fr;
+      }
+      
+      .progress-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+      
+      .progress-title, .progress-score, .progress-date {
+        text-align: center;
+      }
+      
+      .footer-content {
+        grid-template-columns: 1fr;
+      }
+      
+      .badge-container {
+        flex-wrap: wrap;
+      }
+      
+      .math-formula {
+        overflow-x: auto;
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <h1>MathHub</h1>
+      </div>
+      
+      <nav class="nav">
+        <a href="index.html" class="nav-link">Trang chủ</a>
+        <a href="practice.html" class="nav-link active">Hệ thống Luyện tập và Kiểm tra</a>
+        <a href="ai-analysis.html" class="nav-link">Phân tích AI</a>
+        <a href="games.html" class="nav-link">Trò chơi</a>
+        <a href="about.html" class="nav-link">Giới thiệu</a>
+      </nav>
+      
+      <div class="auth-section">
+        <button class="auth-btn" id="login-btn">Đăng nhập</button>
+        
+        <div class="user-info" id="user-info" style="display: none;">
+          <div class="user-avatar" id="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <span class="user-name" id="user-name"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h2>Luyện tập & Kiểm tra</h2>
+      <p>Củng cố kiến thức toán học với hệ thống bài tập từ cơ bản đến nâng cao. Theo dõi tiến bộ và đạt kết quả tốt nhất.</p>
+    </div>
+  </section>
+
+  <!-- Mode Selection -->
+  <section class="features">
+    <div class="container">
+      <h2>Chọn chế độ</h2>
+      
+      <div class="mode-selection">
+        <button class="mode-btn mode-practice active" data-mode="practice">Luyện tập</button>
+        <button class="mode-btn mode-test" data-mode="test">Kiểm tra</button>
+        <button class="mode-btn mode-thpt" data-mode="thpt">Thi thử THPT</button>
+      </div>
+      
+      <!-- Test type selection (only visible in test mode) -->
+      <div id="test-type-section" style="display: none;">
+        <h3>Chọn loại kiểm tra</h3>
+        <div class="test-type-selection">
+          <button class="test-type-btn active" data-test-type="by-lesson">Theo bài</button>
+          <button class="test-type-btn" data-test-type="by-chapter">Theo chương</button>
+          <button class="test-type-btn" data-test-type="mid-term-1">Giữa kỳ 1</button>
+          <button class="test-type-btn" data-test-type="final-term-1">Cuối kỳ 1</button>
+          <button class="test-type-btn" data-test-type="mid-term-2">Giữa kỳ 2</button>
+          <button class="test-type-btn" data-test-type="final-term-2">Cuối kỳ 2</button>
+        </div>
+      </div>
+      
+      <!-- THPT test type selection (only visible in THPT mode) -->
+      <div id="thpt-type-section" style="display: none;">
+        <h3>Chọn loại đề thi</h3>
+        <div class="thpt-type-selection">
+          <button class="thpt-type-btn active" data-thpt-type="random-school">Đề ngẫu nhiên từ các trường</button>
+          <button class="thpt-type-btn" data-thpt-type="random-department">Đề ngẫu nhiên từ các Sở GD</button>
+          <button class="thpt-type-btn" data-thpt-type="structured">Đề theo ma trận</button>
+          <button class="thpt-type-btn" data-thpt-type="previous-year">Đề các năm trước</button>
+        </div>
+      </div>
+      
+      <div class="selection-container">
+        <div id="exam-info" class="exam-info" style="display: none;">
+          <h3>Thông tin bài kiểm tra</h3>
+          <p id="exam-type">Loại: Theo bài</p>
+          <p id="exam-time">Thời gian: 15 phút</p>
+          <p id="exam-questions">Số câu: 10 câu</p>
+          <p id="exam-content">Nội dung: Bài 1: Mệnh đề</p>
+        </div>
+        
+        <div id="thpt-exam-info" class="exam-info thpt-exam-info" style="display: none;">
+          <h3>Thông tin bài thi thử THPT</h3>
+          <p id="thpt-exam-type">Loại: Đề ngẫu nhiên từ các trường</p>
+          <p id="thpt-exam-time">Thời gian: 90 phút</p>
+          <p id="thpt-exam-questions">Số câu: 50 câu</p>
+          <p id="thpt-exam-content">Môn: Toán</p>
+        </div>
+        
+        <div class="selection-row" id="normal-selection">
+          <div class="selection-group">
+            <label for="select-class">Lớp học</label>
+            <select id="select-class">
+              <option value="">-- Chọn lớp --</option>
+              <option value="1">Lớp 1</option>
+              <option value="2">Lớp 2</option>
+              <option value="3">Lớp 3</option>
+              <option value="4">Lớp 4</option>
+              <option value="5">Lớp 5</option>
+              <option value="6">Lớp 6</option>
+              <option value="7">Lớp 7</option>
+              <option value="8">Lớp 8</option>
+              <option value="9">Lớp 9</option>
+              <option value="10">Lớp 10</option>
+              <option value="11">Lớp 11</option>
+              <option value="12">Lớp 12</option>
+            </select>
+          </div>
+          
+          <div class="selection-group">
+            <label for="select-chapter">Chương</label>
+            <select id="select-chapter" disabled>
+              <option value="">-- Chọn chương --</option>
+            </select>
+          </div>
+          
+          <div class="selection-group">
+            <label for="select-lesson">Bài học</label>
+            <select id="select-lesson" disabled>
+              <option value="">-- Chọn bài --</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="term-selection" style="display: none;">
+          <div class="selection-row">
+            <div class="selection-group">
+              <label for="select-term-class">Lớp học</label>
+              <select id="select-term-class">
+                <option value="">-- Chọn lớp --</option>
+                <option value="6">Lớp 6</option>
+                <option value="7">Lớp 7</option>
+                <option value="8">Lớp 8</option>
+                <option value="9">Lớp 9</option>
+                <option value="10">Lớp 10</option>
+                <option value="11">Lớp 11</option>
+                <option value="12">Lớp 12</option>
+              </select>
+            </div>
+            
+            <div class="selection-group">
+              <label for="select-semester">Học kỳ</label>
+              <select id="select-semester">
+                <option value="1">Học kỳ 1</option>
+                <option value="2">Học kỳ 2</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div id="thpt-selection" style="display: none;">
+          <div class="selection-row">
+            <div class="selection-group">
+              <label for="select-thpt-year">Năm học</label>
+              <select id="select-thpt-year">
+                <option value="2024">2023-2024</option>
+                <option value="2023">2022-2023</option>
+                <option value="2022">2021-2022</option>
+                <option value="2021">2020-2021</option>
+              </select>
+            </div>
+            
+            <div class="selection-group">
+              <label for="select-thpt-source">Nguồn đề (nếu có)</label>
+              <select id="select-thpt-source">
+                <option value="random">Ngẫu nhiên</option>
+                <option value="hanoi">Hà Nội</option>
+                <option value="hcm">TP. Hồ Chí Minh</option>
+                <option value="danang">Đà Nẵng</option>
+                <option value="hungyen">Hưng Yên</option>
+                <option value="haiphong">Hải Phòng</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="btn-container">
+          <button id="start-btn" class="start-btn" disabled>Bắt đầu</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Timer Section (for test and THPT mode) -->
+  <section class="features" id="timer-section" style="display: none;">
+    <div class="container">
+      <div class="timer-container" id="timer-container">
+        <div id="timer-display">Thời gian: 15:00</div>
+        <div id="timer-mode">Chế độ: Kiểm tra</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Questions Section -->
+  <section class="features" id="questions-section" style="display: none;">
+    <div class="container">
+      <h2 id="practice-title">Bài tập</h2>
+      
+      <div class="questions-container">
+        <div id="questions-list">
+          <!-- Questions will be loaded here -->
+        </div>
+        
+        <div class="submit-container">
+          <button id="submit-btn" class="submit-btn">Nộp bài</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results Section -->
+  <section class="features" id="results-section" style="display: none;">
+    <div class="container">
+      <h2>Kết quả bài làm</h2>
+      
+      <div class="results-container">
+        <div class="score-display" id="score-display">0/0</div>
+        <p id="result-message"></p>
+        
+        <div class="result-summary">
+          <div class="result-item">
+            <div class="result-value" id="correct-answers">0</div>
+            <div class="result-label">Câu đúng</div>
+          </div>
+          <div class="result-item">
+            <div class="result-value" id="incorrect-answers">0</div>
+            <div class="result-label">Câu sai</div>
+          </div>
+          <div class="result-item">
+            <div class="result-value" id="percentage-score">0%</div>
+            <div class="result-label">Tỷ lệ đúng</div>
+          </div>
+          <div class="result-item" id="time-container">
+            <div class="result-value" id="time-spent">0s</div>
+            <div class="result-label">Thời gian</div>
+          </div>
+        </div>
+        
+        <div class="badge-container" id="badge-container">
+          <!-- Badges will be loaded here -->
+        </div>
+        
+        <div class="submit-container">
+          <button id="try-again-btn" class="start-btn">Làm bài khác</button>
+          <button id="see-details-btn" class="start-btn" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); margin-left: 15px;">Xem chi tiết</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="features">
+    <div class="container">
+      <h2>Thống kê tiến bộ</h2>
+      
+      <div id="stats-container" class="selection-container">
+        <div class="no-data" id="no-stats-data">
+          <i class="fas fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+          <p>Chưa có dữ liệu thống kê. Hãy hoàn thành bài luyện tập để xem tiến độ của bạn!</p>
+        </div>
+        
+        <div id="stats-content" style="display: none;">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="total-practices">0</div>
+              <div class="stat-label">Tổng số bài đã làm</div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-value" id="average-score">0%</div>
+              <div class="stat-label">Điểm trung bình</div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-value" id="best-score">0%</div>
+              <div class="stat-label">Điểm cao nhất</div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-value" id="total-time">0h</div>
+              <div class="stat-label">Tổng thời gian</div>
+            </div>
+          </div>
+          
+          <h3 style="margin-top: 30px;">Lịch sử bài làm</h3>
+          <div id="progress-history">
+            <!-- Progress items will be loaded here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h3>MathHub</h3>
+          <p>Nền tảng học toán trực tuyến hàng đầu Việt Nam, giúp học sinh nâng cao kiến thức và kỹ năng toán học.</p>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Liên kết nhanh</h4>
+          <ul>
+            <li><a href="index.html">Trang chủ</a></li>
+            <li><a href="practice.html">Luyện tập & Kiểm tra</a></li>
+            <li><a href="ai-analysis.html">Phân tích AI</a></li>
+            <li><a href="games.html">Trò chơi</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Hỗ trợ</h4>
+          <ul>
+            <li><a href="faq.html">Câu hỏi thường gặp</a></li>
+            <li><a href="contact.html">Liên hệ</a></li>
+            <li><a href="privacy.html">Chính sách bảo mật</a></li>
+            <li><a href="terms.html">Điều khoản sử dụng</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Kết nối với chúng tôi</h4>
+          <div class="social-links">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+            <a href="#"><i class="fab fa-tiktok"></i></a>
+            <a href="#"><i class="fab fa-github"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2023 MathHub. Tất cả quyền được bảo lưu.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "mathhub-app.firebaseapp.com",
+      projectId: "mathhub-app",
+      storageBucket: "mathhub-app.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    
+    // DOM elements
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    const testTypeButtons = document.querySelectorAll('.test-type-btn');
+    const thptTypeButtons = document.querySelectorAll('.thpt-type-btn');
+    const selectClass = document.getElementById('select-class');
+    const selectChapter = document.getElementById('select-chapter');
+    const selectLesson = document.getElementById('select-lesson');
+    const selectTermClass = document.getElementById('select-term-class');
+    const selectSemester = document.getElementById('select-semester');
+    const selectThptYear = document.getElementById('select-thpt-year');
+    const selectThptSource = document.getElementById('select-thpt-source');
+    const startBtn = document.getElementById('start-btn');
+    const examInfo = document.getElementById('exam-info');
+    const thptExamInfo = document.getElementById('thpt-exam-info');
+    const normalSelection = document.getElementById('normal-selection');
+    const termSelection = document.getElementById('term-selection');
+    const thptSelection = document.getElementById('thpt-selection');
+    const testTypeSection = document.getElementById('test-type-section');
+    const thptTypeSection = document.getElementById('thpt-type-section');
+    const timerSection = document.getElementById('timer-section');
+    const questionsSection = document.getElementById('questions-section');
+    const resultsSection = document.getElementById('results-section');
+    const submitBtn = document.getElementById('submit-btn');
+    const tryAgainBtn = document.getElementById('try-again-btn');
+    const seeDetailsBtn = document.getElementById('see-details-btn');
+    const toast = document.getElementById('toast');
+    
+    // Current state
+    let currentMode = 'practice';
+    let currentTestType = 'by-lesson';
+    let currentThptType = 'random-school';
+    let timerInterval = null;
+    let timeLeft = 0;
+    let totalTime = 0;
+    let questions = [];
+    let userAnswers = [];
+    let examStartTime = 0;
+    
+    // Initialize the page
+    function init() {
+      // Set up event listeners
+      modeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const mode = button.getAttribute('data-mode');
+          setMode(mode);
+        });
+      });
+      
+      testTypeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          testTypeButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          currentTestType = button.getAttribute('data-test-type');
+          updateExamInfo();
+        });
+      });
+      
+      thptTypeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          thptTypeButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          currentThptType = button.getAttribute('data-thpt-type');
+          updateExamInfo();
+        });
+      });
+      
+      selectClass.addEventListener('change', updateChapters);
+      selectChapter.addEventListener('change', updateLessons);
+      selectLesson.addEventListener('change', updateStartButton);
+      selectTermClass.addEventListener('change', updateStartButton);
+      selectSemester.addEventListener('change', updateStartButton);
+      selectThptYear.addEventListener('change', updateStartButton);
+      selectThptSource.addEventListener('change', updateStartButton);
+      
+      startBtn.addEventListener('click', startExam);
+      submitBtn.addEventListener('click', submitExam);
+      tryAgainBtn.addEventListener('click', resetUI);
+      seeDetailsBtn.addEventListener('click', showDetailedResults);
+      
+      // Load mock data for demonstration
+      loadMockData();
+    }
+    
+    // Set the current mode
+    function setMode(mode) {
+      currentMode = mode;
+      
+      // Update UI
+      modeButtons.forEach(button => {
+        if (button.getAttribute('data-mode') === mode) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      });
+      
+      // Show/hide sections based on mode
+      if (mode === 'practice') {
+        testTypeSection.style.display = 'none';
+        thptTypeSection.style.display = 'none';
+        examInfo.style.display = 'none';
+        thptExamInfo.style.display = 'none';
+        normalSelection.style.display = 'grid';
+        termSelection.style.display = 'none';
+        thptSelection.style.display = 'none';
+      } else if (mode === 'test') {
+        testTypeSection.style.display = 'block';
+        thptTypeSection.style.display = 'none';
+        examInfo.style.display = 'block';
+        thptExamInfo.style.display = 'none';
+        
+        if (currentTestType === 'by-lesson' || currentTestType === 'by-chapter') {
+          normalSelection.style.display = 'grid';
+          termSelection.style.display = 'none';
+        } else {
+          normalSelection.style.display = 'none';
+          termSelection.style.display = 'block';
+        }
+        
+        thptSelection.style.display = 'none';
+      } else if (mode === 'thpt') {
+        testTypeSection.style.display = 'none';
+        thptTypeSection.style.display = 'block';
+        examInfo.style.display = 'none';
+        thptExamInfo.style.display = 'block';
+        normalSelection.style.display = 'none';
+        termSelection.style.display = 'none';
+        thptSelection.style.display = 'grid';
+      }
+      
+      updateExamInfo();
+      updateStartButton();
+    }
+    
+    // Update exam info based on current mode and type
+    function updateExamInfo() {
+      if (currentMode === 'test') {
+        let typeText = '';
+        let timeText = '';
+        let questionsText = '';
+        let contentText = '';
+        
+        switch (currentTestType) {
+          case 'by-lesson':
+            typeText = 'Theo bài';
+            timeText = '15 phút';
+            questionsText = '10 câu';
+            contentText = selectLesson.options[selectLesson.selectedIndex]?.text || 'Chưa chọn bài';
+            break;
+          case 'by-chapter':
+            typeText = 'Theo chương';
+            timeText = '30 phút';
+            questionsText = '20 câu';
+            contentText = selectChapter.options[selectChapter.selectedIndex]?.text || 'Chưa chọn chương';
+            break;
+          case 'mid-term-1':
+            typeText = 'Giữa kỳ 1';
+            timeText = '45 phút';
+            questionsText = '30 câu';
+            contentText = `Lớp ${selectTermClass.value || 'N/A'}`;
+            break;
+          case 'final-term-1':
+            typeText = 'Cuối kỳ 1';
+            timeText = '60 phút';
+            questionsText = '40 câu';
+            contentText = `Lớp ${selectTermClass.value || 'N/A'}`;
+            break;
+          case 'mid-term-2':
+            typeText = 'Giữa kỳ 2';
+            timeText = '45 phút';
+            questionsText = '30 câu';
+            contentText = `Lớp ${selectTermClass.value || 'N/A'}`;
+            break;
+          case 'final-term-2':
+            typeText = 'Cuối kỳ 2';
+            timeText = '60 phút';
+            questionsText = '40 câu';
+            contentText = `Lớp ${selectTermClass.value || 'N/A'}`;
+            break;
+        }
+        
+        document.getElementById('exam-type').textContent = `Loại: ${typeText}`;
+        document.getElementById('exam-time').textContent = `Thời gian: ${timeText}`;
+        document.getElementById('exam-questions').textContent = `Số câu: ${questionsText}`;
+        document.getElementById('exam-content').textContent = `Nội dung: ${contentText}`;
+      } else if (currentMode === 'thpt') {
+        let typeText = '';
+        let timeText = '90 phút';
+        let questionsText = '50 câu';
+        let contentText = 'Môn: Toán';
+        
+        switch (currentThptType) {
+          case 'random-school':
+            typeText = 'Đề ngẫu nhiên từ các trường';
+            break;
+          case 'random-department':
+            typeText = 'Đề ngẫu nhiên từ các Sở GD';
+            break;
+          case 'structured':
+            typeText = 'Đề theo ma trận';
+            break;
+          case 'previous-year':
+            typeText = 'Đề các năm trước';
+            break;
+        }
+        
+        document.getElementById('thpt-exam-type').textContent = `Loại: ${typeText}`;
+        document.getElementById('thpt-exam-time').textContent = `Thời gian: ${timeText}`;
+        document.getElementById('thpt-exam-questions').textContent = `Số câu: ${questionsText}`;
+        document.getElementById('thpt-exam-content').textContent = contentText;
+      }
+    }
+    
+    // Update chapters based on selected class
+    function updateChapters() {
+      const classValue = selectClass.value;
+      
+      // Reset and disable chapter and lesson selects
+      selectChapter.innerHTML = '<option value="">-- Chọn chương --</option>';
+      selectChapter.disabled = true;
+      selectLesson.innerHTML = '<option value="">-- Chọn bài --</option>';
+      selectLesson.disabled = true;
+      
+      if (classValue) {
+        // Enable chapter select and populate with mock data
+        selectChapter.disabled = false;
+        
+        // Mock chapters data
+        const chapters = [];
+        if (classValue === '10') {
+          chapters.push('Chương 1: Mệnh đề - Tập hợp');
+          chapters.push('Chương 2: Hàm số bậc nhất và bậc hai');
+          chapters.push('Chương 3: Phương trình - Hệ phương trình');
+          chapters.push('Chương 4: Bất đẳng thức - Bất phương trình');
+          chapters.push('Chương 5: Thống kê');
+          chapters.push('Chương 6: Góc lượng giác và công thức lượng giác');
+        } else if (classValue === '11') {
+          chapters.push('Chương 1: Hàm số lượng giác và phương trình lượng giác');
+          chapters.push('Chương 2: Tổ hợp - Xác suất');
+          chapters.push('Chương 3: Dãy số - Cấp số cộng - Cấp số nhân');
+          chapters.push('Chương 4: Giới hạn');
+          chapters.push('Chương 5: Đạo hàm');
+        } else if (classValue === '12') {
+          chapters.push('Chương 1: Ứng dụng đạo hàm để khảo sát hàm số');
+          chapters.push('Chương 2: Hàm số lũy thừa - Hàm số mũ - Hàm số logarit');
+          chapters.push('Chương 3: Nguyên hàm - Tích phân');
+          chapters.push('Chương 4: Số phức');
+        } else {
+          for (let i = 1; i <= 5; i++) {
+            chapters.push(`Chương ${i}`);
+          }
+        }
+        
+        chapters.forEach(chapter => {
+          const option = document.createElement('option');
+          option.value = chapter;
+          option.textContent = chapter;
+          selectChapter.appendChild(option);
+        });
+      }
+      
+      updateStartButton();
+    }
+    
+    // Update lessons based on selected chapter
+    function updateLessons() {
+      const chapterValue = selectChapter.value;
+      
+      // Reset and disable lesson select
+      selectLesson.innerHTML = '<option value="">-- Chọn bài --</option>';
+      selectLesson.disabled = true;
+      
+      if (chapterValue) {
+        // Enable lesson select and populate with mock data
+        selectLesson.disabled = false;
+        
+        // Mock lessons data
+        const lessons = [];
+        if (chapterValue.includes('Mệnh đề')) {
+          lessons.push('Bài 1: Mệnh đề');
+          lessons.push('Bài 2: Tập hợp');
+          lessons.push('Bài 3: Các phép toán trên tập hợp');
+          lessons.push('Bài 4: Các tập hợp số');
+          lessons.push('Bài 5: Số gần đúng - Sai số');
+        } else if (chapterValue.includes('Hàm số')) {
+          lessons.push('Bài 1: Hàm số');
+          lessons.push('Bài 2: Hàm số y = ax + b');
+          lessons.push('Bài 3: Hàm số bậc hai');
+        } else {
+          for (let i = 1; i <= 5; i++) {
+            lessons.push(`Bài ${i}`);
+          }
+        }
+        
+        lessons.forEach(lesson => {
+          const option = document.createElement('option');
+          option.value = lesson;
+          option.textContent = lesson;
+          selectLesson.appendChild(option);
+        });
+      }
+      
+      updateStartButton();
+    }
+    
+    // Update start button state
+    function updateStartButton() {
+      let enabled = false;
+      
+      if (currentMode === 'practice') {
+        enabled = selectClass.value && selectChapter.value && selectLesson.value;
+      } else if (currentMode === 'test') {
+        if (currentTestType === 'by-lesson' || currentTestType === 'by-chapter') {
+          enabled = selectClass.value && selectChapter.value;
+          if (currentTestType === 'by-lesson') {
+            enabled = enabled && selectLesson.value;
+          }
+        } else {
+          enabled = selectTermClass.value;
+        }
+      } else if (currentMode === 'thpt') {
+        enabled = true; // Always enabled for THPT mode
+      }
+      
+      startBtn.disabled = !enabled;
+      updateExamInfo();
+    }
+    
+    // Start the exam
+    function startExam() {
+      // Hide selection and show questions
+      document.querySelector('.selection-container').style.display = 'none';
+      questionsSection.style.display = 'block';
+      
+      // Set up timer for test and THPT modes
+      if (currentMode === 'test' || currentMode === 'thpt') {
+        timerSection.style.display = 'block';
+        
+        // Set time based on mode and type
+        if (currentMode === 'test') {
+          switch (currentTestType) {
+            case 'by-lesson':
+              timeLeft = 15 * 60; // 15 minutes
+              break;
+            case 'by-chapter':
+              timeLeft = 30 * 60; // 30 minutes
+              break;
+            case 'mid-term-1':
+            case 'mid-term-2':
+              timeLeft = 45 * 60; // 45 minutes
+              break;
+            case 'final-term-1':
+            case 'final-term-2':
+              timeLeft = 60 * 60; // 60 minutes
+              break;
+          }
+          
+          document.getElementById('timer-mode').textContent = 'Chế độ: Kiểm tra';
+          document.getElementById('timer-display').className = '';
+        } else if (currentMode === 'thpt') {
+          timeLeft = 90 * 60; // 90 minutes
+          document.getElementById('timer-mode').textContent = 'Chế độ: Thi thử THPT';
+          document.getElementById('timer-display').className = 'thpt-timer';
+        }
+        
+        updateTimerDisplay();
+        startTimer();
+      }
+      
+      // Load questions based on mode
+      loadQuestions();
+      
+      // Record start time
+      examStartTime = Date.now();
+    }
+    
+    // Start the timer
+    function startTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        totalTime++;
+        updateTimerDisplay();
+        
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          submitExam();
+          showToast('Hết thời gian làm bài!', 'error');
+        } else if (timeLeft <= 60) {
+          // Less than 1 minute left
+          document.getElementById('timer-display').className = 'timer-danger';
+        } else if (timeLeft <= 300) {
+          // Less than 5 minutes left
+          document.getElementById('timer-display').className = 'timer-warning';
+        }
+      }, 1000);
+    }
+    
+    // Update timer display
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      document.getElementById('timer-display').textContent = `Thời gian: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Load questions based on current mode
+    function loadQuestions() {
+      // Clear previous questions
+      const questionsList = document.getElementById('questions-list');
+      questionsList.innerHTML = '';
+      userAnswers = [];
+      
+      // Set title based on mode
+      if (currentMode === 'practice') {
+        document.getElementById('practice-title').textContent = 'Bài luyện tập';
+      } else if (currentMode === 'test') {
+        document.getElementById('practice-title').textContent = 'Bài kiểm tra';
+      } else if (currentMode === 'thpt') {
+        document.getElementById('practice-title').textContent = 'Bài thi thử THPT';
+      }
+      
+      // Generate mock questions with math formulas
+      const numQuestions = (currentMode === 'thpt') ? 5 : 3; // Show fewer questions for demo
+      questions = [];
+      
+      for (let i = 1; i <= numQuestions; i++) {
+        // Get a random math question
+        const questionData = getMathQuestion(i);
+        const question = {
+          id: i,
+          text: questionData.text,
+          choices: questionData.choices,
+          correctAnswer: questionData.correctAnswer
+        };
+        
+        questions.push(question);
+        
+        // Create question element
+        const questionElement = document.createElement('div');
+        questionElement.className = 'question-card';
+        
+        // Format question text with math formulas
+        let formattedText = question.text.replace(/\$(.*?)\$/g, '<span class="math-inline">\\($1\\)</span>');
+        formattedText = formattedText.replace(/\$\$(.*?)\$\$/g, '<div class="math-formula">\\($1\\)</div>');
+        
+        questionElement.innerHTML = `
+          <div class="question-text">Câu ${i}: ${formattedText}</div>
+          <div class="choices-container">
+            ${question.choices.map((choice, index) => {
+              // Format choices with math formulas
+              let formattedChoice = choice.replace(/\$(.*?)\$/g, '<span class="math-inline">\\($1\\)</span>');
+              return `
+                <div class="choice-item" data-question="${i}" data-choice="${index}">
+                  <input type="radio" name="question-${i}" id="q${i}-choice${index}">
+                  <label for="q${i}-choice${index}">${String.fromCharCode(65 + index)}. ${formattedChoice}</label>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        
+        questionsList.appendChild(questionElement);
+        userAnswers.push(null);
+      }
+      
+      // Add event listeners to choices
+      document.querySelectorAll('.choice-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const questionIndex = parseInt(item.getAttribute('data-question')) - 1;
+          const choiceIndex = parseInt(item.getAttribute('data-choice'));
+          
+          // Update user answer
+          userAnswers[questionIndex] = choiceIndex;
+          
+          // Update UI
+          document.querySelectorAll(`.choice-item[data-question="${questionIndex + 1}"]`).forEach(choice => {
+            choice.classList.remove('selected');
+          });
+          
+          item.classList.add('selected');
+          
+          // Check if all questions are answered (for practice mode)
+          if (currentMode === 'practice') {
+            checkPracticeAnswers();
+          }
+        });
+      });
+      
+      // Render math formulas with MathJax
+      if (window.MathJax) {
+        MathJax.typesetPromise();
+      }
+    }
+    
+    // Get a math question with formulas
+    function getMathQuestion(index) {
+      const mathQuestions = [
+        {
+          text: 'Nghiệm của phương trình $x^2 - 5x + 6 = 0$ là:',
+          choices: [
+            '$x = 2$ và $x = 3$',
+            '$x = -2$ và $x = -3$',
+            '$x = 1$ và $x = 6$',
+            '$x = -1$ và $x = -6$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Đạo hàm của hàm số $y = \\sin(x)$ là:',
+          choices: [
+            '$\\cos(x)$',
+            '$-\\cos(x)$',
+            '$\\sin(x)$',
+            '$-\\sin(x)$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Cho hàm số $y = x^3 - 3x^2 + 2$. Giá trị cực đại của hàm số là:',
+          choices: [
+            '$2$',
+            '$0$',
+            '$-2$',
+            '$6$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Tích phân $\\int_0^1 x^2 dx$ bằng:',
+          choices: [
+            '$\\frac{1}{3}$',
+            '$\\frac{1}{2}$',
+            '$1$',
+            '$2$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Cho hình chóp $S.ABC$ có đáy là tam giác đều cạnh $a$, $SA$ vuông góc với đáy và $SA = a\\sqrt{3}$. Thể tích khối chóp là:',
+          choices: [
+            '$\\frac{a^3}{4}$',
+            '$\\frac{a^3\\sqrt{3}}{4}$',
+            '$\\frac{a^3\\sqrt{3}}{12}$',
+            '$\\frac{a^3}{12}$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Nghiệm của bất phương trình $2^x > 8$ là:',
+          choices: [
+            '$x > 3$',
+            '$x < 3$',
+            '$x > 2$',
+            '$x < 2$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Cho số phức $z = 3 - 4i$. Môđun của $z$ là:',
+          choices: [
+            '$5$',
+            '$7$',
+            '$25$',
+            '$\\sqrt{7}$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Hàm số $y = \\frac{2x+1}{x-1}$ có tiệm cận đứng là đường thẳng:',
+          choices: [
+            '$x = 1$',
+            '$x = -1$',
+            '$x = 2$',
+            '$x = -2$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Cho cấp số cộng có $u_1 = 2$, công sai $d = 3$. Số hạng thứ 5 là:',
+          choices: [
+            '$14$',
+            '$11$',
+            '$8$',
+            '$17$'
+          ],
+          correctAnswer: 0
+        },
+        {
+          text: 'Diện tích hình phẳng giới hạn bởi đồ thị hàm số $y = x^2$ và trục $Ox$ từ $x = 0$ đến $x = 2$ là:',
+          choices: [
+            '$\\frac{8}{3}$',
+            '$\\frac{4}{3}$',
+            '$\\frac{16}{3}$',
+            '$4$'
+          ],
+          correctAnswer: 0
+        }
+      ];
+      
+      return mathQuestions[index % mathQuestions.length];
+    }
+    
+    // Check answers in practice mode
+    function checkPracticeAnswers() {
+      const allAnswered = userAnswers.every(answer => answer !== null);
+      
+      if (allAnswered) {
+        // In practice mode, automatically show results when all questions are answered
+        submitExam();
+      }
+    }
+    
+    // Submit the exam
+    function submitExam() {
+      // Stop the timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
+      // Calculate score
+      let correctCount = 0;
+      questions.forEach((question, index) => {
+        if (userAnswers[index] === question.correctAnswer) {
+          correctCount++;
+        }
+      });
+      
+      const score = correctCount;
+      const total = questions.length;
+      const percentage = Math.round((correctCount / total) * 100);
+      
+      // Update results
+      document.getElementById('score-display').textContent = `${score}/${total}`;
+      document.getElementById('correct-answers').textContent = correctCount;
+      document.getElementById('incorrect-answers').textContent = total - correctCount;
+      document.getElementById('percentage-score').textContent = `${percentage}%`;
+      
+      // Calculate time spent
+      const timeSpent = Math.floor((Date.now() - examStartTime) / 1000);
+      const minutes = Math.floor(timeSpent / 60);
+      const seconds = timeSpent % 60;
+      document.getElementById('time-spent').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      // Set result message
+      let message = '';
+      if (percentage >= 80) {
+        message = 'Xuất sắc! Bạn đã hoàn thành rất tốt!';
+      } else if (percentage >= 60) {
+        message = 'Khá tốt! Hãy tiếp tục cố gắng!';
+      } else if (percentage >= 40) {
+        message = 'Cố gắng hơn nữa nhé!';
+      } else {
+        message = 'Hãy ôn tập lại và thử lại!';
+      }
+      document.getElementById('result-message').textContent = message;
+      
+      // Add appropriate class for THPT mode
+      if (currentMode === 'thpt') {
+        document.getElementById('score-display').className = 'score-display thpt-score';
+        document.querySelectorAll('.result-value').forEach(el => {
+          el.className = 'result-value thpt-result';
+        });
+        document.getElementById('time-container').style.display = 'none';
+      } else {
+        document.getElementById('score-display').className = 'score-display';
+        document.querySelectorAll('.result-value').forEach(el => {
+          el.className = 'result-value';
+        });
+        document.getElementById('time-container').style.display = 'block';
+      }
+      
+      // Show badges based on score
+      const badgeContainer = document.getElementById('badge-container');
+      badgeContainer.innerHTML = '';
+      
+      if (percentage >= 90) {
+        badgeContainer.innerHTML = `
+          <div class="badge gold">
+            <i class="fas fa-trophy"></i>
+          </div>
+          <div class="badge silver">
+            <i class="fas fa-medal"></i>
+          </div>
+          <div class="badge bronze">
+            <i class="fas fa-award"></i>
+          </div>
+        `;
+      } else if (percentage >= 70) {
+        badgeContainer.innerHTML = `
+          <div class="badge silver">
+            <i class="fas fa-medal"></i>
+          </div>
+          <div class="badge bronze">
+            <i class="fas fa-award"></i>
+          </div>
+        `;
+      } else if (percentage >= 50) {
+        badgeContainer.innerHTML = `
+          <div class="badge bronze">
+            <i class="fas fa-award"></i>
+          </div>
+        `;
+      }
+      
+      // Hide questions and show results
+      questionsSection.style.display = 'none';
+      timerSection.style.display = 'none';
+      resultsSection.style.display = 'block';
+      
+      // Save result to history
+      saveResult(score, total, timeSpent);
+    }
+    
+    // Save result to history
+    function saveResult(score, total, timeSpent) {
+      // In a real app, this would save to Firebase
+      // For demo, we'll just update the UI
+      updateStats(score, total, timeSpent);
+    }
+    
+    // Update stats display
+    function updateStats(score, total, timeSpent) {
+      // Show stats section
+      document.getElementById('no-stats-data').style.display = 'none';
+      document.getElementById('stats-content').style.display = 'block';
+      
+      // Update stats values (mock data for demo)
+      document.getElementById('total-practices').textContent = '12';
+      document.getElementById('average-score').textContent = '78%';
+      document.getElementById('best-score').textContent = '95%';
+      document.getElementById('total-time').textContent = '3h 25m';
+      
+      // Add to progress history (mock data for demo)
+      const progressHistory = document.getElementById('progress-history');
+      progressHistory.innerHTML = `
+        <div class="progress-item">
+          <div class="progress-title">${getCurrentModeName()} - ${getCurrentContentName()}</div>
+          <div class="progress-score ${currentMode === 'thpt' ? 'thpt-progress' : ''}">${Math.round((score / total) * 100)}%</div>
+          <div class="progress-date">Hôm nay</div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-title">Luyện tập - Hàm số bậc hai</div>
+          <div class="progress-score">82%</div>
+          <div class="progress-date">2 ngày trước</div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-title">Kiểm tra giữa kỳ 1</div>
+          <div class="progress-score">75%</div>
+          <div class="progress-date">1 tuần trước</div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-title">Thi thử THPT - Đề Sở GD Hà Nội</div>
+          <div class="progress-score thpt-progress">88%</div>
+          <div class="progress-date">2 tuần trước</div>
+        </div>
+      `;
+    }
+    
+    // Get current mode name for display
+    function getCurrentModeName() {
+      switch (currentMode) {
+        case 'practice': return 'Luyện tập';
+        case 'test': return 'Kiểm tra';
+        case 'thpt': return 'Thi thử THPT';
+        default: return '';
+      }
+    }
+    
+    // Get current content name for display
+    function getCurrentContentName() {
+      if (currentMode === 'practice' || currentMode === 'test') {
+        if (currentTestType === 'by-lesson') {
+          return selectLesson.options[selectLesson.selectedIndex]?.text || '';
+        } else if (currentTestType === 'by-chapter') {
+          return selectChapter.options[selectChapter.selectedIndex]?.text || '';
+        } else {
+          return document.getElementById('exam-type').textContent.replace('Loại: ', '');
+        }
+      } else if (currentMode === 'thpt') {
+        return document.getElementById('thpt-exam-type').textContent.replace('Loại: ', '');
+      }
+      return '';
+    }
+    
+    // Show detailed results
+    function showDetailedResults() {
+      alert('Tính năng xem chi tiết đang được phát triển. Bạn sẽ có thể xem từng câu hỏi, đáp án của mình và đáp án đúng.');
+    }
+    
+    // Reset UI to initial state
+    function resetUI() {
+      // Hide results and show selection
+      resultsSection.style.display = 'none';
+      document.querySelector('.selection-container').style.display = 'block';
+      
+      // Reset timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+    
+    // Show toast notification
+    function showToast(message, type = 'success') {
+      toast.textContent = message;
+      toast.className = `toast ${type}`;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+    
+    // Load mock data for demonstration
+    function loadMockData() {
+      // Set default selections
+      selectClass.value = '10';
+      updateChapters();
+      
+      setTimeout(() => {
+        selectChapter.value = 'Chương 1: Mệnh đề - Tập hợp';
+        updateLessons();
+        
+        setTimeout(() => {
+          selectLesson.value = 'Bài 1: Mệnh đề';
+          updateStartButton();
+        }, 100);
+      }, 100);
+    }
+    
+    // Initialize the app
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

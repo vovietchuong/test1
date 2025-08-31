@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathHub - Phân tích AI</title>
+  
+  <!-- Preconnect và dns-prefetch cho các domain bên ngoài -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://firebasestorage.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="description" content="MathHub - Hệ thống luyện tập và kiểm tra toán học với phân tích AI.">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  
+  <style>
+    /* CSS chung */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f8f9fa;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #4a90e2 0%, #2b6cb0 100%);
+      color: white;
+      padding: 15px 0;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo h1 {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    
+    .nav {
+      display: flex;
+      gap: 25px;
+    }
+    
+    .nav-link {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.3s;
+    }
+    
+    .nav-link:hover, .nav-link.active {
+      opacity: 0.9;
+      text-decoration: underline;
+    }
+    
+    .auth-section {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .auth-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .auth-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Hero section */
+    .hero {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: white;
+      padding: 50px 0;
+      text-align: center;
+    }
+    
+    .hero h2 {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+    
+    /* Features section */
+    .features {
+      padding: 50px 0;
+    }
+    
+    .features h2 {
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 28px;
+      color: #2d3748;
+    }
+    
+    /* AI Analysis Section */
+    .ai-analysis {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+    
+    .analysis-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .analysis-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .analysis-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+    }
+    
+    .analysis-tab.active {
+      border-bottom-color: #4a90e2;
+      color: #4a90e2;
+      font-weight: 600;
+    }
+    
+    .analysis-content {
+      display: none;
+    }
+    
+    .analysis-content.active {
+      display: block;
+    }
+    
+    .strength-weakness-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .strength-box, .weakness-box {
+      padding: 20px;
+      border-radius: 10px;
+    }
+    
+    .strength-box {
+      background: #f0fff4;
+      border: 1px solid #9ae6b4;
+    }
+    
+    .weakness-box {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+    }
+    
+    .topic-list {
+      margin-top: 15px;
+    }
+    
+    .topic-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .progress-bar {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      margin-top: 5px;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+    
+    .progress-fill.good {
+      background: #38a169;
+    }
+    
+    .progress-fill.average {
+      background: #d69e2e;
+    }
+    
+    .progress-fill.weak {
+      background: #e53e3e;
+    }
+    
+    .recommendation-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .recommendation-card {
+      background: #f7fafc;
+      border-radius: 10px;
+      padding: 20px;
+      border-left: 4px solid #4a90e2;
+    }
+    
+    .recommendation-card h4 {
+      margin-bottom: 10px;
+      color: #2d3748;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .stat-item {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #4a90e2;
+    }
+    
+    .stat-label {
+      color: #718096;
+      font-size: 14px;
+    }
+    
+    .comparison-chart {
+      width: 100%;
+      height: 300px;
+      margin: 20px 0;
+      background: #f7fafc;
+      border-radius: 8px;
+    }
+    
+    .improvement-timeline {
+      margin-top: 30px;
+    }
+    
+    .timeline-item {
+      display: flex;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    
+    .timeline-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4a90e2;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+    
+    .timeline-content {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 8px;
+      flex-grow: 1;
+    }
+    
+    .timeline-date {
+      font-size: 12px;
+      color: #718096;
+      margin-bottom: 5px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #4a90e2;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #2b6cb0;
+    }
+    
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #4a90e2;
+      color: #4a90e2;
+    }
+    
+    .btn-outline:hover {
+      background: #4a90e2;
+      color: white;
+    }
+    
+    /* Footer */
+    .footer {
+      background: #2d3748;
+      color: white;
+      padding: 40px 0 20px;
+      margin-top: 50px;
+    }
+    
+    .footer-content {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+    
+    .footer-section h3, .footer-section h4 {
+      margin-bottom: 15px;
+    }
+    
+    .footer-section ul {
+      list-style: none;
+    }
+    
+    .footer-section ul li {
+      margin-bottom: 10px;
+    }
+    
+    .footer-section a {
+      color: #cbd5e0;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    
+    .footer-section a:hover {
+      color: white;
+    }
+    
+    .social-links {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .social-links a {
+      font-size: 20px;
+    }
+    
+    .footer-bottom {
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #4a5568;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .header .container {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      
+      .strength-weakness-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .recommendation-cards {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .footer-content {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <h1>MathHub</h1>
+      </div>
+      
+      <nav class="nav">
+        <a href="index.html" class="nav-link">Trang chủ</a>
+        <a href="practice.html" class="nav-link">Luyện tập & Kiểm tra</a>
+        <a href="ai-analysis.html" class="nav-link active">Phân tích AI</a>
+        <a href="games.html" class="nav-link">Trò chơi</a>
+        <a href="about.html" class="nav-link">Giới thiệu</a>
+      </nav>
+      
+      <div class="auth-section">
+        <button class="auth-btn" id="login-btn">Đăng nhập</button>
+        
+        <div class="user-info" id="user-info" style="display: none;">
+          <div class="user-avatar" id="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <span class="user-name" id="user-name"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h2>Phân tích AI - Hiểu rõ điểm mạnh & yếu</h2>
+      <p>Hệ thống AI phân tích hiệu suất học tập và đưa ra đề xuất cá nhân hóa</p>
+    </div>
+  </section>
+
+  <!-- AI Analysis Section -->
+  <section class="features">
+    <div class="container">
+      <div class="ai-analysis">
+        <div class="analysis-header">
+          <h2>Phân tích học tập của bạn</h2>
+          <button class="btn btn-outline" id="refresh-analysis">
+            <i class="fas fa-sync-alt"></i> Cập nhật phân tích
+          </button>
+        </div>
+        
+        <div class="analysis-tabs">
+          <div class="analysis-tab active" data-tab="overview">Tổng quan</div>
+          <div class="analysis-tab" data-tab="strengths">Điểm mạnh</div>
+          <div class="analysis-tab" data-tab="weaknesses">Điểm yếu</div>
+          <div class="analysis-tab" data-tab="recommendations">Đề xuất</div>
+          <div class="analysis-tab" data-tab="progress">Tiến độ</div>
+        </div>
+        
+        <!-- Overview Tab -->
+        <div class="analysis-content active" id="overview-tab">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value" id="total-questions">0</div>
+              <div class="stat-label">Tổng số câu đã làm</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="correct-answers">0%</div>
+              <div class="stat-label">Tỷ lệ trả lời đúng</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="improvement-rate">0%</div>
+              <div class="stat-label">Tốc độ cải thiện</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="mastery-level">Sơ cấp</div>
+              <div class="stat-label">Cấp độ thành thạo</div>
+            </div>
+          </div>
+          
+          <h3>So sánh với trung bình</h3>
+          <div class="comparison-chart" id="comparison-chart">
+            <!-- Biểu đồ sẽ được hiển thị ở đây -->
+            <div style="padding: 20px; text-align: center; color: #718096;">
+              <i class="fas fa-chart-bar" style="font-size: 48px; margin-bottom: 15px;"></i>
+              <p>Đang tải dữ liệu biểu đồ...</p>
+            </div>
+          </div>
+          
+          <div class="strength-weakness-grid">
+            <div class="strength-box">
+              <h3><i class="fas fa-check-circle" style="color: #38a169;"></i> Điểm mạnh nổi bật</h3>
+              <div class="topic-list" id="strength-topics">
+                <!-- Điểm mạnh sẽ được hiển thị ở đây -->
+                <div class="topic-item">
+                  <span>Đang phân tích...</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="weakness-box">
+              <h3><i class="fas fa-exclamation-circle" style="color: #e53e3e;"></i> Điểm cần cải thiện</h3>
+              <div class="topic-list" id="weakness-topics">
+                <!-- Điểm yếu sẽ được hiển thị ở đây -->
+                <div class="topic-item">
+                  <span>Đang phân tích...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Strengths Tab -->
+        <div class="analysis-content" id="strengths-tab">
+          <h3>Phân tích điểm mạnh của bạn</h3>
+          <p>Dựa trên kết quả học tập, bạn có những điểm mạnh sau:</p>
+          
+          <div id="strengths-detailed">
+            <!-- Chi tiết điểm mạnh sẽ được hiển thị ở đây -->
+            <div class="topic-item">
+              <div>
+                <strong>Hình học không gian</strong>
+                <div class="progress-bar">
+                  <div class="progress-fill good" style="width: 85%"></div>
+                </div>
+              </div>
+              <span>85%</span>
+            </div>
+            
+            <div class="topic-item">
+              <div>
+                <strong>Đại số tuyến tính</strong>
+                <div class="progress-bar">
+                  <div class="progress-fill good" style="width: 78%"></div>
+                </div>
+              </div>
+              <span>78%</span>
+            </div>
+            
+            <div class="topic-item">
+              <div>
+                <strong>Phương trình vi phân</strong>
+                <div class="progress-bar">
+                  <div class="progress-fill good" style="width: 72%"></div>
+                </div>
+              </div>
+              <span>72%</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Weaknesses Tab -->
+        <div class="analysis-content" id="weaknesses-tab">
+          <h3>Phân tích điểm yếu của bạn</h3>
+          <p>Dựa trên kết quả học tập, bạn cần cải thiện những điểm sau:</p>
+          
+          <div id="weaknesses-detailed">
+            <!-- Chi tiết điểm yếu sẽ được hiển thị ở đây -->
+            <div class="topic-item">
+              <div>
+                <strong>Xác suất thống kê</strong>
+                <div class="progress-bar">
+                  <div class="progress-fill weak" style="width: 35%"></div>
+                </div>
+              </div>
+              <span>35%</span>
+            </div>
+            
+            <div class="topic-item">
+              <div>
+                <strong>Bất đẳng thức</strong>
+                <div class="progress-bar">
+                  <div class="progress-fill weak" style="width: 42%"></div>
+                </div>
+              </div>
+              <span>42%</span>
+            </div>
+            
+            <div class="topic-item">
+              <div>
+                <strong>Hàm số phức</strong>
+                <div class="progress-bar">
+                  <div class="progress-fill average" style="width: 55%"></div>
+                </div>
+              </div>
+              <span>55%</span>
+            </div>
+          </div>
+          
+          <div style="margin-top: 20px;">
+            <h4>Phân tích lỗi thường gặp</h4>
+            <ul id="common-errors">
+              <li>Nhầm lẫn công thức tính xác suất điều kiện</li>
+              <li>Áp dụng sai bất đẳng thức Cauchy trong trường hợp không thỏa mãn điều kiện</li>
+              <li>Hiểu sai khái niệm giới hạn của hàm số phức</li>
+            </ul>
+          </div>
+        </div>
+        
+        <!-- Recommendations Tab -->
+        <div class="analysis-content" id="recommendations-tab">
+          <h3>Đề xuất học tập cá nhân hóa</h3>
+          <p>Dựa trên phân tích của AI, đây là lộ trình học tập dành riêng cho bạn:</p>
+          
+          <div class="recommendation-cards">
+            <div class="recommendation-card">
+              <h4><i class="fas fa-bullseye"></i> Mục tiêu tuần này</h4>
+              <p>Cải thiện điểm số môn Xác suất thống kê từ 35% lên 50%</p>
+              <button class="btn btn-primary" style="margin-top: 10px;">Bắt đầu học</button>
+            </div>
+            
+            <div class="recommendation-card">
+              <h4><i class="fas fa-book"></i> Bài học đề xuất</h4>
+              <p>Ôn tập chương "Xác suất có điều kiện" và "Biến ngẫu nhiên"</p>
+              <button class="btn btn-primary" style="margin-top: 10px;">Xem bài học</button>
+            </div>
+            
+            <div class="recommendation-card">
+              <h4><i class="fas fa-puzzle-piece"></i> Bài tập thực hành</h4>
+              <p>Hoàn thành 15 bài tập về bất đẳng thức nâng cao</p>
+              <button class="btn btn-primary" style="margin-top: 10px;">Làm bài tập</button>
+            </div>
+          </div>
+          
+          <div style="margin-top: 30px;">
+            <h4>Lộ trình học tập 4 tuần tới</h4>
+            <div class="improvement-timeline">
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <div class="timeline-date">Tuần 1</div>
+                  <p>Ôn tập xác suất cơ bản và bất đẳng thức Cauchy</p>
+                </div>
+              </div>
+              
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <div class="timeline-date">Tuần 2</div>
+                  <p>Luyện tập bài tập xác suất nâng cao và bất đẳng thức Bunhiacopxki</p>
+                </div>
+              </div>
+              
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <div class="timeline-date">Tuần 3</div>
+                  <p>Học hàm số phức và giới hạn dãy số</p>
+                </div>
+              </div>
+              
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <div class="timeline-date">Tuần 4</div>
+                  <p>Ôn tập tổng hợp và làm đề kiểm tra đánh giá</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Progress Tab -->
+        <div class="analysis-content" id="progress-tab">
+          <h3>Theo dõi tiến độ học tập</h3>
+          <p>Phân tích tiến độ và tốc độ cải thiện của bạn theo thời gian</p>
+          
+          <div class="comparison-chart" id="progress-chart">
+            <!-- Biểu đồ tiến độ sẽ được hiển thị ở đây -->
+            <div style="padding: 20px; text-align: center; color: #718096;">
+              <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 15px;"></i>
+              <p>Đang tải dữ liệu tiến độ...</p>
+            </div>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value" id="weekly-goal">65%</div>
+              <div class="stat-label">Đạt mục tiêu tuần</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="consistency">78%</div>
+              <div class="stat-label">Độ nhất quán học tập</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="time-spent">12h</div>
+              <div class="stat-label">Thời gian học tuần này</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="predicted-score">7.5</div>
+              <div class="stat-label">Điểm dự đoán cuối kỳ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h3>MathHub</h3>
+          <p>Nền tảng học toán thông minh với AI</p>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Liên kết nhanh</h4>
+          <ul>
+            <li><a href="index.html">Trang chủ</a></li>
+            <li><a href="practice.html">Luyện tập & Kiểm tra</a></li>
+            <li><a href="ai-analysis.html">Phân tích AI</a></li>
+            <li><a href="games.html">Trò chơi</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Hỗ trợ</h4>
+          <ul>
+            <li><a href="#">Hướng dẫn sử dụng</a></li>
+            <li><a href="#">Câu hỏi thường gặp</a></li>
+            <li><a href="#">Liên hệ</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Kết nối với chúng tôi</h4>
+          <div class="social-links">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+            <a href="#"><i class="fab fa-tiktok"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2024 MathHub. Tất cả quyền được bảo lưu.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+      authDomain: "mathhub.firebaseapp.com",
+      projectId: "mathhub",
+      storageBucket: "mathhub.appspot.com",
+      messagingSenderId: "1068818418364",
+      appId: "1:1068818418364:web:5c5b5e1d6c8b5e5e6c9a8a",
+      measurementId: "G-4E2S5W2W2N"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // DOM Elements
+    const analysisTabs = document.querySelectorAll('.analysis-tab');
+    const analysisContents = document.querySelectorAll('.analysis-content');
+    const refreshButton = document.getElementById('refresh-analysis');
+    const loginBtn = document.getElementById('login-btn');
+    const userInfo = document.getElementById('user-info');
+    const userName = document.getElementById('user-name');
+
+    // Sample data for demonstration
+    const sampleData = {
+      totalQuestions: 1247,
+      correctAnswers: '76%',
+      improvementRate: '12%',
+      masteryLevel: 'Trung cấp',
+      strengths: [
+        { topic: 'Hình học không gian', score: 85 },
+        { topic: 'Đại số tuyến tính', score: 78 },
+        { topic: 'Phương trình vi phân', score: 72 }
+      ],
+      weaknesses: [
+        { topic: 'Xác suất thống kê', score: 35 },
+        { topic: 'Bất đẳng thức', score: 42 },
+        { topic: 'Hàm số phức', score: 55 }
+      ],
+      commonErrors: [
+        'Nhầm lẫn công thức tính xác suất điều kiện',
+        'Áp dụng sai bất đẳng thức Cauchy trong trường hợp không thỏa mãn điều kiện',
+        'Hiểu sai khái niệm giới hạn của hàm số phức'
+      ]
+    };
+
+    // Initialize the page
+    function init() {
+      // Set up tab switching
+      analysisTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabName = tab.getAttribute('data-tab');
+          
+          // Remove active class from all tabs and contents
+          analysisTabs.forEach(t => t.classList.remove('active'));
+          analysisContents.forEach(c => c.classList.remove('active'));
+          
+          // Add active class to clicked tab and corresponding content
+          tab.classList.add('active');
+          document.getElementById(`${tabName}-tab`).classList.add('active');
+        });
+      });
+      
+      // Set up refresh button
+      refreshButton.addEventListener('click', refreshAnalysis);
+      
+      // Load sample data for demonstration
+      loadAnalysisData();
+      
+      // Check auth state
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          loginBtn.style.display = 'none';
+          userInfo.style.display = 'flex';
+          userName.textContent = user.displayName || user.email;
+        } else {
+          loginBtn.style.display = 'block';
+          userInfo.style.display = 'none';
+        }
+      });
+    }
+
+    // Load analysis data
+    function loadAnalysisData() {
+      // In a real application, this would fetch data from Firebase
+      // For demonstration, we're using sample data
+      
+      // Update overview stats
+      document.getElementById('total-questions').textContent = sampleData.totalQuestions.toLocaleString();
+      document.getElementById('correct-answers').textContent = sampleData.correctAnswers;
+      document.getElementById('improvement-rate').textContent = sampleData.improvementRate;
+      document.getElementById('mastery-level').textContent = sampleData.masteryLevel;
+      
+      // Update strengths
+      const strengthsContainer = document.getElementById('strength-topics');
+      strengthsContainer.innerHTML = '';
+      
+      sampleData.strengths.forEach(strength => {
+        const strengthElement = document.createElement('div');
+        strengthElement.className = 'topic-item';
+        strengthElement.innerHTML = `
+          <div>
+            <strong>${strength.topic}</strong>
+            <div class="progress-bar">
+              <div class="progress-fill good" style="width: ${strength.score}%"></div>
+            </div>
+          </div>
+          <span>${strength.score}%</span>
+        `;
+        strengthsContainer.appendChild(strengthElement);
+      });
+      
+      // Update weaknesses
+      const weaknessesContainer = document.getElementById('weakness-topics');
+      weaknessesContainer.innerHTML = '';
+      
+      sampleData.weaknesses.forEach(weakness => {
+        const weaknessElement = document.createElement('div');
+        weaknessElement.className = 'topic-item';
+        
+        let progressClass = 'weak';
+        if (weakness.score >= 50) progressClass = 'average';
+        
+        weaknessElement.innerHTML = `
+          <div>
+            <strong>${weakness.topic}</strong>
+            <div class="progress-bar">
+              <div class="progress-fill ${progressClass}" style="width: ${weakness.score}%"></div>
+            </div>
+          </div>
+          <span>${weakness.score}%</span>
+        `;
+        weaknessesContainer.appendChild(weaknessElement);
+      });
+      
+      // Update common errors
+      const errorsContainer = document.getElementById('common-errors');
+      errorsContainer.innerHTML = '';
+      
+      sampleData.commonErrors.forEach(error => {
+        const errorElement = document.createElement('li');
+        errorElement.textContent = error;
+        errorsContainer.appendChild(errorElement);
+      });
+    }
+
+    // Refresh analysis data
+    function refreshAnalysis() {
+      refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phân tích...';
+      refreshButton.disabled = true;
+      
+      // Simulate API call delay
+      setTimeout(() => {
+        // In a real application, this would fetch new data from Firebase
+        loadAnalysisData();
+        
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Cập nhật phân tích';
+        refreshButton.disabled = false;
+        
+        // Show success message
+        showToast('Dữ liệu đã được cập nhật thành công!', 'success');
+      }, 2000);
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'info') {
+      // Create toast element if it doesn't exist
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 30px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 12px 20px;
+          border-radius: 6px;
+          color: white;
+          font-weight: 500;
+          z-index: 1000;
+          opacity: 0;
+          transition: opacity 0.3s;
+        `;
+        document.body.appendChild(toast);
+      }
+      
+      // Set toast content and style
+      toast.textContent = message;
+      toast.style.backgroundColor = type === 'success' ? '#38a169' : '#4a90e2';
+      toast.style.opacity = '1';
+      
+      // Hide toast after 3 seconds
+      setTimeout(() => {
+        toast.style.opacity = '0';
+      }, 3000);
+    }
+
+    // Initialize the page when loaded
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

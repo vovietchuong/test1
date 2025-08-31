@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathHub - Giới thiệu</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>MathHub</h1>
+            </div>
+            
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Trang chủ</a>
+                <a href="games.html" class="nav-link">Trò chơi</a>
+                <a href="about.html" class="nav-link active">Giới thiệu</a>
+            </nav>
+            
+            <div class="auth-section">
+                <button class="auth-btn" id="login-btn">Đăng nhập</button>
+                
+                <div class="user-info" id="user-info" style="display: none;">
+                    <div class="user-avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span class="user-name" id="user-name"></span>
+                    <div class="user-dropdown">
+                        <button class="dropdown-item" id="profile-btn">
+                            <i class="fas fa-user"></i> Hồ sơ
+                        </button>
+                        <button class="dropdown-item" id="ranking-btn">
+                            <i class="fas fa-trophy"></i> Xếp hạng
+                        </button>
+                        <button class="dropdown-item" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- About Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Về MathHub</h2>
+                <p>Nền tảng học toán qua trò chơi hàng đầu Việt Nam, mang đến phương pháp học tập sáng tạo và hiệu quả cho mọi lứa tuổi.</p>
+            </div>
+            
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="About MathHub">
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission Section -->
+    <section class="features">
+        <div class="container">
+            <h2>Sứ mệnh của chúng tôi</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Khơi dậy đam mê</h3>
+                    <p>Biến toán học từ môn học khô khan thành niềm vui khám phá, giúp học sinh yêu thích và đam mê học toán.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h3>Phương pháp hiện đại</h3>
+                    <p>Áp dụng phương pháp học tập qua trò chơi (game-based learning) giúp tiếp thu kiến thức tự nhiên và hiệu quả.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Cộng đồng học tập</h3>
+                    <p>Xây dựng cộng đồng học toán tích cực, nơi học sinh có thể thi đua, hợp tác và cùng nhau tiến bộ.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Story Section -->
+    <section class="popular-games">
+        <div class="container">
+            <div class="story-content">
+                <h2>Câu chuyện MathHub</h2>
+                <p>MathHub được thành lập năm 2023 bởi một nhóm các nhà giáo dục, lập trình viên và chuyên gia thiết kế trò chơi với mong muốn thay đổi cách tiếp cận môn Toán tại Việt Nam.</p>
+                
+                <p>Chúng tôi nhận thấy nhiều học sinh cảm thấy sợ hãi và chán nản với môn Toán do phương pháp giảng dạy truyền thống khô khan. Từ đó, ý tưởng về một nền tảng học toán qua trò chơi ra đời.</p>
+                
+                <p>Chỉ sau một thời gian ngắn, MathHub đã thu hút hàng ngàn học sinh tham gia và nhận được phản hồi tích cực từ phụ huynh và giáo viên về hiệu quả mà nền tảng mang lại.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="features" style="background: #f8f9fa;">
+        <div class="container">
+            <h2>Đội ngũ sáng lập</h2>
+            
+            <div class="team-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 2rem;">
+                <div class="team-member" style="text-align: center; background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
+                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #4a90e2, #357abd); border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3>Nguyễn Văn A</h3>
+                    <p style="color: #4a90e2; font-weight: 500;">Nhà sáng lập & Giám đốc</p>
+                    <p>Thạc sĩ Giáo dục Toán học với 10 năm kinh nghiệm giảng dạy.</p>
+                </div>
+                
+                <div class="team-member" style="text-align: center; background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
+                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #4a90e2, #357abd); border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3>Trần Thị B</h3>
+                    <p style="color: #4a90e2; font-weight: 500;">CTO & Nhà phát triển</p>
+                    <p>Kỹ sư phần mềm với chuyên môn trong phát triển ứng dụng giáo dục.</p>
+                </div>
+                
+                <div class="team-member" style="text-align: center; background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
+                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #4a90e2, #357abd); border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3>Lê Văn C</h3>
+                    <p style="color: #4a90e2; font-weight: 500;">Nhà thiết kế trò chơi</p>
+                    <p>Chuyên gia thiết kế game giáo dục với nhiều năm kinh nghiệm.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="popular-games">
+        <div class="container">
+            <h2>Liên hệ với chúng tôi</h2>
+            
+            <div class="contact-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 3rem; margin-top: 2rem;">
+                <div>
+                    <h3>Thông tin liên hệ</h3>
+                    <p><i class="fas fa-map-marker-alt" style="color: #4a90e2; margin-right: 10px;"></i> 123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh</p>
+                    <p><i class="fas fa-phone" style="color: #4a90e2; margin-right: 10px;"></i> (028) 1234 5678</p>
+                    <p><i class="fas fa-envelope" style="color: #4a90e2; margin-right: 10px;"></i> info@mathhub.edu.vn</p>
+                    
+                    <div class="social-links" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <a href="#" style="width: 40px; height: 40px; background: #4a90e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.3s ease;">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" style="width: 40px; height: 40px; background: #4a90e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.3s ease;">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                        <a href="#" style="width: 40px; height: 40px; background: #4a90e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.3s ease;">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Gửi tin nhắn cho chúng tôi</h3>
+                    <form style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <input type="text" class="form-input" placeholder="Họ và tên">
+                        </div>
+                        <div class="form-group">
+                            <input type="email" class="form-input" placeholder="Email">
+                        </div>
+                        <div class="form-group">
+                            <textarea class="form-input" placeholder="Nội dung tin nhắn" rows="4"></textarea>
+                        </div>
+                        <button type="submit" class="modal-btn">Gửi tin nhắn</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MathHub</h3>
+                    <p>Nền tảng học toán qua trò chơi hàng đầu Việt Nam.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Liên kết nhanh</h4>
+                    <ul>
+                        <li><a href="index.html">Trang chủ</a></li>
+                        <li><a href="games.html">Trò chơi</a></li>
+                        <li><a href="about.html">Giới thiệu</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Hỗ trợ</h4>
+                    <ul>
+                        <li><a href="#">Hướng dẫn sử dụng</a></li>
+                        <li><a href="#">Câu hỏi thường gặp</a></li>
+                        <li><a href="#">Liên hệ</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Kết nối với chúng tôi</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-tiktok"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 MathHub. Tất cả quyền được bảo lưu.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    
+    <script src="auth-system.js"></script>
+    <script src="user-system.js"></script>
+</body>
+</html>
