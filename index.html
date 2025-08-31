@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathHub - Trang chủ</title>
+    
+    <!-- Preconnect và dns-prefetch cho các domain bên ngoài -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="description" content="MathHub - Nền tảng học toán qua trò chơi hàng đầu Việt Nam. Trò chơi toán học đa dạng, phương pháp học tập hiệu quả cho mọi lứa tuổi.">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* CSS tạm thời cho phần progress-list */
+        #progress-list {
+            margin-top: 20px;
+        }
+        
+        .progress-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            transition: background 0.3s ease;
+        }
+        
+        .progress-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .progress-game {
+            flex: 2;
+            font-weight: 500;
+        }
+        
+        .progress-score {
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+        
+        .progress-date {
+            flex: 1;
+            text-align: right;
+            color: #777;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .progress-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.5rem;
+            }
+            
+            .progress-game,
+            .progress-score,
+            .progress-date {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div class="modal" id="login-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-modal">&times;</span>
+            
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="login-tab">Đăng nhập</div>
+                <div class="auth-tab" id="register-tab">Đăng ký</div>
+            </div>
+            
+            <form class="auth-form active" id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" class="form-input" placeholder="Nhập email của bạn" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Mật khẩu</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="Nhập mật khẩu" required>
+                </div>
+                
+                <button type="submit" class="modal-btn">Đăng nhập</button>
+                
+                <div class="auth-footer">
+                    <a id="forgot-password">Quên mật khẩu?</a>
+                </div>
+            </form>
+            
+            <form class="auth-form" id="register-form">
+                <div class="form-group">
+                    <label for="register-name">Họ và tên</label>
+                    <input type="text" id="register-name" class="form-input" placeholder="Nhập họ và tên" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" class="form-input" placeholder="Nhập email của bạn" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-password">Mật khẩu</label>
+                    <input type="password" id="register-password" class="form-input" placeholder="Tạo mật khẩu (ít nhất 6 ký tự)" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-confirm">Xác nhận mật khẩu</label>
+                    <input type="password" id="register-confirm" class="form-input" placeholder="Xác nhận mật khẩu" required minlength="6">
+                </div>
+                
+                <button type="submit" class="modal-btn">Đăng ký</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal" id="profile-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-profile-modal">&times;</span>
+            <h2 style="text-align: center; margin-bottom: 20px;">Hồ sơ của tôi</h2>
+            
+            <div class="profile-avatar-section" style="text-align: center; margin-bottom: 20px;">
+                <div class="user-avatar large" id="profile-avatar" style="margin: 0 auto; width: 80px; height: 80px; font-size: 2rem;">
+                    <i class="fas fa-user"></i>
+                </div>
+                <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+                <button class="auth-btn" id="change-avatar-btn" style="margin-top: 10px;">Đổi ảnh đại diện</button>
+            </div>
+            
+            <form id="profile-form">
+                <div class="form-group">
+                    <label for="profile-name">Họ và tên</label>
+                    <input type="text" id="profile-name" class="form-input" placeholder="Nhập họ và tên">
+                </div>
+                
+                <div class="form-group">
+                    <label for="profile-email">Email</label>
+                    <input type="email" id="profile-email" class="form-input" placeholder="Email" disabled>
+                </div>
+                
+                <button type="submit" class="modal-btn">Cập nhật hồ sơ</button>
+            </form>
+            
+            <div class="progress-section" style="margin-top: 30px;">
+                <h3>Thống kê điểm số</h3>
+                
+                <div class="progress-filters">
+                    <select id="progress-game-filter">
+                        <option value="all">Tất cả trò chơi</option>
+                        <option value="congtrutrongphamvi10">Cộng trừ trong phạm vi 10</option>
+                        <option value="banbongsotoan2">Bắn Bóng Số</option>
+                        <option value="bangcuuchuong">Bảng cửu chương</option>
+                        <option value="congtruconhotoan2">Cộng trừ có nhớ lớp 2</option>
+                        <option value="congtrusonguyen">Cộng trừ số nguyên lớp 6</option>
+                        <option value="nhanchianangcao">Nhân chia nâng cao lớp 3-4</option>
+                        <option value="duongduapheptinh">Đường đua phép tính</option>
+                    </select>
+                    
+                    <select id="progress-sort">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                        <option value="highest">Điểm cao nhất</option>
+                        <option value="lowest">Điểm thấp nhất</option>
+                    </select>
+                </div>
+                
+                <div class="stats-summary">
+                    <div class="stat-item">
+                        <span class="stat-label">Tổng số lần chơi</span>
+                        <span class="stat-value" id="total-games">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Điểm cao nhất</span>
+                        <span class="stat-value" id="high-score">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Điểm trung bình</span>
+                        <span class="stat-value" id="average-score">0</span>
+                    </div>
+                </div>
+                
+                <div id="progress-list">
+                    <p class="no-progress" style="text-align: center; color: #777; padding: 20px;">
+                        Chưa có dữ liệu tiến trình. Hãy chơi các trò chơi để xem tiến trình tại đây!
+                    </p>
+                </div>
+                
+                <div class="pagination" id="progress-pagination">
+                    <!-- Pagination will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking Modal -->
+    <div class="modal" id="ranking-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-ranking-modal">&times;</span>
+            <h2 style="text-align: center; margin-bottom: 20px;">Bảng xếp hạng</h2>
+            
+            <div class="ranking-tabs">
+                <div class="ranking-tab active" data-tab="highscores">Điểm cao nhất</div>
+                <div class="ranking-tab" data-tab="history">Lịch sử điểm</div>
+                <div class="ranking-tab" data-tab="friends">Bạn bè</div>
+            </div>
+            
+            <div class="ranking-tab-content" id="highscores-tab">
+                <div class="ranking-filters">
+                    <button class="ranking-filter active" data-filter="all">Tất cả</button>
+                    <button class="ranking-filter" data-filter="congtrutrongphamvi10">Cộng trừ phạm vi 10</button>
+                    <button class="ranking-filter" data-filter="banbongsotoan2">Bắn Bóng Số</button>
+                    <button class="ranking-filter" data-filter="bangcuuchuong">Bảng cửu chương</button>
+                    <button class="ranking-filter" data-filter="congtruconhotoan2">Cộng trừ có nhớ</button>
+                    <button class="ranking-filter" data-filter="congtrusonguyen">Cộng trừ số nguyên</button>
+                    <button class="ranking-filter" data-filter="nhanchianangcao">Nhân chia nâng cao</button>
+                    <button class="ranking-filter" data-filter="duongduapheptinh">Đường đua phép tính</button>
+                </div>
+                
+                <div class="ranking-container">
+                    <ul class="ranking-list" id="ranking-list">
+                        <li class="ranking-loading">Đang tải dữ liệu xếp hạng...</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="ranking-tab-content" id="history-tab" style="display: none;">
+                <div class="ranking-filters">
+                    <select id="history-game-filter">
+                        <option value="all">Tất cả trò chơi</option>
+                        <option value="congtrutrongphamvi10">Cộng trừ phạm vi 10</option>
+                        <option value="banbongsotoan2">Bắn Bóng Số</option>
+                        <option value="bangcuuchuong">Bảng cửu chương</option>
+                        <option value="congtruconhotoan2">Cộng trừ có nhớ</option>
+                        <option value="congtrusonguyen">Cộng trừ số nguyên</option>
+                        <option value="nhanchianangcao">Nhân chia nâng cao</option>
+                        <option value="duongduapheptinh">Đường đua phép tính</option>
+                    </select>
+                </div>
+                
+                <div class="ranking-container">
+                    <ul class="ranking-list" id="history-list">
+                        <li class="ranking-loading">Đang tải lịch sử điểm...</li>
+                    </ul>
+                </div>
+                
+                <div class="pagination" id="history-pagination">
+                    <!-- Pagination will be generated here -->
+                </div>
+            </div>
+            
+            <div class="ranking-tab-content" id="friends-tab" style="display: none;">
+                <div class="friends-list" id="friends-list">
+                    <p class="ranking-loading">Đang tải danh sách bạn bè...</p>
+                </div>
+                
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="modal-btn" id="add-friend-btn">Thêm bạn bè</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Challenge Modal -->
+    <div class="modal" id="challenge-modal">
+        <div class="modal-content challenge-modal">
+            <span class="close-modal" id="close-challenge-modal">&times;</span>
+            <h2 style="text-align: center; margin-bottom: 20px;">Thách đấu bạn bè</h2>
+            
+            <div class="form-group">
+                <label for="challenge-friend">Chọn bạn bè</label>
+                <select id="challenge-friend" class="form-input">
+                    <option value="">-- Chọn người bạn muốn thách đấu --</option>
+                    <!-- Friends will be populated here -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="challenge-game">Chọn trò chơi</label>
+                <select id="challenge-game" class="form-input">
+                    <option value="congtrutrongphamvi10">Cộng trừ trong phạm vi 10</option>
+                    <option value="banbongsotoan2">Bắn Bóng Số</option>
+                    <option value="bangcuuchuong">Bảng cửu chương</option>
+                    <option value="congtruconhotoan2">Cộng trừ có nhớ lớp 2</option>
+                    <option value="congtrusonguyen">Cộng trừ số nguyên lớp 6</option>
+                    <option value="nhanchianangcao">Nhân chia nâng cao lớp 3-4</option>
+                    <option value="duongduapheptinh">Đường đua phép tính</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="challenge-message">Lời nhắn (tuỳ chọn)</label>
+                <textarea id="challenge-message" class="form-input" placeholder="Viết lời nhắn thách đấu của bạn..." rows="3"></textarea>
+            </div>
+            
+            <button class="modal-btn" id="send-challenge-btn">Gửi thách đấu</button>
+            
+            <div class="challenge-history" style="margin-top: 30px;">
+                <h3>Lịch sử thách đấu</h3>
+                <div id="challenge-history-list">
+                    <p style="text-align: center; color: #777; padding: 20px;">
+                        Chưa có lịch sử thách đấu.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>MathHub</h1>
+            </div>
+            
+            <nav class="nav">
+               <a href="index.html" class="nav-link active">Trang chủ</a>
+<a href="practice.html" class="nav-link">Luyện tập & Kiểm tra</a>
+<a href="ai-analysis.html" class="nav-link">Phân tích AI</a>
+<a href="games.html" class="nav-link">Trò chơi</a>
+<a href="about.html" class="nav-link">Giới thiệu</a>
+            </nav>
+            
+            <div class="auth-section">
+                <button class="auth-btn" id="login-btn">Đăng nhập</button>
+                <button class="auth-btn" id="challenge-btn" style="display: none;">Thách đấu</button>
+                
+                <div class="user-info" id="user-info" style="display: none;">
+                    <div class="user-avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span class="user-name" id="user-name"></span>
+                    <div class="user-dropdown">
+                        <button class="dropdown-item" id="profile-btn">
+                            <i class="fas fa-user"></i> Hồ sơ
+                        </button>
+                        <button class="dropdown-item" id="ranking-btn">
+                            <i class="fas fa-trophy"></i> Xếp hạng
+                        </button>
+                        <button class="dropdown-item" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Học Toán Thật Vui!</h2>
+                <p>Khám phá thế giới toán học đầy màu sắc với các trò chơi thú vị và bổ ích. Phát triển tư duy toán học một cách tự nhiên và hiệu quả.</p>
+                <a href="games.html" class="cta-btn">Bắt đầu chơi ngay</a>
+            </div>
+            
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Math Learning" loading="lazy">
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2>Tại sao chọn MathHub?</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <h3>Trò chơi đa dạng</h3>
+                    <p>Hàng chục trò chơi toán học từ cơ bản đến nâng cao, phù hợp với mọi lứa tuổi.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h3>Học mà chơi</h3>
+                    <p>Phương pháp học tập thông qua trò chơi giúp tiếp thu kiến thức một cách tự nhiên.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Theo dõi tiến bộ</h3>
+                    <p>Hệ thống theo dõi và đánh giá sự tiến bộ của người học theo thời gian.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3>Thử thách & Phần thưởng</h3>
+                    <p>Thách đấu bạn bè và nhận phần thưởng khi đạt thành tích cao.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Popular Games Section -->
+    <section class="popular-games">
+        <div class="container">
+            <h2>Trò chơi phổ biến</h2>
+            
+            <div class="games-grid">
+                <div class="game-card">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Bắn Bóng Số" loading="lazy">
+                    </div>
+                    <div class="game-content">
+                        <h3>Bắn Bóng Số</h3>
+                        <p>Rèn luyện kỹ năng tính toán nhanh với trò chơi bắn bóng đầy thú vị.</p>
+                        <a href="games/banbongsotoan2.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <div class="game-card">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1571260899304-425eee4c7efc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwa90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Bảng cửu chương" loading="lazy">
+                    </div>
+                    <div class="game-content">
+                        <h3>Bảng cửu chương</h3>
+                        <p>Học thuộc bảng cửu chương thông qua các trò chơi tương tác vui nhộn.</p>
+                        <a href="games/bangcuuchuong.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+                
+                <div class="game-card">
+                    <div class="game-image">
+                        <img src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwa90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Cộng trừ có nhớ" loading="lazy">
+                    </div>
+                    <div class="game-content">
+                        <h3>Cộng trừ có nhớ</h3>
+                        <p>Luyện tập phép tính cộng trừ có nhớ với các bài toán thực tế.</p>
+                        <a href="games/congtruconhotoan2.html" class="game-btn">Chơi ngay</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="view-all">
+                <a href="games.html" class="view-all-btn">Xem tất cả trò chơi</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MathHub</h3>
+                    <p>Nền tảng học toán qua trò chơi hàng đầu Việt Nam.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Liên kết nhanh</h4>
+                    <ul>
+                <ul>
+    <li><a href="index.html">Trang chủ</a></li>
+    <li><a href="practice.html">Luyện tập & Kiểm tra</a></li>
+    <li><a href="practice.html">Phân tích AI</a></li>
+    <li><a href="games.html">Trò chơi</a></li>
+    <li><a href="about.html">Giới thiệu</a></li>
+</ul>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Hỗ trợ</h4>
+                    <ul>
+                        <li><a href="#">Hướng dẫn sử dụng</a></li>
+                        <li><a href="#">Câu hỏi thường gặp</a></li>
+                        <li><a href="#">Liên hệ</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Kết nối với chúng tôi</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-tiktok"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 MathHub. Tất cả quyền được bảo lưu.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Scripts -->
+    <script src="auth-system.js"></script>
+    <script src="user-system.js"></script>
+</body>
+</html>
