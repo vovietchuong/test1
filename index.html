@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MathMaster - Nâng cấp Hệ thống Luyện tập</title>
+    <title>MathMaster - Hệ thống quản lý lớp học</title>
     <!-- MathJax để hiển thị công thức toán -->
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -13,6 +13,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <!-- Firebase Firestore -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Firebase Storage -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -30,6 +32,8 @@
             --class10-color: #10b981;
             --class11-color: #3b82f6;
             --class12-color: #8b5cf6;
+            --teacher-color: #f59e0b;
+            --student-color: #3b82f6;
             --text-color: #334155;
             --text-light: #64748b;
             --bg-color: #f8fafc;
@@ -176,6 +180,22 @@
             bottom: 0;
             right: 0;
             border: 2px solid white;
+        }
+        
+        .user-role-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--teacher-color);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .student-badge {
+            background: var(--student-color);
         }
         
         .theme-toggle {
@@ -555,6 +575,14 @@
             color: white;
         }
         
+        .btn-teacher {
+            background: linear-gradient(135deg, var(--teacher-color), #f59e0b);
+        }
+        
+        .btn-teacher:hover {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
         .btn-google {
             background: white;
             color: #757575;
@@ -664,6 +692,7 @@
             color: var(--primary-color);
             text-decoration: none;
             font-weight: 500;
+            cursor: pointer;
         }
         
         .form-footer a:hover {
@@ -701,488 +730,146 @@
             font-size: 0.9rem;
         }
         
-        /* Trang hồ sơ */
-        .profile-container {
+        /* Panel quản lý câu hỏi */
+        .admin-panel {
             display: none;
+            margin-top: 30px;
+            padding: 30px;
             background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.05) 100%);
             border-radius: var(--border-radius);
-            padding: 35px;
             box-shadow: var(--shadow);
-            margin-bottom: 40px;
-            animation: fadeIn 0.5s ease;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 25px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .profile-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 2.5rem;
-            font-weight: 700;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .profile-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .profile-info {
-            flex: 1;
-        }
-        
-        .profile-name {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-            color: var(--text-color);
-        }
-        
-        .profile-email {
-            color: var(--text-light);
-            margin-bottom: 15px;
-        }
-        
-        .profile-details {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .profile-detail {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-        
-        .profile-stats {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .profile-stat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            min-width: 100px;
-        }
-        
-        .profile-stat-value {
-            font-size: 1.8rem;
-            font-weight: 700;
+        .admin-panel h2 {
             color: var(--primary-color);
-        }
-        
-        .profile-stat-label {
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-        
-        .profile-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .profile-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-        
-        @media (max-width: 768px) {
-            .profile-content {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .profile-section {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: var(--border-radius);
-            padding: 25px;
-        }
-        
-        .profile-section-title {
-            font-size: 1.2rem;
-            font-weight: 600;
             margin-bottom: 20px;
-            color: var(--primary-color);
             display: flex;
             align-items: center;
             gap: 10px;
         }
         
-        .progress-item {
-            margin-bottom: 20px;
-        }
-        
-        .progress-header {
+        .filter-section {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        
-        .progress-title {
-            font-weight: 500;
-        }
-        
-        .progress-percent {
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .progress-bar {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .progress-value {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-            border-radius: 4px;
-        }
-        
-        .achievement-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             gap: 15px;
-            margin-bottom: 25px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            align-items: center;
         }
         
-        .achievement-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
+        .questions-list {
+            margin: 20px 0;
+        }
+        
+        .question-item {
             padding: 15px;
-            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
             transition: var(--transition);
         }
         
-        .achievement-item:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow);
+        .question-item:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
         
-        .achievement-icon {
-            font-size: 1.8rem;
-            margin-bottom: 10px;
-            color: var(--primary-color);
-        }
-        
-        .achievement-name {
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
             font-size: 0.8rem;
             font-weight: 500;
+            margin-right: 8px;
+            color: white;
         }
         
-        .recent-activity {
-            list-style: none;
-        }
-        
-        .activity-item {
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        .pagination {
             display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        /* Quản lý học sinh */
+        .students-management {
+            display: none;
+            margin-top: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.05) 100%);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .students-list {
+            margin: 20px 0;
+        }
+        
+        .student-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .student-info {
+            display: flex;
+            align-items: center;
             gap: 15px;
         }
         
-        .activity-item:last-child {
-            border-bottom: none;
-        }
-        
-        .activity-icon {
+        .student-avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(67, 97, 238, 0.1);
+            background: linear-gradient(135deg, var(--student-color), #2563eb);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--primary-color);
+            color: white;
+            font-weight: bold;
         }
         
-        .activity-content {
+        .student-details {
             flex: 1;
         }
         
-        .activity-title {
-            font-weight: 500;
+        .student-name {
+            font-weight: 600;
             margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
         }
         
-        .activity-time {
-            font-size: 0.85rem;
+        .student-email {
+            font-size: 0.9rem;
             color: var(--text-light);
         }
         
-        /* Modal chỉnh sửa hồ sơ */
-        .edit-profile-form {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .edit-profile-form {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .form-fullwidth {
-            grid-column: 1 / -1;
-        }
-        
-        footer {
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
-            color: white;
-            padding: 40px 0;
-            margin-top: auto;
-        }
-        
-        .footer-content {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 40px;
-        }
-        
-        .footer-logo {
-            font-size: 1.8rem;
-            font-weight: 800;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .footer-logo i {
-            font-size: 1.8rem;
-        }
-        
-        .footer-description {
-            max-width: 350px;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 20px;
-        }
-        
-        .footer-heading {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            position: relative;
-            padding-bottom: 10px;
-        }
-        
-        .footer-heading::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 40px;
-            height: 3px;
-            background: white;
-            border-radius: 3px;
-        }
-        
-        .footer-links {
-            list-style: none;
-        }
-        
-        .footer-links li {
-            margin-bottom: 12px;
-        }
-        
-        .footer-links a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .footer-links a:hover {
-            color: white;
-            transform: translateX(5px);
-        }
-        
-        .social-links {
+        .student-stats {
             display: flex;
             gap: 15px;
-            margin-top: 20px;
         }
         
-        .social-link {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-        
-        .social-link:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-3px);
-        }
-        
-        .copyright {
+        .student-stat {
             text-align: center;
-            padding-top: 30px;
-            margin-top: 40px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            min-width: 80px;
         }
         
-        /* Responsive design */
-        @media (max-width: 1024px) {
-            .options-grid {
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            }
+        .student-stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
         }
         
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                gap: 15px;
-                padding: 15px 0;
-            }
-            
-            nav ul {
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 5px;
-            }
-            
-            .welcome-section h1 {
-                font-size: 2.2rem;
-            }
-            
-            .welcome-section p {
-                font-size: 1rem;
-            }
-            
-            .welcome-cta {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .class-selection {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .class-btn {
-                width: 100%;
-                max-width: 300px;
-            }
-            
-            .stats-container {
-                gap: 15px;
-            }
-            
-            .stat-card {
-                min-width: 150px;
-            }
-            
-            .profile-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .profile-stats {
-                justify-content: center;
-            }
-            
-            .footer-content {
-                flex-direction: column;
-                gap: 30px;
-            }
-            
-            .profile-actions {
-                flex-direction: column;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .logo {
-                font-size: 1.5rem;
-            }
-            
-            .logo i {
-                font-size: 1.5rem;
-            }
-            
-            .welcome-section {
-                padding: 30px 20px;
-            }
-            
-            .welcome-section h1 {
-                font-size: 1.8rem;
-            }
-            
-            .options-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stat-card {
-                width: 100%;
-            }
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Hiệu ứng loading */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+        .student-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
         }
         
         /* Toast notification */
@@ -1246,6 +933,482 @@
         .toast-close:hover {
             opacity: 1;
         }
+        
+        /* Xử lý đề thi */
+        .exam-processing {
+            display: none;
+            margin-top: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.05) 100%);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .process-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .process-steps::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+        }
+        
+        .step {
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+        
+        .step-number {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 15px;
+            transition: all 0.3s;
+        }
+        
+        .step.active .step-number {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .step.completed .step-number {
+            border-color: var(--success-color);
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .step-description {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .step-content {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 30px;
+            min-height: 300px;
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--primary-light);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            text-align: center;
+            background: rgba(67, 97, 238, 0.05);
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(67, 97, 238, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-light);
+            margin-bottom: 15px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .exam-question-list {
+            margin-top: 20px;
+        }
+        
+        .exam-question-item {
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: var(--card-bg);
+        }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .question-content {
+            font-weight: 500;
+        }
+        
+        .question-meta {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        .tag-difficulty-easy {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--difficulty-easy);
+        }
+        
+        .tag-difficulty-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--difficulty-medium);
+        }
+        
+        .tag-difficulty-hard {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--difficulty-hard);
+        }
+        
+        .tag-topic {
+            background: rgba(67, 97, 238, 0.2);
+            color: var(--primary-color);
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        
+        .step-controls {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .exam-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .exam-modal-content {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 25px;
+            position: relative;
+        }
+        
+        .close-exam-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+        
+        .exam-modal-header {
+            margin-bottom: 20px;
+        }
+        
+        .exam-modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .exam-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+        
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 40px 0;
+            margin-top: 50px;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        
+        .footer-section {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .footer-section h3 {
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .footer-links {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+        
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .footer-links a:hover {
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .social-links a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+        
+        .social-links a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+        
+        .copyright {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 0;
+            }
+            
+            nav ul {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .stats-container {
+                gap: 15px;
+            }
+            
+            .stat-card {
+                min-width: 160px;
+            }
+            
+            .class-selection {
+                gap: 15px;
+            }
+            
+            .class-btn {
+                min-width: 150px;
+                padding: 15px 25px;
+            }
+            
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .welcome-section h1 {
+                font-size: 2.2rem;
+            }
+            
+            .welcome-section p {
+                font-size: 1rem;
+            }
+            
+            .welcome-cta {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .stats-container {
+                flex-direction: column;
+            }
+            
+            .class-selection {
+                flex-direction: column;
+            }
+            
+            .class-btn {
+                width: 100%;
+            }
+            
+            .process-steps {
+                flex-direction: column;
+                gap: 30px;
+            }
+            
+            .process-steps::before {
+                display: none;
+            }
+            
+            .step {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                text-align: left;
+            }
+            
+            .step-number {
+                margin: 0;
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+            
+            .student-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .student-stats {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .student-stat {
+                flex: 1;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container {
+                width: 95%;
+                padding: 10px;
+            }
+            
+            .header-actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .modal-content {
+                width: 95%;
+            }
+            
+            .exam-modal-content {
+                width: 95%;
+                padding: 15px;
+            }
+            
+            .actions {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .step-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1253,72 +1416,77 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo">
-                    <i class="fas fa-square-root-alt"></i>
+                    <i class="fas fa-square-root-variable"></i>
                     <span>MathMaster</span>
                 </div>
-                
                 <nav>
                     <ul>
                         <li><a href="#" class="active"><i class="fas fa-home"></i> Trang chủ</a></li>
                         <li><a href="#"><i class="fas fa-book"></i> Bài học</a></li>
-                        <li><a href="#"><i class="fas fa-trophy"></i> Thử thách</a></li>
-                        <li><a href="#"><i class="fas fa-chart-line"></i> Tiến trình</a></li>
+                        <li><a href="#"><i class="fas fa-tasks"></i> Bài tập</a></li>
+                        <li><a href="#"><i class="fas fa-chart-line"></i> Thống kê</a></li>
+                        <li><a href="#"><i class="fas fa-question-circle"></i> Hỗ trợ</a></li>
                     </ul>
                 </nav>
-                
                 <div class="header-actions">
-                    <button class="theme-toggle" id="themeToggle">
+                    <button class="theme-toggle" id="theme-toggle">
                         <i class="fas fa-moon"></i>
                     </button>
-                    <div class="user-profile" id="userProfile">
+                    <div class="user-profile" id="user-profile">
                         <div class="user-avatar">
-                            <i class="fas fa-user"></i>
-                            <div class="user-status"></div>
+                            <span>GV</span>
+                            <span class="user-status"></span>
+                            <span class="user-role-badge">Giáo viên</span>
                         </div>
-                        <span class="user-name">Đăng nhập</span>
+                        <span class="user-name">Nguyễn Văn A</span>
                     </div>
                 </div>
             </div>
         </div>
     </header>
-    
+
     <div class="container main-content">
         <section class="welcome-section">
-            <h1>Nâng Cấp Hồ Sơ Người Dùng</h1>
-            <p>Hệ thống mới cho phép bạn đăng nhập bằng Google, chỉnh sửa thông tin cá nhân và theo dõi tiến trình học tập của mình.</p>
+            <h1>Hệ thống Quản lý Lớp học Toán</h1>
+            <p>Nền tảng toàn diện giúp giáo viên quản lý lớp học, tạo bài tập và theo dõi tiến độ học tập của học sinh một cách hiệu quả</p>
             
             <div class="stats-container">
                 <div class="stat-card">
                     <div class="stat-icon">
                         <i class="fas fa-users"></i>
                     </div>
-                    <div class="stat-value">1,250+</div>
-                    <div class="stat-label">Học sinh tham gia</div>
+                    <div class="stat-value">128</div>
+                    <div class="stat-label">Học sinh</div>
                 </div>
-                
                 <div class="stat-card">
                     <div class="stat-icon">
                         <i class="fas fa-book"></i>
                     </div>
-                    <div class="stat-value">500+</div>
+                    <div class="stat-value">42</div>
                     <div class="stat-label">Bài học</div>
                 </div>
-                
                 <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-graduation-cap"></i>
+                        <i class="fas fa-tasks"></i>
                     </div>
-                    <div class="stat-value">98%</div>
-                    <div class="stat-label">Hài lòng</div>
+                    <div class="stat-value">156</div>
+                    <div class="stat-label">Bài tập</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-value">87%</div>
+                    <div class="stat-label">Hoàn thành</div>
                 </div>
             </div>
             
             <div class="welcome-cta">
-                <button class="btn btn-start" id="startLearning">
-                    <i class="fas fa-play"></i> Bắt đầu học ngay
+                <button class="btn btn-start" id="create-exam-btn">
+                    <i class="fas fa-plus-circle"></i> Tạo đề thi mới
                 </button>
-                <button class="btn btn-outline" id="viewProfileBtn">
-                    <i class="fas fa-user-circle"></i> Xem hồ sơ
+                <button class="btn btn-outline" id="manage-students-btn">
+                    <i class="fas fa-user-graduate"></i> Quản lý học sinh
                 </button>
             </div>
         </section>
@@ -1328,12 +1496,10 @@
                 <i class="fas fa-1"></i>
                 <span class="class-name">Lớp 10</span>
             </button>
-            
             <button class="class-btn class-11">
                 <i class="fas fa-2"></i>
                 <span class="class-name">Lớp 11</span>
             </button>
-            
             <button class="class-btn class-12">
                 <i class="fas fa-3"></i>
                 <span class="class-name">Lớp 12</span>
@@ -1342,222 +1508,304 @@
         
         <div class="options-grid">
             <div class="option-card">
-                <h3><i class="fas fa-calculator"></i> Đại số</h3>
-                <p>Khám phá các khái niệm đại số từ cơ bản đến nâng cao, phương trình, bất phương trình và hệ phương trình.</p>
-                <button class="btn btn-outline">Khám phá</button>
+                <h3><i class="fas fa-book"></i> Quản lý bài học</h3>
+                <p>Tạo và quản lý các bài học, giáo án, tài liệu giảng dạy cho từng lớp học.</p>
+                <button class="btn">
+                    <i class="fas fa-arrow-right"></i> Truy cập
+                </button>
             </div>
-            
             <div class="option-card">
-                <h3><i class="fas fa-shapes"></i> Hình học</h3>
-                <p>Học về các hình khối, định lý, tính chất hình học và ứng dụng trong thực tế.</p>
-                <button class="btn btn-outline">Khám phá</button>
+                <h3><i class="fas fa-tasks"></i> Bài tập & Đề thi</h3>
+                <p>Tạo bài tập, đề kiểm tra và đề thi với nhiều dạng câu hỏi và mức độ khác nhau.</p>
+                <button class="btn">
+                    <i class="fas fa-arrow-right"></i> Truy cập
+                </button>
             </div>
-            
             <div class="option-card">
-                <h3><i class="fas fa-chart-bar"></i> Giải tích</h3>
-                <p>Tìm hiểu về đạo hàm, tích phân, giới hạn và ứng dụng của giải tích trong toán học.</p>
-                <button class="btn btn-outline">Khám phá</button>
-            </div>
-            
-            <div class="option-card">
-                <h3><i class="fas fa-dice"></i> Xác suất</h3>
-                <p>Nghiên cứu về xác suất, thống kê và ứng dụng trong các bài toán thực tế.</p>
-                <button class="btn btn-outline">Khám phá</button>
+                <h3><i class="fas fa-chart-bar"></i> Báo cáo & Phân tích</h3>
+                <p>Theo dõi và phân tích kết quả học tập của học sinh với các biểu đồ trực quan.</p>
+                <button class="btn">
+                    <i class="fas fa-arrow-right"></i> Truy cập
+                </button>
             </div>
         </div>
         
-        <!-- Profile Container (sẽ hiển thị khi người dùng đăng nhập) -->
-        <div class="profile-container" id="profileContainer">
-            <div class="profile-header">
-                <div class="profile-avatar" id="profileAvatar">
-                    <i class="fas fa-user"></i>
+        <div class="admin-panel" id="admin-panel">
+            <h2><i class="fas fa-cog"></i> Quản lý câu hỏi</h2>
+            
+            <div class="filter-section">
+                <select class="form-control">
+                    <option>Tất cả lớp</option>
+                    <option>Lớp 10</option>
+                    <option>Lớp 11</option>
+                    <option>Lớp 12</option>
+                </select>
+                
+                <select class="form-control">
+                    <option>Tất cả chủ đề</option>
+                    <option>Đại số</option>
+                    <option>Hình học</option>
+                    <option>Giải tích</option>
+                    <option>Xác suất thống kê</option>
+                </select>
+                
+                <select class="form-control">
+                    <option>Tất cả độ khó</option>
+                    <option>Dễ</option>
+                    <option>Trung bình</option>
+                    <option>Khó</option>
+                    <option>Rất khó</option>
+                </select>
+                
+                <button class="btn">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+                
+                <button class="btn btn-teacher">
+                    <i class="fas fa-plus"></i> Thêm câu hỏi
+                </button>
+            </div>
+            
+            <div class="questions-list">
+                <div class="question-item">
+                    <div class="question-header">
+                        <span class="tag tag-difficulty-medium">Trung bình</span>
+                        <span class="tag tag-topic">Đại số</span>
+                    </div>
+                    <div class="question-content">
+                        Giải phương trình: \(x^2 - 5x + 6 = 0\)
+                    </div>
+                    <div class="question-meta">
+                        <span><i class="fas fa-clock"></i> 5 phút</span>
+                        <span><i class="fas fa-marker"></i> 1 điểm</span>
+                    </div>
                 </div>
                 
-                <div class="profile-info">
-                    <h2 class="profile-name" id="profileName">Người dùng MathMaster</h2>
-                    <p class="profile-email" id="profileEmail">email@example.com</p>
-                    
-                    <div class="profile-details">
-                        <div class="profile-detail">
-                            <i class="fas fa-graduation-cap"></i>
-                            <span id="profileClass">Chưa thiết lập</span>
-                        </div>
-                        <div class="profile-detail">
-                            <i class="fas fa-school"></i>
-                            <span id="profileSchool">Chưa thiết lập</span>
-                        </div>
-                        <div class="profile-detail">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span id="profileJoinDate">Tham gia: 01/01/2023</span>
-                        </div>
+                <div class="question-item">
+                    <div class="question-header">
+                        <span class="tag tag-difficulty-easy">Dễ</span>
+                        <span class="tag tag-topic">Hình học</span>
                     </div>
-                    
-                    <div class="profile-stats">
-                        <div class="profile-stat">
-                            <div class="profile-stat-value">85%</div>
-                            <div class="profile-stat-label">Hoàn thành</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-value">42</div>
-                            <div class="profile-stat-label">Bài đã học</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-value">15</div>
-                            <div class="profile-stat-label">Thành tích</div>
-                        </div>
+                    <div class="question-content">
+                        Tính diện tích hình tròn có bán kính \(r = 5cm\).
+                    </div>
+                    <div class="question-meta">
+                        <span><i class="fas fa-clock"></i> 3 phút</span>
+                        <span><i class="fas fa-marker"></i> 0.5 điểm</span>
+                    </div>
+                </div>
+                
+                <div class="question-item">
+                    <div class="question-header">
+                        <span class="tag tag-difficulty-hard">Khó</span>
+                        <span class="tag tag-topic">Giải tích</span>
+                    </div>
+                    <div class="question-content">
+                        Tính đạo hàm của hàm số \(y = \ln(\sin x)\).
+                    </div>
+                    <div class="question-meta">
+                        <span><i class="fas fa-clock"></i> 7 phút</span>
+                        <span><i class="fas fa-marker"></i> 1.5 điểm</span>
                     </div>
                 </div>
             </div>
             
-            <div class="profile-actions">
-                <button class="btn" id="editProfileBtn">
-                    <i class="fas fa-edit"></i> Chỉnh sửa hồ sơ
+            <div class="pagination">
+                <button class="btn btn-back">
+                    <i class="fas fa-chevron-left"></i>
                 </button>
-                <button class="btn btn-outline" id="signOutBtn">
-                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                <span>Trang 1/5</span>
+                <button class="btn">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="students-management" id="students-management">
+            <h2><i class="fas fa-user-graduate"></i> Quản lý học sinh</h2>
+            
+            <div class="filter-section">
+                <select class="form-control">
+                    <option>Tất cả lớp</option>
+                    <option>Lớp 10A1</option>
+                    <option>Lớp 10A2</option>
+                    <option>Lớp 11A1</option>
+                    <option>Lớp 12A1</option>
+                </select>
+                
+                <input type="text" class="form-control" placeholder="Tìm kiếm học sinh...">
+                
+                <button class="btn">
+                    <i class="fas fa-search"></i> Tìm kiếm
                 </button>
             </div>
             
-            <div class="profile-content">
-                <div class="profile-section">
-                    <h3 class="profile-section-title"><i class="fas fa-tasks"></i> Tiến trình học tập</h3>
-                    
-                    <div class="progress-item">
-                        <div class="progress-header">
-                            <span class="progress-title">Đại số</span>
-                            <span class="progress-percent">75%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-value" style="width: 75%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="progress-item">
-                        <div class="progress-header">
-                            <span class="progress-title">Hình học</span>
-                            <span class="progress-percent">60%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-value" style="width: 60%"></div>
+            <div class="students-list">
+                <div class="student-item">
+                    <div class="student-info">
+                        <div class="student-avatar">NT</div>
+                        <div class="student-details">
+                            <div class="student-name">
+                                Nguyễn Thanh Tùng
+                                <span class="badge" style="background: var(--class10-color);">Lớp 10</span>
+                            </div>
+                            <div class="student-email">tung.nguyen@example.com</div>
                         </div>
                     </div>
-                    
-                    <div class="progress-item">
-                        <div class="progress-header">
-                            <span class="progress-title">Giải tích</span>
-                            <span class="progress-percent">45%</span>
+                    <div class="student-stats">
+                        <div class="student-stat">
+                            <div class="student-stat-value">85%</div>
+                            <div class="student-stat-label">Hoàn thành</div>
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-value" style="width: 45%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="progress-item">
-                        <div class="progress-header">
-                            <span class="progress-title">Xác suất</span>
-                            <span class="progress-percent">30%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-value" style="width: 30%"></div>
+                        <div class="student-stat">
+                            <div class="student-stat-value">7.8</div>
+                            <div class="student-stat-label">Điểm TB</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="profile-section">
-                    <h3 class="profile-section-title"><i class="fas fa-trophy"></i> Thành tích</h3>
-                    
-                    <div class="achievement-list">
-                        <div class="achievement-item">
-                            <div class="achievement-icon">
-                                <i class="fas fa-medal"></i>
+                <div class="student-item">
+                    <div class="student-info">
+                        <div class="student-avatar">HL</div>
+                        <div class="student-details">
+                            <div class="student-name">
+                                Hoàng Minh Lâm
+                                <span class="badge" style="background: var(--class11-color);">Lớp 11</span>
                             </div>
-                            <div class="achievement-name">Học tập chăm chỉ</div>
-                        </div>
-                        
-                        <div class="achievement-item">
-                            <div class="achievement-icon">
-                                <i class="fas fa-star"></i>
-                            </div>
-                            <div class="achievement-name">Bài kiểm tra đầu tiên</div>
-                        </div>
-                        
-                        <div class="achievement-item">
-                            <div class="achievement-icon">
-                                <i class="fas fa-bolt"></i>
-                            </div>
-                            <div class="achievement-name">Tốc độ</div>
-                        </div>
-                        
-                        <div class="achievement-item">
-                            <div class="achievement-icon">
-                                <i class="fas fa-check-double"></i>
-                            </div>
-                            <div class="achievement-name">Hoàn thành chương</div>
+                            <div class="student-email">lam.hoang@example.com</div>
                         </div>
                     </div>
-                    
-                    <h3 class="profile-section-title"><i class="fas fa-history"></i> Hoạt động gần đây</h3>
-                    
-                    <ul class="recent-activity">
-                        <li class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-book"></i>
+                    <div class="student-stats">
+                        <div class="student-stat">
+                            <div class="student-stat-value">92%</div>
+                            <div class="student-stat-label">Hoàn thành</div>
+                        </div>
+                        <div class="student-stat">
+                            <div class="student-stat-value">8.5</div>
+                            <div class="student-stat-label">Điểm TB</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="student-item">
+                    <div class="student-info">
+                        <div class="student-avatar">PT</div>
+                        <div class="student-details">
+                            <div class="student-name">
+                                Phạm Thị Thu
+                                <span class="badge" style="background: var(--class12-color);">Lớp 12</span>
                             </div>
-                            <div class="activity-content">
-                                <div class="activity-title">Đã hoàn thành bài "Phương trình bậc hai"</div>
-                                <div class="activity-time">2 giờ trước</div>
-                            </div>
-                        </li>
-                        
-                        <li class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-trophy"></i>
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-title">Đã đạt được thành tích "Học tập chăm chỉ"</div>
-                                <div class="activity-time">6 giờ trước</div>
-                            </div>
-                        </li>
-                        
-                        <li class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-title">Đã xem báo cáo tiến độ</div>
-                                <div class="activity-time">1 ngày trước</div>
-                            </div>
-                        </li>
-                    </ul>
+                            <div class="student-email">thu.pham@example.com</div>
+                        </div>
+                    </div>
+                    <div class="student-stats">
+                        <div class="student-stat">
+                            <div class="student-stat-value">78%</div>
+                            <div class="student-stat-label">Hoàn thành</div>
+                        </div>
+                        <div class="student-stat">
+                            <div class="student-stat-value">7.2</div>
+                            <div class="student-stat-label">Điểm TB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="exam-processing" id="exam-processing">
+            <h2><i class="fas fa-file-alt"></i> Tạo đề thi mới</h2>
+            
+            <div class="process-steps">
+                <div class="step active" id="step-1">
+                    <div class="step-number">1</div>
+                    <div class="step-info">
+                        <div class="step-title">Tải lên đề thi</div>
+                        <div class="step-description">Tải file Word hoặc PDF lên hệ thống</div>
+                    </div>
+                </div>
+                <div class="step" id="step-2">
+                    <div class="step-number">2</div>
+                    <div class="step-info">
+                        <div class="step-title">Xử lý đề thi</div>
+                        <div class="step-description">Hệ thống phân tích và trích xuất câu hỏi</div>
+                    </div>
+                </div>
+                <div class="step" id="step-3">
+                    <div class="step-number">3</div>
+                    <div class="step-info">
+                        <div class="step-title">Chỉnh sửa</div>
+                        <div class="step-description">Kiểm tra và chỉnh sửa câu hỏi</div>
+                    </div>
+                </div>
+                <div class="step" id="step-4">
+                    <div class="step-number">4</div>
+                    <div class="step-info">
+                        <div class="step-title">Hoàn thành</div>
+                        <div class="step-description">Xuất bản đề thi</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-content" id="step-content-1">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h3>Kéo thả file đề thi vào đây</h3>
+                    <p>Hoặc nhấn để chọn file từ máy tính</p>
+                    <p class="text-muted">Hỗ trợ định dạng .doc, .docx, .pdf (tối đa 10MB)</p>
+                    <input type="file" class="file-input" id="file-input" accept=".doc,.docx,.pdf">
+                </div>
+                
+                <div class="file-info" id="file-info" style="display: none;">
+                    <h4><i class="fas fa-file"></i> <span id="file-name">Đề thi giữa kỳ lớp 10.docx</span></h4>
+                    <p>Kích thước: <span id="file-size">5.2 MB</span></p>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress" id="upload-progress" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">Đang tải lên... 0%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-back" id="prev-step" style="display: none;">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </button>
+                <div class="step-controls">
+                    <button class="btn" id="next-step" style="display: none;">
+                        Tiếp theo <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn btn-start" id="process-exam" style="display: none;">
+                        <i class="fas fa-cog"></i> Xử lý đề thi
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Modal đăng nhập -->
-    <div class="modal" id="loginModal">
+    <div class="modal" id="login-modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Đăng nhập</h2>
-                <button class="modal-close" id="closeLoginModal">
+                <button class="modal-close" id="close-login-modal">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="loginEmail">Email</label>
-                    <input type="email" id="loginEmail" class="form-control" placeholder="Email của bạn">
-                    <div class="form-error" id="loginEmailError">Vui lòng nhập email hợp lệ</div>
+                    <label for="login-email">Email</label>
+                    <input type="email" class="form-control" id="login-email" placeholder="Email của bạn">
+                    <div class="form-error" id="login-email-error">Vui lòng nhập email hợp lệ</div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="loginPassword">Mật khẩu</label>
-                    <input type="password" id="loginPassword" class="form-control" placeholder="Mật khẩu của bạn">
-                    <div class="form-error" id="loginPasswordError">Mật khẩu phải có ít nhất 6 ký tự</div>
+                    <label for="login-password">Mật khẩu</label>
+                    <input type="password" class="form-control" id="login-password" placeholder="Mật khẩu">
+                    <div class="form-error" id="login-password-error">Mật khẩu phải có ít nhất 6 ký tự</div>
                 </div>
-                
-                <button class="btn btn-start" style="width: 100%">
+                <button class="btn" style="width: 100%;" id="login-btn">
                     <i class="fas fa-sign-in-alt"></i> Đăng nhập
                 </button>
                 
@@ -1565,496 +1813,503 @@
                     <span>Hoặc</span>
                 </div>
                 
-                <button class="btn btn-google" style="width: 100%" id="googleSignInBtn">
+                <button class="btn btn-google" style="width: 100%;">
                     <i class="fab fa-google"></i> Đăng nhập với Google
                 </button>
                 
                 <div class="form-footer">
-                    <p>Chưa có tài khoản? <a href="#" id="showRegisterModal">Đăng ký ngay</a></p>
+                    <p>Chưa có tài khoản? <a href="#" id="show-register">Đăng ký ngay</a></p>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Modal đăng ký -->
-    <div class="modal" id="registerModal">
+    <div class="modal" id="register-modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Đăng ký tài khoản</h2>
-                <button class="modal-close" id="closeRegisterModal">
+                <button class="modal-close" id="close-register-modal">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="registerName">Họ và tên</label>
-                    <input type="text" id="registerName" class="form-control" placeholder="Nhập họ và tên của bạn">
-                    <div class="form-error" id="registerNameError">Vui lòng nhập họ và tên</div>
+                    <label for="register-name">Họ và tên</label>
+                    <input type="text" class="form-control" id="register-name" placeholder="Họ và tên">
+                    <div class="form-error" id="register-name-error">Vui lòng nhập họ tên</div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="registerEmail">Email</label>
-                    <input type="email" id="registerEmail" class="form-control" placeholder="Email của bạn">
-                    <div class="form-error" id="registerEmailError">Vui lòng nhập email hợp lệ</div>
+                    <label for="register-email">Email</label>
+                    <input type="email" class="form-control" id="register-email" placeholder="Email của bạn">
+                    <div class="form-error" id="register-email-error">Vui lòng nhập email hợp lệ</div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="registerPassword">Mật khẩu</label>
-                    <input type="password" id="registerPassword" class="form-control" placeholder="Tạo mật khẩu">
-                    <div class="form-error" id="registerPasswordError">Mật khẩu phải có ít nhất 6 ký tự</div>
+                    <label for="register-password">Mật khẩu</label>
+                    <input type="password" class="form-control" id="register-password" placeholder="Mật khẩu">
+                    <div class="form-error" id="register-password-error">Mật khẩu phải có ít nhất 6 ký tự</div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="registerConfirmPassword">Xác nhận mật khẩu</label>
-                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Xác nhận mật khẩu">
-                    <div class="form-error" id="registerConfirmPasswordError">Mật khẩu xác nhận không khớp</div>
+                    <label for="register-confirm-password">Xác nhận mật khẩu</label>
+                    <input type="password" class="form-control" id="register-confirm-password" placeholder="Xác nhận mật khẩu">
+                    <div class="form-error" id="register-confirm-password-error">Mật khẩu xác nhận không khớp</div>
                 </div>
-                
-                <button class="btn btn-start" style="width: 100%">
+                <div class="form-group">
+                    <label for="register-role">Bạn là</label>
+                    <select class="form-control" id="register-role">
+                        <option value="teacher">Giáo viên</option>
+                        <option value="student">Học sinh</option>
+                    </select>
+                </div>
+                <button class="btn" style="width: 100%;" id="register-btn">
                     <i class="fas fa-user-plus"></i> Đăng ký
                 </button>
                 
-                <div class="divider">
-                    <span>Hoặc</span>
-                </div>
-                
-                <button class="btn btn-google" style="width: 100%" id="googleSignUpBtn">
-                    <i class="fab fa-google"></i> Đăng ký với Google
-                </button>
-                
                 <div class="form-footer">
-                    <p>Đã có tài khoản? <a href="#" id="showLoginModal">Đăng nhập ngay</a></p>
+                    <p>Đã có tài khoản? <a href="#" id="show-login">Đăng nhập</a></p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Modal chỉnh sửa hồ sơ -->
-    <div class="modal" id="editProfileModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Chỉnh sửa hồ sơ</h2>
-                <button class="modal-close" id="closeEditProfileModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="edit-profile-form">
-                    <div class="form-group form-fullwidth">
-                        <label for="editAvatar">Ảnh đại diện</label>
-                        <input type="file" id="editAvatar" class="form-control" accept="image/*">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editName">Họ và tên</label>
-                        <input type="text" id="editName" class="form-control" placeholder="Nhập họ và tên">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editEmail">Email</label>
-                        <input type="email" id="editEmail" class="form-control" placeholder="Email của bạn" disabled>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editClass">Lớp</label>
-                        <select id="editClass" class="form-control">
-                            <option value="">Chọn lớp</option>
-                            <option value="10">Lớp 10</option>
-                            <option value="11">Lớp 11</option>
-                            <option value="12">Lớp 12</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editSchool">Trường</label>
-                        <input type="text" id="editSchool" class="form-control" placeholder="Tên trường của bạn">
-                    </div>
-                    
-                    <div class="form-group form-fullwidth">
-                        <label for="editBio">Giới thiệu bản thân</label>
-                        <textarea id="editBio" class="form-control" rows="3" placeholder="Mô tả ngắn về bản thân bạn"></textarea>
-                    </div>
-                </div>
-                
-                <div class="form-footer" style="margin-top: 25px;">
-                    <button class="btn" style="width: 100%" id="saveProfileBtn">
-                        <i class="fas fa-save"></i> Lưu thay đổi
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
+
     <footer>
         <div class="container">
             <div class="footer-content">
-                <div class="footer-about">
-                    <div class="footer-logo">
-                        <i class="fas fa-square-root-alt"></i>
-                        <span>MathMaster</span>
-                    </div>
-                    <p class="footer-description">
-                        MathMaster là nền tảng học toán trực tuyến hàng đầu, giúp học sinh nâng cao kiến thức và kỹ năng toán học từ cơ bản đến nâng cao.
-                    </p>
-                    
+                <div class="footer-section">
+                    <h3><i class="fas fa-square-root-variable"></i> MathMaster</h3>
+                    <p>Nền tảng quản lý lớp học Toán toàn diện, giúp giáo viên và học sinh tương tác hiệu quả hơn.</p>
                     <div class="social-links">
-                        <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-link"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
-                
-                <div class="footer-links-container">
-                    <h3 class="footer-heading">Liên kết nhanh</h3>
+                <div class="footer-section">
+                    <h3>Liên kết nhanh</h3>
                     <ul class="footer-links">
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Trang chủ</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Bài học</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Thử thách</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Tiến trình</a></li>
+                        <li><a href="#"><i class="fas fa-arrow-right"></i> Trang chủ</a></li>
+                        <li><a href="#"><i class="fas fa-arrow-right"></i> Bài học</a></li>
+                        <li><a href="#"><i class="fas fa-arrow-right"></i> Bài tập</a></li>
+                        <li><a href="#"><i class="fas fa-arrow-right"></i> Thống kê</a></li>
+                        <li><a href="#"><i class="fas fa-arrow-right"></i> Hỗ trợ</a></li>
                     </ul>
                 </div>
-                
-                <div class="footer-links-container">
-                    <h3 class="footer-heading">Tài nguyên</h3>
+                <div class="footer-section">
+                    <h3>Thông tin liên hệ</h3>
                     <ul class="footer-links">
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Tài liệu học tập</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Đề thi thử</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Bài giảng video</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Phương pháp giải</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-links-container">
-                    <h3 class="footer-heading">Hỗ trợ</h3>
-                    <ul class="footer-links">
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Trung tâm trợ giúp</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Liên hệ với chúng tôi</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Câu hỏi thường gặp</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i> Chính sách bảo mật</a></li>
+                        <li><a href="#"><i class="fas fa-map-marker-alt"></i> 123 Đường Toán Học, Quận 1, TP.HCM</a></li>
+                        <li><a href="#"><i class="fas fa-phone"></i> (028) 1234 5678</a></li>
+                        <li><a href="#"><i class="fas fa-envelope"></i> info@mathmaster.edu.vn</a></li>
                     </ul>
                 </div>
             </div>
-            
             <div class="copyright">
                 <p>&copy; 2023 MathMaster. Tất cả quyền được bảo lưu.</p>
             </div>
         </div>
     </footer>
-    
-    <!-- Toast notification -->
+
     <div class="toast" id="toast">
-        <div class="toast-icon">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="toast-message" id="toastMessage">Thao tác thành công!</div>
-        <div class="toast-close" id="toastClose">
+        <i class="fas fa-check-circle toast-icon"></i>
+        <span class="toast-message">Thao tác thành công!</span>
+        <span class="toast-close" id="toast-close">
             <i class="fas fa-times"></i>
-        </div>
+        </span>
     </div>
-    
+
     <script>
         // Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
-  authDomain: "mathhubvn.firebaseapp.com",
-  projectId: "mathhubvn",
-  storageBucket: "mathhubvn.firebasestorage.app",
-  messagingSenderId: "1001364433767",
-  appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
-  measurementId: "G-2YNQZ48JVK"
-};
-        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+            authDomain: "mathhubvn.firebaseapp.com",
+            projectId: "mathhubvn",
+            storageBucket: "mathhubvn.firebasestorage.app",
+            messagingSenderId: "1001364433767",
+            appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+            measurementId: "G-2YNQZ48JVK"
+        };
+
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        
+        const storage = firebase.storage();
+
         // DOM Elements
-        const themeToggle = document.getElementById('themeToggle');
-        const userProfile = document.getElementById('userProfile');
-        const profileContainer = document.getElementById('profileContainer');
-        const viewProfileBtn = document.getElementById('viewProfileBtn');
-        const editProfileBtn = document.getElementById('editProfileBtn');
-        const signOutBtn = document.getElementById('signOutBtn');
-        const loginModal = document.getElementById('loginModal');
-        const registerModal = document.getElementById('registerModal');
-        const editProfileModal = document.getElementById('editProfileModal');
-        const closeLoginModal = document.getElementById('closeLoginModal');
-        const closeRegisterModal = document.getElementById('closeRegisterModal');
-        const closeEditProfileModal = document.getElementById('closeEditProfileModal');
-        const showLoginModal = document.getElementById('showLoginModal');
-        const showRegisterModal = document.getElementById('showRegisterModal');
-        const googleSignInBtn = document.getElementById('googleSignInBtn');
-        const googleSignUpBtn = document.getElementById('googleSignUpBtn');
-        const saveProfileBtn = document.getElementById('saveProfileBtn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const userProfile = document.getElementById('user-profile');
+        const loginModal = document.getElementById('login-modal');
+        const registerModal = document.getElementById('register-modal');
+        const closeLoginModal = document.getElementById('close-login-modal');
+        const closeRegisterModal = document.getElementById('close-register-modal');
+        const showRegister = document.getElementById('show-register');
+        const showLogin = document.getElementById('show-login');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const createExamBtn = document.getElementById('create-exam-btn');
+        const manageStudentsBtn = document.getElementById('manage-students-btn');
+        const adminPanel = document.getElementById('admin-panel');
+        const studentsManagement = document.getElementById('students-management');
+        const examProcessing = document.getElementById('exam-processing');
         const toast = document.getElementById('toast');
-        const toastMessage = document.getElementById('toastMessage');
-        const toastClose = document.getElementById('toastClose');
-        
-        // Profile elements
-        const profileAvatar = document.getElementById('profileAvatar');
-        const profileName = document.getElementById('profileName');
-        const profileEmail = document.getElementById('profileEmail');
-        const profileClass = document.getElementById('profileClass');
-        const profileSchool = document.getElementById('profileSchool');
-        const profileJoinDate = document.getElementById('profileJoinDate');
-        
-        // Edit profile elements
-        const editName = document.getElementById('editName');
-        const editEmail = document.getElementById('editEmail');
-        const editClass = document.getElementById('editClass');
-        const editSchool = document.getElementById('editSchool');
-        const editBio = document.getElementById('editBio');
-        
-        // Current user data
-        let currentUser = null;
-        let userData = null;
-        
-        // Theme toggle
+        const toastClose = document.getElementById('toast-close');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const uploadProgress = document.getElementById('upload-progress');
+        const progressText = document.getElementById('progress-text');
+        const processExamBtn = document.getElementById('process-exam');
+        const nextStepBtn = document.getElementById('next-step');
+        const prevStepBtn = document.getElementById('prev-step');
+
+        // Theme Toggle
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
+            const icon = themeToggle.querySelector('i');
             if (document.body.classList.contains('dark-mode')) {
-                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('theme', 'dark');
             } else {
-                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('theme', 'light');
             }
         });
-        
-        // Show login modal
+
+        // Check saved theme
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            const icon = themeToggle.querySelector('i');
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        }
+
+        // Modal Controls
         userProfile.addEventListener('click', () => {
-            if (currentUser) {
-                profileContainer.style.display = 'block';
-            } else {
-                loginModal.classList.add('active');
-            }
-        });
-        
-        // View profile button
-        viewProfileBtn.addEventListener('click', () => {
-            if (currentUser) {
-                profileContainer.style.display = 'block';
-            } else {
-                loginModal.classList.add('active');
-            }
-        });
-        
-        // Edit profile button
-        editProfileBtn.addEventListener('click', () => {
-            editProfileModal.classList.add('active');
-            populateEditForm();
-        });
-        
-        // Sign out button
-        signOutBtn.addEventListener('click', () => {
-            auth.signOut().then(() => {
-                showToast('Đã đăng xuất thành công', 'success');
-                profileContainer.style.display = 'none';
-                currentUser = null;
-                userData = null;
-                updateUserUI();
-            }).catch((error) => {
-                showToast('Có lỗi xảy ra khi đăng xuất', 'error');
-            });
-        });
-        
-        // Close modals
-        closeLoginModal.addEventListener('click', () => loginModal.classList.remove('active'));
-        closeRegisterModal.addEventListener('click', () => registerModal.classList.remove('active'));
-        closeEditProfileModal.addEventListener('click', () => editProfileModal.classList.remove('active'));
-        
-        // Switch between login and register modals
-        showLoginModal.addEventListener('click', (e) => {
-            e.preventDefault();
-            registerModal.classList.remove('active');
             loginModal.classList.add('active');
         });
-        
-        showRegisterModal.addEventListener('click', (e) => {
+
+        closeLoginModal.addEventListener('click', () => {
+            loginModal.classList.remove('active');
+        });
+
+        closeRegisterModal.addEventListener('click', () => {
+            registerModal.classList.remove('active');
+        });
+
+        showRegister.addEventListener('click', (e) => {
             e.preventDefault();
             loginModal.classList.remove('active');
             registerModal.classList.add('active');
         });
-        
-        // Google Sign In
-        googleSignInBtn.addEventListener('click', () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then((result) => {
-                    loginModal.classList.remove('active');
-                    showToast('Đăng nhập thành công với Google', 'success');
-                })
-                .catch((error) => {
-                    showToast('Có lỗi xảy ra khi đăng nhập với Google', 'error');
-                });
+
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerModal.classList.remove('active');
+            loginModal.classList.add('active');
         });
-        
-        // Google Sign Up
-        googleSignUpBtn.addEventListener('click', () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then((result) => {
-                    registerModal.classList.remove('active');
-                    showToast('Đăng ký thành công với Google', 'success');
-                })
-                .catch((error) => {
-                    showToast('Có lỗi xảy ra khi đăng ký với Google', 'error');
-                });
-        });
-        
-        // Save profile changes
-        saveProfileBtn.addEventListener('click', () => {
-            if (currentUser) {
-                const updates = {
-                    displayName: editName.value,
-                    class: editClass.value,
-                    school: editSchool.value,
-                    bio: editBio.value,
-                    lastUpdated: new Date()
-                };
-                
-                db.collection('users').doc(currentUser.uid).set(updates, { merge: true })
-                    .then(() => {
-                        showToast('Cập nhật hồ sơ thành công', 'success');
-                        editProfileModal.classList.remove('active');
-                        loadUserData();
-                    })
-                    .catch((error) => {
-                        showToast('Có lỗi xảy ra khi cập nhật hồ sơ', 'error');
-                    });
-            }
-        });
-        
-        // Close toast
-        toastClose.addEventListener('click', () => {
-            toast.classList.remove('show');
-        });
-        
-        // Populate edit form with current data
-        function populateEditForm() {
-            if (userData) {
-                editName.value = userData.displayName || '';
-                editEmail.value = currentUser.email;
-                editClass.value = userData.class || '';
-                editSchool.value = userData.school || '';
-                editBio.value = userData.bio || '';
-            }
-        }
-        
-        // Load user data from Firestore
-        function loadUserData() {
-            if (currentUser) {
-                db.collection('users').doc(currentUser.uid).get()
-                    .then((doc) => {
-                        if (doc.exists) {
-                            userData = doc.data();
-                            updateProfileUI();
-                        } else {
-                            // Create a new document if it doesn't exist
-                            db.collection('users').doc(currentUser.uid).set({
-                                displayName: currentUser.displayName || 'Người dùng MathMaster',
-                                email: currentUser.email,
-                                class: '',
-                                school: '',
-                                bio: '',
-                                joinDate: new Date(),
-                                lastUpdated: new Date()
-                            })
-                            .then(() => {
-                                loadUserData();
-                            });
-                        }
-                    })
-                    .catch((error) => {
-                        showToast('Có lỗi xảy ra khi tải dữ liệu người dùng', 'error');
-                    });
-            }
-        }
-        
-        // Update profile UI with user data
-        function updateProfileUI() {
-            if (userData) {
-                profileName.textContent = userData.displayName || 'Người dùng MathMaster';
-                profileEmail.textContent = currentUser.email;
-                profileClass.textContent = userData.class || 'Chưa thiết lập';
-                profileSchool.textContent = userData.school || 'Chưa thiết lập';
-                
-                if (userData.joinDate) {
-                    const joinDate = userData.joinDate.toDate();
-                    profileJoinDate.textContent = `Tham gia: ${joinDate.toLocaleDateString('vi-VN')}`;
-                }
-                
-                // Update avatar with first letter of name
-                const name = userData.displayName || 'U';
-                profileAvatar.innerHTML = `<span>${name.charAt(0).toUpperCase()}</span>`;
-            }
-        }
-        
-        // Update user UI based on authentication state
-        function updateUserUI() {
-            if (currentUser) {
-                userProfile.querySelector('.user-name').textContent = currentUser.displayName || 'Người dùng';
-                userProfile.querySelector('.user-avatar').innerHTML = `
-                    <span>${(currentUser.displayName || 'U').charAt(0).toUpperCase()}</span>
-                    <div class="user-status"></div>
-                `;
-            } else {
-                userProfile.querySelector('.user-name').textContent = 'Đăng nhập';
-                userProfile.querySelector('.user-avatar').innerHTML = `
-                    <i class="fas fa-user"></i>
-                    <div class="user-status"></div>
-                `;
-            }
-        }
-        
-        // Show toast notification
+
+        // Toast Notification
         function showToast(message, type = 'success') {
-            toast.className = `toast ${type}`;
-            toastMessage.textContent = message;
+            const toastIcon = toast.querySelector('.toast-icon');
+            toast.className = 'toast ' + type;
+            toast.querySelector('.toast-message').textContent = message;
+            
+            if (type === 'success') {
+                toastIcon.className = 'fas fa-check-circle toast-icon';
+            } else if (type === 'error') {
+                toastIcon.className = 'fas fa-exclamation-circle toast-icon';
+            } else if (type === 'warning') {
+                toastIcon.className = 'fas fa-exclamation-triangle toast-icon';
+            }
+            
             toast.classList.add('show');
             
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
         }
-        
-        // Firebase Auth State Observer
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                updateUserUI();
-                loadUserData();
+
+        toastClose.addEventListener('click', () => {
+            toast.classList.remove('show');
+        });
+
+        // Form Validation and Firebase Auth
+        loginBtn.addEventListener('click', () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!validateEmail(email)) {
+                document.getElementById('login-email-error').classList.add('show');
+                return;
             } else {
-                currentUser = null;
-                userData = null;
-                updateUserUI();
-            }
-        });
-        
-        // Close modals when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target === loginModal) loginModal.classList.remove('active');
-            if (e.target === registerModal) registerModal.classList.remove('active');
-            if (e.target === editProfileModal) editProfileModal.classList.remove('active');
-        });
-        
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check if user prefers dark mode
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.body.classList.add('dark-mode');
-                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                document.getElementById('login-email-error').classList.remove('show');
             }
             
-            // Simulate user data for demo purposes
-            // In a real application, this would come from Firebase
-            setTimeout(() => {
-                // Uncomment the following line to simulate a logged-in user for demo
-                // userProfile.click();
-            }, 1000);
+            if (password.length < 6) {
+                document.getElementById('login-password-error').classList.add('show');
+                return;
+            } else {
+                document.getElementById('login-password-error').classList.remove('show');
+            }
+            
+            // Firebase login
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Signed in
+                    const user = userCredential.user;
+                    showToast('Đăng nhập thành công!', 'success');
+                    loginModal.classList.remove('active');
+                    updateUIForUser(user);
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    showToast('Đăng nhập thất bại: ' + errorMessage, 'error');
+                });
         });
+
+        registerBtn.addEventListener('click', () => {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            const role = document.getElementById('register-role').value;
+            
+            if (name.length < 3) {
+                document.getElementById('register-name-error').classList.add('show');
+                return;
+            } else {
+                document.getElementById('register-name-error').classList.remove('show');
+            }
+            
+            if (!validateEmail(email)) {
+                document.getElementById('register-email-error').classList.add('show');
+                return;
+            } else {
+                document.getElementById('register-email-error').classList.remove('show');
+            }
+            
+            if (password.length < 6) {
+                document.getElementById('register-password-error').classList.add('show');
+                return;
+            } else {
+                document.getElementById('register-password-error').classList.remove('show');
+            }
+            
+            if (password !== confirmPassword) {
+                document.getElementById('register-confirm-password-error').classList.add('show');
+                return;
+            } else {
+                document.getElementById('register-confirm-password-error').classList.remove('show');
+            }
+            
+            // Firebase registration
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Signed up
+                    const user = userCredential.user;
+                    
+                    // Save additional user data to Firestore
+                    return db.collection('users').doc(user.uid).set({
+                        name: name,
+                        email: email,
+                        role: role,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                })
+                .then(() => {
+                    showToast('Đăng ký thành công!', 'success');
+                    registerModal.classList.remove('active');
+                    updateUIForUser(auth.currentUser);
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    showToast('Đăng ký thất bại: ' + errorMessage, 'error');
+                });
+        });
+
+        // Validate email format
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Update UI based on user authentication status
+        function updateUIForUser(user) {
+            if (user) {
+                // User is signed in
+                db.collection('users').doc(user.uid).get()
+                    .then((doc) => {
+                        if (doc.exists) {
+                            const userData = doc.data();
+                            userProfile.querySelector('.user-name').textContent = userData.name;
+                            
+                            if (userData.role === 'teacher') {
+                                userProfile.querySelector('.user-role-badge').textContent = 'Giáo viên';
+                                userProfile.querySelector('.user-role-badge').classList.remove('student-badge');
+                            } else {
+                                userProfile.querySelector('.user-role-badge').textContent = 'Học sinh';
+                                userProfile.querySelector('.user-role-badge').classList.add('student-badge');
+                            }
+                            
+                            userProfile.querySelector('.user-avatar span').textContent = 
+                                userData.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                        }
+                    });
+            } else {
+                // User is signed out
+                userProfile.querySelector('.user-name').textContent = 'Đăng nhập';
+                userProfile.querySelector('.user-avatar span').textContent = 'TK';
+            }
+        }
+
+        // Listen for auth state changes
+        auth.onAuthStateChanged((user) => {
+            updateUIForUser(user);
+        });
+
+        // Admin Panel Controls
+        createExamBtn.addEventListener('click', () => {
+            adminPanel.style.display = 'none';
+            studentsManagement.style.display = 'none';
+            examProcessing.style.display = 'block';
+        });
+
+        manageStudentsBtn.addEventListener('click', () => {
+            adminPanel.style.display = 'none';
+            studentsManagement.style.display = 'block';
+            examProcessing.style.display = 'none';
+        });
+
+        // File Upload Handling
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--primary-color)';
+            uploadArea.style.background = 'rgba(67, 97, 238, 0.1)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = 'var(--primary-light)';
+            uploadArea.style.background = 'rgba(67, 97, 238, 0.05)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--primary-light)';
+            uploadArea.style.background = 'rgba(67, 97, 238, 0.05)';
+            
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            
+            if (!validTypes.includes(file.type)) {
+                showToast('Chỉ hỗ trợ file PDF và Word', 'error');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('Kích thước file tối đa là 10MB', 'error');
+                return;
+            }
+            
+            document.getElementById('file-name').textContent = file.name;
+            document.getElementById('file-size').textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            nextStepBtn.style.display = 'block';
+            
+            // Simulate upload progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                uploadProgress.style.width = progress + '%';
+                progressText.textContent = 'Đang tải lên... ' + progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    progressText.textContent = 'Tải lên thành công!';
+                    processExamBtn.style.display = 'block';
+                    nextStepBtn.style.display = 'none';
+                }
+            }, 100);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // Step Navigation
+        let currentStep = 1;
+
+        nextStepBtn.addEventListener('click', () => {
+            if (currentStep < 4) {
+                document.getElementById(`step-${currentStep}`).classList.remove('active');
+                currentStep++;
+                document.getElementById(`step-${currentStep}`).classList.add('active');
+                
+                if (currentStep === 2) {
+                    document.getElementById('step-content-1').style.display = 'none';
+                    // Here you would show step 2 content
+                    prevStepBtn.style.display = 'block';
+                    processExamBtn.style.display = 'none';
+                }
+            }
+        });
+
+        prevStepBtn.addEventListener('click', () => {
+            if (currentStep > 1) {
+                document.getElementById(`step-${currentStep}`).classList.remove('active');
+                currentStep--;
+                document.getElementById(`step-${currentStep}`).classList.add('active');
+                
+                if (currentStep === 1) {
+                    document.getElementById('step-content-1').style.display = 'block';
+                    prevStepBtn.style.display = 'none';
+                    nextStepBtn.style.display = 'block';
+                }
+            }
+        });
+
+        processExamBtn.addEventListener('click', () => {
+            // Simulate processing
+            showToast('Đang xử lý đề thi...', 'warning');
+            
+            setTimeout(() => {
+                document.getElementById(`step-1`).classList.remove('active');
+                document.getElementById(`step-1`).classList.add('completed');
+                document.getElementById(`step-2`).classList.add('active');
+                currentStep = 2;
+                
+                document.getElementById('step-content-1').style.display = 'none';
+                prevStepBtn.style.display = 'block';
+                processExamBtn.style.display = 'none';
+                nextStepBtn.style.display = 'block';
+                
+                showToast('Đã trích xuất 15 câu hỏi từ đề thi', 'success');
+            }, 2000);
+        });
+
+        // Initialize UI for non-authenticated users
+        updateUIForUser(null);
     </script>
 </body>
 </html>
