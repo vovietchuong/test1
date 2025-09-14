@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Trung Tâm Dạy Thêm - Quản Lý Thời Khóa Biểu</title>
+
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- xlsx for Excel import -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* (Giữ nguyên styles từ file gốc, rút gọn phía đây cho ngắn) */
+        :root { --primary-color: #4e73df; --teacher-color: #1cc88a; --student-color: #36b9cc; }
+        body { background-color: #f8f9fc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { background: linear-gradient(180deg, var(--primary-color) 10%, #224abe 100%); color: white; height: 100vh; position: fixed; padding-top: 20px; overflow-y: auto; width: 250px;}
+        .main-content { margin-left: 250px; padding: 20px; }
+        .header { background-color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 15px 20px; margin-bottom: 20px; border-radius: 5px; display:flex; justify-content:space-between; align-items:center;}
+        .user-badge { padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:bold;}
+        .badge-admin{background-color:var(--primary-color); color:white;}
+        .badge-teacher{background-color:var(--teacher-color); color:white;}
+        .badge-student{background-color:var(--student-color); color:white;}
+        .card { border:none; border-radius:10px; box-shadow:0 0.15rem 1.75rem rgba(58,59,69,0.15); margin-bottom:20px;}
+        .content-section { display:none; } .content-section.active{display:block;}
+        .login-container { max-width:400px; margin:80px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0.15rem 1.75rem rgba(58,59,69,0.15); }
+        @media (max-width:768px){ .sidebar{position:relative;width:100%;height:auto;} .main-content{margin-left:0;} }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <div class="login-container">
+            <div class="text-center mb-4">
+                <h3>Trung Tâm Tri Thức</h3>
+                <p class="text-muted">Đăng nhập vào hệ thống (Firebase)</p>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email hoặc Tên đăng nhập</label>
+                <input type="text" class="form-control" id="username" placeholder="Ví dụ: admin hoặc admin@demo.com">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Mật khẩu</label>
+                <input type="password" class="form-control" id="password" placeholder="Nhập mật khẩu (nếu có)">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Vai trò (chỉ dùng phần hiển thị)</label>
+                <select class="form-select" id="role">
+                    <option value="admin">Quản trị viên</option>
+                    <option value="teacher">Giáo viên</option>
+                    <option value="student">Học sinh</option>
+                </select>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" id="loginBtn">Đăng nhập</button>
+                <button class="btn btn-outline-secondary" id="anonBtn">Đăng nhập ẩn (demo)</button>
+            </div>
+
+            <div class="mt-3 text-center">
+                <p class="text-muted small">
+                    Gợi ý: để dùng đăng nhập thật, tạo tài khoản Email/Password trên Firebase Console hoặc bật Anonymous để demo nhanh.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="appContainer" style="display:none;">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-3 col-lg-2 sidebar d-md-block">
+                    <div class="text-center mb-4">
+                        <h4>Trung Tâm Tri Thức</h4>
+                        <p class="text-white-50 small">Hệ thống quản lý đào tạo</p>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link active" href="#" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Tổng quan</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="schedule"><i class="fas fa-calendar-alt"></i> Thời khóa biểu</a></li>
+
+                        <li class="nav-item admin-only"><a class="nav-link" href="#" data-section="class-management"><i class="fas fa-school"></i> Quản lý lớp học</a></li>
+                        <li class="nav-item admin-only"><a class="nav-link" href="#" data-section="students"><i class="fas fa-user-graduate"></i> Học sinh</a></li>
+                        <li class="nav-item admin-only"><a class="nav-link" href="#" data-section="teachers"><i class="fas fa-chalkboard-teacher"></i> Giáo viên</a></li>
+                        <li class="nav-item admin-only"><a class="nav-link" href="#" data-section="scheduling"><i class="fas fa-clock"></i> Xếp lịch</a></li>
+
+                        <li class="nav-item teacher-only"><a class="nav-link" href="#" data-section="teacher-availability"><i class="fas fa-user-clock"></i> Đăng ký lịch dạy</a></li>
+
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="settings"><i class="fas fa-cog"></i> Cài đặt</a></li>
+                        <li class="nav-item mt-4"><a class="nav-link" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-md-9 col-lg-10 main-content">
+                    <div class="header">
+                        <h5 class="m-0">Hệ thống quản lý thời khóa biểu</h5>
+                        <div>
+                            <span class="me-3" id="userWelcome">Xin chào, ...</span>
+                            <span class="user-badge" id="userBadge">Guest</span>
+                            <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=4e73df&color=fff" class="rounded-circle" width="40" height="40">
+                        </div>
+                    </div>
+
+                    <!-- Dashboard -->
+                    <div id="dashboard" class="content-section active">
+                        <div class="card p-3">
+                            <h6>Tổng quan hệ thống</h6>
+                            <div class="row mt-3">
+                                <div class="col-md-4">
+                                    <div class="card p-3">
+                                        <div> Lớp học </div>
+                                        <div class="dashboard-stat" id="statClasses">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card p-3">
+                                        <div> Học sinh </div>
+                                        <div class="dashboard-stat" id="statStudents">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card p-3">
+                                        <div> Giáo viên (đã khai báo) </div>
+                                        <div class="dashboard-stat" id="statTeachers">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Class Management -->
+                    <div id="class-management" class="content-section">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="m-0">Quản lý lớp học</h6>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addClassModal"><i class="fas fa-plus"></i> Tạo lớp mới</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row" id="classList"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Student Management -->
+                    <div id="students" class="content-section">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="m-0">Quản lý học sinh</h6>
+                                <div>
+                                    <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importStudentsModal"><i class="fas fa-file-import"></i> Nhập từ Excel</button>
+                                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="fas fa-plus"></i> Thêm học sinh</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead><tr><th>ID</th><th>Họ và tên</th><th>Ngày sinh</th><th>Lớp</th><th>SĐT phụ huynh</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                                        <tbody id="studentsTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduling -->
+                    <div id="scheduling" class="content-section">
+                        <div class="card p-3">
+                            <h6>Xếp lịch học tự động (demo)</h6>
+                            <p class="text-muted">Chạy thuật toán xếp lịch (mẫu) — kết quả cập nhật trạng thái trong Firestore.</p>
+                            <button class="btn btn-primary" id="autoScheduleBtn"><i class="fas fa-cogs"></i> Chạy xếp lịch</button>
+                        </div>
+                    </div>
+
+                    <div id="teachers" class="content-section">
+                        <div class="card p-3">
+                            <h6>Quản lý giáo viên</h6>
+                            <div id="teachersList"></div>
+                        </div>
+                    </div>
+
+                    <div id="schedule" class="content-section">
+                        <div class="card p-3">
+                            <h6>Thời khóa biểu</h6>
+                            <div id="scheduleBoard">Chưa có dữ liệu thời khóa biểu (demo).</div>
+                        </div>
+                    </div>
+
+                    <div id="settings" class="content-section">
+                        <div class="card p-3">
+                            <h6>Cài đặt</h6>
+                            <p class="small text-muted">Các thiết lập ứng dụng (Firestore, Auth) được quản lý trên Firebase Console.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal fade" id="addClassModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Tạo lớp học mới</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="addClassForm">
+                        <div class="row">
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Tên lớp học *</label><input type="text" class="form-control" id="className" required></div></div>
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Môn học *</label><select class="form-select" id="classSubject" required><option value="">Chọn môn</option><option>Toán</option><option>Lý</option><option>Hóa</option><option>Văn</option><option>Anh</option><option>Sinh</option></select></div></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Giáo viên phụ trách *</label><input class="form-control" id="classTeacher" placeholder="Tên giáo viên" required></div></div>
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Số buổi/tuần *</label><input type="number" class="form-control" id="classSessions" min="1" max="7" value="2" required></div></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Sĩ số tối đa</label><input type="number" class="form-control" id="classCapacity" min="1" max="100" value="25"></div></div>
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Học phí/buổi (VNĐ)</label><input type="number" class="form-control" id="classFee"></div></div>
+                        </div>
+                        <div class="mb-3"><label class="form-label">Mô tả lớp học</label><textarea class="form-control" id="classDescription" rows="3"></textarea></div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-primary" id="saveClassBtn">Lưu lớp học</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Thêm học sinh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="addStudentForm">
+                        <div class="mb-3"><label class="form-label">Họ tên</label><input class="form-control" id="studentName" required></div>
+                        <div class="mb-3"><label class="form-label">Ngày sinh</label><input type="date" class="form-control" id="studentDob"></div>
+                        <div class="mb-3"><label class="form-label">Lớp</label><select class="form-select" id="studentClass"></select></div>
+                        <div class="mb-3"><label class="form-label">SĐT phụ huynh</label><input class="form-control" id="studentPhone"></div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button class="btn btn-primary" id="saveStudentBtn">Lưu</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="importStudentsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Nhập danh sách học sinh từ Excel</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="excel-upload-area p-3 text-center" id="excelDropZone">
+                        <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                        <h5>Kéo thả file Excel vào đây (cột: Họ tên, Ngày sinh, SĐT phụ huynh, Email)</h5>
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display:none;">
+                        <div class="mt-2"><button class="btn btn-outline-primary" onclick="document.getElementById('excelFileInput').click()">Chọn file</button></div>
+                    </div>
+                    <div class="mt-3" id="excelPreview" style="display:none;">
+                        <h6>Xem trước dữ liệu</h6>
+                        <div class="table-responsive"><table class="table table-sm" id="previewTable"><thead><tr><th>Họ tên</th><th>Ngày sinh</th><th>SĐT</th><th>Email</th></tr></thead><tbody></tbody></table></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button class="btn btn-primary" id="importStudentsBtn" disabled>Nhập dữ liệu vào Firestore</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (modular v9+) -->
+    <script type="module">
+        // Your firebaseConfig (from user)
+        const firebaseConfig = {
+          apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+          authDomain: "mathhubvn.firebaseapp.com",
+          projectId: "mathhubvn",
+          storageBucket: "mathhubvn.firebasestorage.app",
+          messagingSenderId: "1001364433767",
+          appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+          measurementId: "G-2YNQZ48JVK"
+        };
+
+        // Import firebase modules (CDN)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.25.0/firebase-app.js";
+        import {
+            getAuth, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut
+        } from "https://www.gstatic.com/firebasejs/9.25.0/firebase-auth.js";
+        import {
+            getFirestore, collection, addDoc, doc, setDoc, getDocs, getDoc, onSnapshot, updateDoc, query, where, orderBy
+        } from "https://www.gstatic.com/firebasejs/9.25.0/firebase-firestore.js";
+
+        // Initialize
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // UI references
+        const loginScreen = document.getElementById('loginScreen');
+        const appContainer = document.getElementById('appContainer');
+        const loginBtn = document.getElementById('loginBtn');
+        const anonBtn = document.getElementById('anonBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userWelcome = document.getElementById('userWelcome');
+        const userBadge = document.getElementById('userBadge');
+        const userAvatar = document.getElementById('userAvatar');
+        const roleSelect = document.getElementById('role');
+
+        // Collections
+        const classesCol = collection(db, 'classes');
+        const studentsCol = collection(db, 'students');
+        const teachersCol = collection(db, 'teachers');
+
+        // Local caches (used to render UI)
+        let localClasses = [];
+        let localStudents = [];
+        let localTeachers = [];
+
+        // ---------- Auth ----------
+        loginBtn.addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const selectedRole = roleSelect.value;
+
+            if (!username) { alert('Nhập email hoặc username!'); return; }
+
+            // If username contains '@' treat as email -> attempt signInWithEmailAndPassword
+            if (username.includes('@')) {
+                try {
+                    const userCred = await signInWithEmailAndPassword(auth, username, password);
+                    // successful sign in
+                    afterSignIn(userCred.user, selectedRole);
+                } catch (err) {
+                    console.error('Sign in failed:', err);
+                    alert('Đăng nhập bằng email thất bại. Bạn có thể dùng "Đăng nhập ẩn (demo)" hoặc tạo user trên Firebase Console.');
+                }
+            } else {
+                // treat as simple username: attempt to map to demo emails (convention)
+                const mapping = {
+                    'admin': 'admin@demo.com',
+                    'teacher': 'teacher@demo.com',
+                    'student': 'student@demo.com'
+                };
+                const email = mapping[username] || (username + '@demo.com');
+                try {
+                    const userCred = await signInWithEmailAndPassword(auth, email, password);
+                    afterSignIn(userCred.user, selectedRole);
+                } catch (err) {
+                    console.warn('Email sign in failed, will try anonymous:', err);
+                    // Try anonymous sign-in as fallback
+                    try {
+                        const anon = await signInAnonymously(auth);
+                        afterSignIn(anon.user, selectedRole, /*anon=*/true);
+                        alert('Đăng nhập ẩn thành công. Bạn đang dùng tài khoản demo ẩn.');
+                    } catch (err2) {
+                        console.error('Anonymous sign-in failed', err2);
+                        alert('Không thể đăng nhập: ' + err2.message);
+                    }
+                }
+            }
+        });
+
+        anonBtn.addEventListener('click', async () => {
+            try {
+                const anon = await signInAnonymously(auth);
+                afterSignIn(anon.user, 'teacher', true);
+                alert('Đăng nhập ẩn thành công (demo).');
+            } catch (err) {
+                console.error(err); alert('Không thể đăng nhập ẩn: ' + err.message);
+            }
+        });
+
+        logoutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                await signOut(auth);
+                // Reset UI
+                loginScreen.style.display = 'block';
+                appContainer.style.display = 'none';
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            } catch (err) { console.error(err); alert('Lỗi đăng xuất'); }
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // signed in (could be anonymous)
+                const isAnon = user.isAnonymous;
+                // role may be stored in user's Firestore doc; for demo we use local selection or default teacher
+                let role = 'teacher';
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        if (data.role) role = data.role;
+                        if (data.name) userWelcome.textContent = `Xin chào, ${data.name}`;
+                    } else {
+                        // if no doc, create a minimal one
+                        await setDoc(doc(db, 'users', user.uid), { role, createdAt: new Date() });
+                    }
+                } catch (err) {
+                    console.warn('Lấy thông tin user thất bại', err);
+                }
+                // Show app
+                loginScreen.style.display = 'none';
+                appContainer.style.display = 'block';
+                userBadge.textContent = role === 'admin' ? 'Admin' : role === 'teacher' ? 'Giáo viên' : 'Học sinh';
+                userBadge.className = role === 'admin' ? 'user-badge badge-admin' : role === 'teacher' ? 'user-badge badge-teacher' : 'user-badge badge-student';
+                userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(role)}&background=4e73df&color=fff`;
+                // load data
+                startRealtimeListeners();
+            } else {
+                // signed out
+                loginScreen.style.display = 'block';
+                appContainer.style.display = 'none';
+            }
+        });
+
+        function afterSignIn(user, selectedRole, isAnon=false) {
+            // store role in users collection for later
+            setDoc(doc(db, 'users', user.uid), {
+                role: selectedRole || 'teacher',
+                name: selectedRole === 'admin' ? 'Quản trị viên' : selectedRole === 'teacher' ? 'Giáo viên' : 'Học sinh',
+                uid: user.uid,
+                lastLogin: new Date()
+            }, { merge: true }).catch(console.warn);
+        }
+
+        // ---------- Firestore realtime listeners & CRUD ----------
+        function startRealtimeListeners() {
+            // classes realtime
+            const classesQ = collection(db, 'classes');
+            onSnapshot(classesQ, (snap) => {
+                localClasses = [];
+                snap.forEach(d => localClasses.push({ id: d.id, ...d.data() }));
+                renderClassCards();
+                populateClassFilter();
+                document.getElementById('statClasses').textContent = localClasses.length;
+                populateTeacherListFromClasses();
+            }, (err)=>console.error('classes snapshot error', err));
+
+            // students realtime
+            const studentsQ = collection(db, 'students');
+            onSnapshot(studentsQ, (snap) => {
+                localStudents = [];
+                snap.forEach(d => localStudents.push({ id: d.id, ...d.data() }));
+                renderStudentsTable();
+                document.getElementById('statStudents').textContent = localStudents.length;
+            }, (err)=>console.error('students snapshot error', err));
+
+            // teachers realtime (optional collection)
+            const teachersQ = collection(db, 'teachers');
+            onSnapshot(teachersQ, (snap) => {
+                localTeachers = [];
+                snap.forEach(d => localTeachers.push({ id: d.id, ...d.data() }));
+                document.getElementById('statTeachers').textContent = localTeachers.length;
+                renderTeachersList();
+            }, (err)=>console.error('teachers snapshot error', err));
+        }
+
+        // Save new class to Firestore
+        document.getElementById('saveClassBtn').addEventListener('click', async () => {
+            const name = document.getElementById('className').value.trim();
+            const subject = document.getElementById('classSubject').value;
+            const teacher = document.getElementById('classTeacher').value.trim();
+            const sessions = parseInt(document.getElementById('classSessions').value) || 2;
+            const capacity = parseInt(document.getElementById('classCapacity').value) || 25;
+            const fee = parseFloat(document.getElementById('classFee').value) || 0;
+            const desc = document.getElementById('classDescription').value || '';
+
+            if (!name || !subject || !teacher) { alert('Nhập đầy đủ tên lớp, môn và giáo viên'); return; }
+
+            try {
+                const docRef = await addDoc(classesCol, {
+                    name, subject, teacher, sessions, capacity, fee, description: desc, createdAt: new Date(), status: 'pending'
+                });
+                // close modal
+                bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
+                document.getElementById('addClassForm').reset();
+                alert('Đã tạo lớp học (đồng bộ với Firestore).');
+            } catch (err) {
+                console.error('Lỗi khi lưu lớp:', err); alert('Lỗi lưu lớp: ' + err.message);
+            }
+        });
+
+        // Save student to Firestore
+        document.getElementById('saveStudentBtn').addEventListener('click', async () => {
+            const name = document.getElementById('studentName').value.trim();
+            const dob = document.getElementById('studentDob').value;
+            const classId = document.getElementById('studentClass').value;
+            const phone = document.getElementById('studentPhone').value;
+
+            if (!name) { alert('Nhập tên học sinh'); return; }
+
+            try {
+                await addDoc(studentsCol, {
+                    name, dob: dob || null, classId: classId || null, parentPhone: phone || null, status: 'Đang học', createdAt: new Date()
+                });
+                bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+                document.getElementById('addStudentForm').reset();
+                alert('Đã thêm học sinh vào Firestore.');
+            } catch (err) {
+                console.error(err); alert('Lỗi thêm học sinh: ' + err.message);
+            }
+        });
+
+        // Render class cards (from localClasses)
+        function renderClassCards() {
+            const classList = document.getElementById('classList');
+            classList.innerHTML = '';
+            if (!localClasses || localClasses.length === 0) {
+                classList.innerHTML = '<div class="col-12"><div class="alert alert-info">Chưa có lớp học. Tạo lớp mới để bắt đầu.</div></div>';
+                return;
+            }
+            localClasses.forEach(cls => {
+                const studentsCount = localStudents.filter(s => s.classId === cls.id).length;
+                const progressPercent = Math.round((studentsCount / (cls.capacity || 25)) * 100);
+                const div = document.createElement('div'); div.className = 'col-md-4 mb-4';
+                div.innerHTML = `
+                    <div class="card class-card">
+                        <div class="card-body">
+                            <h5 class="card-title">${escapeHtml(cls.name)}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">${escapeHtml(cls.subject)} - ${escapeHtml(cls.teacher)}</h6>
+                            <p class="card-text">Số buổi/tuần: ${cls.sessions || 0}</p>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>Sĩ số: ${studentsCount}/${cls.capacity || 0}</span>
+                                <span class="badge ${studentsCount < (cls.capacity||0) ? 'bg-success' : 'bg-danger'}">${studentsCount < (cls.capacity||0) ? 'Còn chỗ' : 'Đầy'}</span>
+                            </div>
+                            <div class="progress mb-3"><div class="progress-bar" role="progressbar" style="width:${progressPercent}%"></div></div>
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-sm btn-outline-primary view-class-btn" data-id="${cls.id}">Xem chi tiết</button>
+                                <button class="btn btn-sm btn-outline-success manage-students-btn" data-id="${cls.id}">Quản lý HS</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                classList.appendChild(div);
+            });
+
+            // attach view/manage handlers (optional)
+            document.querySelectorAll('.view-class-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const cls = localClasses.find(c => c.id === id);
+                alert('Chi tiết lớp:\\n' + JSON.stringify(cls, null, 2));
+            }));
+            document.querySelectorAll('.manage-students-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                // open student modal and preselect class
+                const modalEl = document.getElementById('addStudentModal');
+                const bsModal = new bootstrap.Modal(modalEl);
+                document.getElementById('studentClass').value = id;
+                bsModal.show();
+            }));
+        }
+
+        // Render students table
+        function renderStudentsTable() {
+            const tbody = document.getElementById('studentsTableBody'); tbody.innerHTML = '';
+            if (!localStudents || localStudents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Chưa có học sinh</td></tr>'; return;
+            }
+            localStudents.forEach(s => {
+                const className = (localClasses.find(c=>c.id===s.classId) || {}).name || s.classId || '';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(s.id || '')}</td>
+                    <td>${escapeHtml(s.name || '')}</td>
+                    <td>${escapeHtml(s.dob || '')}</td>
+                    <td>${escapeHtml(className)}</td>
+                    <td>${escapeHtml(s.parentPhone || '')}</td>
+                    <td><span class="badge bg-success">${escapeHtml(s.status || '')}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1 edit-student" data-id="${s.id}"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger delete-student" data-id="${s.id}"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // edit/delete handlers are left as an exercise (can implement updateDoc/deleteDoc)
+        }
+
+        // Populate class select for adding student
+        function populateClassFilter() {
+            const select = document.getElementById('studentClass'); select.innerHTML = '<option value="">(Chọn lớp)</option>';
+            localClasses.forEach(c => {
+                const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name; select.appendChild(opt);
+            });
+        }
+
+        // Populate teacher list from classes (basic)
+        function populateTeacherListFromClasses() {
+            const teachersDiv = document.getElementById('teachersList'); teachersDiv.innerHTML = '';
+            const teacherNames = [...new Set(localClasses.map(c => c.teacher))];
+            teacherNames.forEach(t => {
+                const d = document.createElement('div'); d.className = 'availability-item'; d.textContent = t; teachersDiv.appendChild(d);
+            });
+            document.getElementById('statTeachers').textContent = teacherNames.length;
+        }
+
+        function renderTeachersList() {
+            // optional: render teachers collection
+            const div = document.getElementById('teachersList'); div.innerHTML = '';
+            localTeachers.forEach(t => {
+                const el = document.createElement('div'); el.className = 'card p-2 mb-2';
+                el.innerHTML = `<strong>${escapeHtml(t.name)}</strong><div class="small text-muted">${escapeHtml(t.subject || '')}</div>`;
+                div.appendChild(el);
+            });
+        }
+
+        // Auto-schedule simulation: set status for all pending classes -> 'scheduled'
+        document.getElementById('autoScheduleBtn').addEventListener('click', async () => {
+            if (!confirm('Chạy xếp lịch tự động demo sẽ cập nhật tất cả lớp trạng thái "scheduled". Tiếp tục?')) return;
+            try {
+                // get all classes
+                const snap = await getDocs(classesCol);
+                const updates = [];
+                snap.forEach(async (d) => {
+                    const docRef = doc(db, 'classes', d.id);
+                    try { await updateDoc(docRef, { status: 'scheduled', scheduledAt: new Date() }); } catch(e){ console.warn(e); }
+                });
+                alert('Đã cập nhật trạng thái lớp sang "scheduled".');
+            } catch (err) { console.error(err); alert('Lỗi khi xếp lịch: ' + err.message); }
+        });
+
+        // ---------- Excel import ----------
+        const excelInput = document.getElementById('excelFileInput');
+        const previewTableBody = document.querySelector('#previewTable tbody');
+        excelInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const data = new Uint8Array(ev.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const wsName = wb.SheetNames[0];
+                const ws = wb.Sheets[wsName];
+                const json = XLSX.utils.sheet_to_json(ws);
+                previewTableBody.innerHTML = '';
+                json.slice(0, 20).forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${escapeHtml(r['Họ tên']||r['Name']||r['Fullname']||'')}</td>
+                                    <td>${escapeHtml(r['Ngày sinh']||r['DOB']||'')}</td>
+                                    <td>${escapeHtml(r['SĐT phụ huynh']||r['Phone']||'')}</td>
+                                    <td>${escapeHtml(r['Email']||'')}</td>`;
+                    previewTableBody.appendChild(tr);
+                });
+                document.getElementById('excelPreview').style.display = 'block';
+                document.getElementById('importStudentsBtn').disabled = false;
+
+                // store parsed data temporarily
+                window.__parsedExcel = json;
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('importStudentsBtn').addEventListener('click', async () => {
+            const json = window.__parsedExcel || [];
+            if (!json.length) { alert('Không có dữ liệu để nhập'); return; }
+            if (!confirm(`Nhập ${json.length} hàng vào Firestore students collection?`)) return;
+
+            try {
+                for (const row of json) {
+                    const name = row['Họ tên'] || row['Name'] || row['Fullname'] || '';
+                    const dob = row['Ngày sinh'] || row['DOB'] || '';
+                    const phone = row['SĐT phụ huynh'] || row['Phone'] || '';
+                    const email = row['Email'] || '';
+                    await addDoc(studentsCol, { name, dob, parentPhone: phone, email, status: 'Đang học', createdAt: new Date() });
+                }
+                alert('Nhập học sinh hoàn tất.');
+                document.getElementById('importStudentsBtn').disabled = true;
+                bootstrap.Modal.getInstance(document.getElementById('importStudentsModal')).hide();
+            } catch (err) { console.error(err); alert('Lỗi khi nhập: ' + err.message); }
+        });
+
+        // ---------- Helpers ----------
+        // escape HTML to avoid XSS when rendering user data
+        function escapeHtml(s) {
+            if (s === undefined || s === null) return '';
+            return String(s).replace(/[&<>"'`=\/]/g, function (c) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
+            });
+        }
+
+        // sidebar nav
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e){
+                if (!this.dataset.section) return;
+                e.preventDefault();
+                document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
+                document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active'));
+                this.classList.add('active');
+                const sec = document.getElementById(this.dataset.section);
+                if (sec) sec.classList.add('active');
+            });
+        });
+
+        // initial console message
+        console.log('App loaded with Firebase integration.');
+
+    </script>
+
+    <!-- Bootstrap JS (bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
