@@ -329,6 +329,21 @@
                 margin-left: 0;
             }
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -1151,7 +1166,7 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Lớp</label>
+                            <label class="form-label>Lớp</label>
                             <select class="form-select" id="studentClass" required>
                                 <option value="">-- Chọn lớp --</option>
                                 <!-- Classes will be populated here -->
@@ -1327,16 +1342,15 @@
     <!-- Firebase configuration and app logic -->
     <script>
         // Firebase configuration
-      const firebaseConfig = {
-  apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
-  authDomain: "mathhubvn.firebaseapp.com",
-  projectId: "mathhubvn",
-  storageBucket: "mathhubvn.firebasestorage.app",
-  messagingSenderId: "1001364433767",
-  appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
-  measurementId: "G-2YNQZ48JVK"
-};
-
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+            authDomain: "mathhubvn.firebaseapp.com",
+            projectId: "mathhubvn",
+            storageBucket: "mathhubvn.firebasestorage.app",
+            messagingSenderId: "1001364433767",
+            appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+            measurementId: "G-2YNQZ48JVK"
+        };
         
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -1454,6 +1468,16 @@
             // Add subject button
             document.getElementById('addSubjectBtn').addEventListener('click', function() {
                 addNewSubject();
+            });
+            
+            // Save student button
+            document.getElementById('saveStudentBtn').addEventListener('click', function() {
+                saveStudent();
+            });
+            
+            // Save teacher button
+            document.getElementById('saveTeacherBtn').addEventListener('click', function() {
+                saveTeacher();
             });
         }
         
@@ -1707,6 +1731,260 @@
             subjectTeacherFilter.appendChild(option4);
         }
         
+        // Firebase Firestore functions
+        async function saveStudent() {
+            const studentData = {
+                name: document.getElementById('studentName').value,
+                dob: document.getElementById('studentDob').value,
+                gender: document.getElementById('studentGender').value,
+                class: document.getElementById('studentClass').value,
+                parentPhone: document.getElementById('studentParentPhone').value,
+                parentEmail: document.getElementById('studentParentEmail').value,
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            try {
+                // Show loading
+                const saveBtn = document.getElementById('saveStudentBtn');
+                saveBtn.innerHTML = '<span class="loading-spinner"></span> Đang lưu...';
+                saveBtn.disabled = true;
+                
+                // Save to Firestore
+                const docRef = await db.collection('students').add(studentData);
+                
+                // Generate student code based on ID
+                await db.collection('students').doc(docRef.id).update({
+                    code: 'HS' + docRef.id.substring(0, 8).toUpperCase()
+                });
+                
+                // Close modal and reset form
+                document.getElementById('addStudentModal').querySelector('.btn-close').click();
+                document.getElementById('addStudentForm').reset();
+                
+                // Reload students table
+                loadStudents();
+                
+                alert('Thêm học sinh thành công!');
+            } catch (error) {
+                console.error('Lỗi khi thêm học sinh:', error);
+                alert('Có lỗi xảy ra khi thêm học sinh: ' + error.message);
+            } finally {
+                // Reset button
+                const saveBtn = document.getElementById('saveStudentBtn');
+                saveBtn.innerHTML = 'Lưu học sinh';
+                saveBtn.disabled = false;
+            }
+        }
+        
+        async function saveTeacher() {
+            const teacherData = {
+                name: document.getElementById('teacherName').value,
+                subject: document.getElementById('teacherSubject').value,
+                phone: document.getElementById('teacherPhone').value,
+                email: document.getElementById('teacherEmail').value,
+                level: document.getElementById('teacherLevel').value,
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            try {
+                // Show loading
+                const saveBtn = document.getElementById('saveTeacherBtn');
+                saveBtn.innerHTML = '<span class="loading-spinner"></span> Đang lưu...';
+                saveBtn.disabled = true;
+                
+                // Save to Firestore
+                const docRef = await db.collection('teachers').add(teacherData);
+                
+                // Generate teacher code based on ID
+                await db.collection('teachers').doc(docRef.id).update({
+                    code: 'GV' + docRef.id.substring(0, 8).toUpperCase()
+                });
+                
+                // Close modal and reset form
+                document.getElementById('addTeacherModal').querySelector('.btn-close').click();
+                document.getElementById('addTeacherForm').reset();
+                
+                // Reload teachers table
+                loadTeachers();
+                
+                alert('Thêm giáo viên thành công!');
+            } catch (error) {
+                console.error('Lỗi khi thêm giáo viên:', error);
+                alert('Có lỗi xảy ra khi thêm giáo viên: ' + error.message);
+            } finally {
+                // Reset button
+                const saveBtn = document.getElementById('saveTeacherBtn');
+                saveBtn.innerHTML = 'Lưu giáo viên';
+                saveBtn.disabled = false;
+            }
+        }
+        
+        async function loadStudents() {
+            try {
+                const studentsTable = document.getElementById('studentsTable');
+                const tbody = studentsTable.querySelector('tbody');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center"><span class="loading-spinner"></span> Đang tải dữ liệu...</td></tr>';
+                
+                const snapshot = await db.collection('students').orderBy('createdAt', 'desc').get();
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center">Chưa có dữ liệu học sinh</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const student = doc.data();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${student.code || 'N/A'}</td>
+                        <td>${student.name}</td>
+                        <td>${student.dob}</td>
+                        <td>${student.class}</td>
+                        <td>${student.class ? 'Lớp ' + student.class.match(/\d+/)[0] : 'N/A'}</td>
+                        <td>${student.parentPhone}</td>
+                        <td><span class="badge bg-success">${student.status === 'active' ? 'Đang học' : 'Nghỉ học'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary me-1"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteStudent('${doc.id}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(tr);
+                });
+                
+                // Update dashboard count
+                document.getElementById('totalStudents').textContent = snapshot.size;
+                
+            } catch (error) {
+                console.error('Lỗi khi tải học sinh:', error);
+                const tbody = document.getElementById('studentsTable').querySelector('tbody');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Lỗi khi tải dữ liệu: ' + error.message + '</td></tr>';
+            }
+        }
+        
+        async function loadTeachers() {
+            try {
+                const teachersTable = document.getElementById('teachersTable');
+                const tbody = teachersTable.querySelector('tbody');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center"><span class="loading-spinner"></span> Đang tải dữ liệu...</td></tr>';
+                
+                const snapshot = await db.collection('teachers').orderBy('createdAt', 'desc').get();
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center">Chưa có dữ liệu giáo viên</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                
+                // Get class counts for each teacher
+                const classesSnapshot = await db.collection('classes').get();
+                const teacherClassCount = {};
+                
+                classesSnapshot.forEach(doc => {
+                    const classData = doc.data();
+                    if (classData.teacherId) {
+                        teacherClassCount[classData.teacherId] = (teacherClassCount[classData.teacherId] || 0) + 1;
+                    }
+                });
+                
+                snapshot.forEach(doc => {
+                    const teacher = doc.data();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${teacher.code || 'N/A'}</td>
+                        <td>${teacher.name}</td>
+                        <td>${teacher.subject}</td>
+                        <td>${teacherClassCount[doc.id] || 0}</td>
+                        <td>${teacher.phone}</td>
+                        <td>${teacher.email}</td>
+                        <td><span class="badge bg-success">${teacher.status === 'active' ? 'Đang dạy' : 'Nghỉ dạy'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary me-1"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTeacher('${doc.id}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(tr);
+                });
+                
+                // Update dashboard count
+                document.getElementById('totalTeachers').textContent = snapshot.size;
+                
+                // Populate teacher dropdowns
+                populateTeacherDropdowns(snapshot);
+                
+            } catch (error) {
+                console.error('Lỗi khi tải giáo viên:', error);
+                const tbody = document.getElementById('teachersTable').querySelector('tbody');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Lỗi khi tải dữ liệu: ' + error.message + '</td></tr>';
+            }
+        }
+        
+        function populateTeacherDropdowns(teachersSnapshot) {
+            // Get dropdown elements
+            const teacherFilter = document.getElementById('teacherFilter');
+            const classTeacher = document.getElementById('classTeacher');
+            const teacherForScheduling = document.getElementById('teacherForScheduling');
+            
+            // Clear existing options except the first one
+            [teacherFilter, classTeacher, teacherForScheduling].forEach(select => {
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+            });
+            
+            // Add teachers to dropdowns
+            teachersSnapshot.forEach(doc => {
+                const teacher = doc.data();
+                
+                const option1 = document.createElement('option');
+                option1.value = doc.id;
+                option1.textContent = teacher.name;
+                teacherFilter.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = doc.id;
+                option2.textContent = teacher.name;
+                classTeacher.appendChild(option2);
+                
+                const option3 = document.createElement('option');
+                option3.value = doc.id;
+                option3.textContent = teacher.name;
+                teacherForScheduling.appendChild(option3);
+            });
+        }
+        
+        async function deleteStudent(studentId) {
+            if (confirm('Bạn có chắc chắn muốn xóa học sinh này?')) {
+                try {
+                    await db.collection('students').doc(studentId).delete();
+                    alert('Xóa học sinh thành công!');
+                    loadStudents(); // Reload the table
+                } catch (error) {
+                    console.error('Lỗi khi xóa học sinh:', error);
+                    alert('Có lỗi xảy ra khi xóa học sinh: ' + error.message);
+                }
+            }
+        }
+        
+        async function deleteTeacher(teacherId) {
+            if (confirm('Bạn có chắc chắn muốn xóa giáo viên này?')) {
+                try {
+                    await db.collection('teachers').doc(teacherId).delete();
+                    alert('Xóa giáo viên thành công!');
+                    loadTeachers(); // Reload the table
+                } catch (error) {
+                    console.error('Lỗi khi xóa giáo viên:', error);
+                    alert('Có lỗi xảy ra khi xóa giáo viên: ' + error.message);
+                }
+            }
+        }
+        
         // The following functions would typically interact with a backend
         // For this demo, we'll simulate data and actions
         
@@ -1842,150 +2120,9 @@
                 option4.textContent = cls.name;
                 classForScheduling.appendChild(option4);
             });
-        }
-        
-        function loadTeachers() {
-            // Simulated teachers data
-            const teachers = [
-                {
-                    id: 1,
-                    name: 'Nguyễn Văn A',
-                    subject: 'Toán',
-                    classCount: 3,
-                    phone: '0912345678',
-                    email: 'nguyenvana@example.com',
-                    status: 'active'
-                },
-                {
-                    id: 2,
-                    name: 'Trần Thị B',
-                    subject: 'Vật lý',
-                    classCount: 2,
-                    phone: '0923456789',
-                    email: 'tranthib@example.com',
-                    status: 'active'
-                },
-                {
-                    id: 3,
-                    name: 'Lê Văn C',
-                    subject: 'Hóa học',
-                    classCount: 1,
-                    phone: '0934567890',
-                    email: 'levanc@example.com',
-                    status: 'active'
-                }
-            ];
             
-            const teachersTable = document.getElementById('teachersTable');
-            const tbody = teachersTable.querySelector('tbody');
-            tbody.innerHTML = '';
-            
-            teachers.forEach(teacher => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>GV${teacher.id.toString().padStart(3, '0')}</td>
-                    <td>${teacher.name}</td>
-                    <td>${teacher.subject}</td>
-                    <td>${teacher.classCount}</td>
-                    <td>${teacher.phone}</td>
-                    <td>${teacher.email}</td>
-                    <td><span class="badge bg-success">${teacher.status === 'active' ? 'Đang dạy' : 'Nghỉ dạy'}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary me-1"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
-            
-            // Also populate teacher dropdowns
-            const teacherFilter = document.getElementById('teacherFilter');
-            const classTeacher = document.getElementById('classTeacher');
-            const teacherForScheduling = document.getElementById('teacherForScheduling');
-            
-            // Clear existing options except the first one
-            [teacherFilter, classTeacher, teacherForScheduling].forEach(select => {
-                while (select.options.length > 1) {
-                    select.remove(1);
-                }
-            });
-            
-            teachers.forEach(teacher => {
-                const option1 = document.createElement('option');
-                option1.value = teacher.id;
-                option1.textContent = teacher.name;
-                teacherFilter.appendChild(option1);
-                
-                const option2 = document.createElement('option');
-                option2.value = teacher.id;
-                option2.textContent = teacher.name;
-                classTeacher.appendChild(option2);
-                
-                const option3 = document.createElement('option');
-                option3.value = teacher.id;
-                option3.textContent = teacher.name;
-                teacherForScheduling.appendChild(option3);
-            });
-        }
-        
-        function loadStudents() {
-            // Simulated students data
-            const students = [
-                {
-                    id: 1,
-                    code: 'HS001',
-                    name: 'Phạm Văn X',
-                    dob: '15/08/2007',
-                    class: 'Toán 10A1',
-                    grade: '10',
-                    parentPhone: '0911111111',
-                    status: 'active'
-                },
-                {
-                    id: 2,
-                    code: 'HS002',
-                    name: 'Nguyễn Thị Y',
-                    dob: '20/05/2006',
-                    class: 'Lý 11B2',
-                    grade: '11',
-                    parentPhone: '0922222222',
-                    status: 'active'
-                },
-                {
-                    id: 3,
-                    code: 'HS003',
-                    name: 'Trần Văn Z',
-                    dob: '10/12/2005',
-                    class: 'Hóa 12C3',
-                    grade: '12',
-                    parentPhone: '0933333333',
-                    status: 'active'
-                }
-            ];
-            
-            const studentsTable = document.getElementById('studentsTable');
-            const tbody = studentsTable.querySelector('tbody');
-            tbody.innerHTML = '';
-            
-            students.forEach(student => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${student.code}</td>
-                    <td>${student.name}</td>
-                    <td>${student.dob}</td>
-                    <td>${student.class}</td>
-                    <td>Lớp ${student.grade}</td>
-                    <td>${student.parentPhone}</td>
-                    <td><span class="badge bg-success">${student.status === 'active' ? 'Đang học' : 'Nghỉ học'}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary me-1"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
+            // Update dashboard count
+            document.getElementById('totalClasses').textContent = classes.length;
         }
         
         function loadSchedule() {
@@ -2164,10 +2301,7 @@
         }
         
         function loadDashboardStats() {
-            // Simulated stats
-            document.getElementById('totalClasses').textContent = '12';
-            document.getElementById('totalStudents').textContent = '285';
-            document.getElementById('totalTeachers').textContent = '15';
+            // Stats are updated in loadStudents and loadTeachers functions
             document.getElementById('pendingRequests').textContent = '3';
         }
     </script>
