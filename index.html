@@ -942,61 +942,53 @@
     </div>
 
     <!-- Add Class Modal -->
-    <div class="modal fade" id="addClassModal" tabindex="-1" aria-labelledby="addClassModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+    <div class="modal fade" id="addClassModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addClassModalLabel">Thêm lớp học mới</h5>
+                    <h5 class="modal-title">Thêm lớp học mới</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addClassForm">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Tên lớp học</label>
-                                <input type="text" class="form-control" id="className" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Môn học</label>
-                                <select class="form-select" id="classSubject" required>
-                                    <option value="">-- Chọn môn học --</option>
-                                    <option value="toan">Toán</option>
-                                    <option value="ly">Vật lý</option>
-                                    <option value="hoa">Hóa học</option>
-                                    <option value="van">Ngữ văn</option>
-                                    <option value="anh">Tiếng Anh</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Giáo viên</label>
-                                <select class="form-select" id="classTeacher" required>
-                                    <option value="">-- Chọn giáo viên --</option>
-                                    <!-- Teachers will be populated by JavaScript -->
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Phòng học</label>
-                                <input type="text" class="form-control" id="classRoom">
-                            </div>
-                        </div>
-                        
                         <div class="mb-3">
-                            <label class="form-label">Học sinh (chọn từ danh sách)</label>
-                            <select class="form-select" multiple id="classStudents">
-                                <!-- Students will be populated by JavaScript -->
+                            <label class="form-label">Tên lớp học</label>
+                            <input type="text" class="form-control" id="className" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Môn học</label>
+                            <select class="form-select" id="classSubject" required>
+                                <option value="">-- Chọn môn học --</option>
+                                <option value="toan">Toán</option>
+                                <option value="ly">Vật lý</option>
+                                <option value="hoa">Hóa học</option>
+                                <option value="van">Ngữ văn</option>
+                                <option value="anh">Tiếng Anh</option>
                             </select>
                         </div>
-                        
+                        <div class="mb-3">
+                            <label class="form-label">Giáo viên</label>
+                            <select class="form-select" id="classTeacher" required>
+                                <option value="">-- Chọn giáo viên --</option>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phòng học</label>
+                            <input type="text" class="form-control" id="classRoom">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Học phí (VND)</label>
+                            <input type="number" class="form-control" id="classFee">
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Lịch học</label>
                             <div id="classSchedules">
                                 <div class="schedule-item mb-2">
                                     <div class="row">
                                         <div class="col-md-4">
-                                            <select class="form-select" name="scheduleDay">
+                                            <select class="form-select day-select" required>
+                                                <option value="">Thứ</option>
                                                 <option value="2">Thứ 2</option>
                                                 <option value="3">Thứ 3</option>
                                                 <option value="4">Thứ 4</option>
@@ -1006,20 +998,17 @@
                                                 <option value="8">Chủ nhật</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-3">
-                                            <input type="time" class="form-control" name="scheduleStartTime">
+                                        <div class="col-md-4">
+                                            <input type="time" class="form-control start-time" required>
                                         </div>
-                                        <div class="col-md-3">
-                                            <input type="time" class="form-control" name="scheduleEndTime">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <button type="button" class="btn btn-danger remove-schedule">X</button>
+                                        <div class="col-md-4">
+                                            <input type="time" class="form-control end-time" required>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm mt-2" id="addScheduleBtn">
-                                <i class="fas fa-plus"></i> Thêm buổi học
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addScheduleBtn">
+                                <i class="fas fa-plus"></i> Thêm lịch học
                             </button>
                         </div>
                     </form>
@@ -1033,11 +1022,11 @@
     </div>
 
     <!-- Add Student Modal -->
-    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addStudentModalLabel">Thêm học sinh mới</h5>
+                    <h5 class="modal-title">Thêm học sinh mới</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1048,7 +1037,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="studentEmail">
+                            <input type="email" class="form-control" id="studentEmail" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Số điện thoại</label>
@@ -1056,9 +1045,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Lớp học</label>
-                            <select class="form-select" id="studentClass">
-                                <option value="">-- Chọn lớp --</option>
-                                <!-- Classes will be populated by JavaScript -->
+                            <select class="form-select" id="studentClass" multiple>
+                                <!-- Options will be populated by JavaScript -->
                             </select>
                         </div>
                     </form>
@@ -1072,11 +1060,11 @@
     </div>
 
     <!-- Add Teacher Modal -->
-    <div class="modal fade" id="addTeacherModal" tabindex="-1" aria-labelledby="addTeacherModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addTeacherModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addTeacherModalLabel">Thêm giáo viên mới</h5>
+                    <h5 class="modal-title">Thêm giáo viên mới</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1087,7 +1075,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="teacherEmail">
+                            <input type="email" class="form-control" id="teacherEmail" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Số điện thoại</label>
@@ -1114,27 +1102,34 @@
         </div>
     </div>
 
-    <!-- Bootstrap Bundle with Popper -->
+    <!-- Bootstrap JS and Popper.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         // Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
-  authDomain: "mathhubvn.firebaseapp.com",
-  projectId: "mathhubvn",
-  storageBucket: "mathhubvn.firebasestorage.app",
-  messagingSenderId: "1001364433767",
-  appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
-  measurementId: "G-2YNQZ48JVK"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+            authDomain: "mathhubvn.firebaseapp.com",
+            projectId: "mathhubvn",
+            storageBucket: "mathhubvn.firebasestorage.app",
+            messagingSenderId: "1001364433767",
+            appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+            measurementId: "G-2YNQZ48JVK"
+        };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // DOM Elements
+        // Current user data
+        let currentUser = null;
+        let classes = [];
+        let teachers = [];
+        let students = [];
+        let schedules = [];
+
+        // DOM elements
         const loginScreen = document.getElementById('loginScreen');
         const registerScreen = document.getElementById('registerScreen');
         const appContainer = document.getElementById('appContainer');
@@ -1145,276 +1140,81 @@ const firebaseConfig = {
         const logoutBtn = document.getElementById('logoutBtn');
         const userWelcome = document.getElementById('userWelcome');
         const userBadge = document.getElementById('userBadge');
-        
-        // Demo data for the application
-        const demoData = {
-            classes: [
-                {
-                    id: 1,
-                    name: "10A1",
-                    subject: "toan",
-                    teacher: "Nguyễn Văn A",
-                    students: 35,
-                    schedule: [
-                        { day: 2, startTime: "07:00", endTime: "09:00" },
-                        { day: 4, startTime: "07:00", endTime: "09:00" }
-                    ],
-                    room: "P.101"
-                },
-                {
-                    id: 2,
-                    name: "10A2",
-                    subject: "ly",
-                    teacher: "Trần Thị B",
-                    students: 32,
-                    schedule: [
-                        { day: 3, startTime: "09:00", endTime: "11:00" },
-                        { day: 5, startTime: "09:00", endTime: "11:00" }
-                    ],
-                    room: "P.102"
-                },
-                {
-                    id: 3,
-                    name: "11B1",
-                    subject: "hoa",
-                    teacher: "Lê Văn C",
-                    students: 30,
-                    schedule: [
-                        { day: 2, startTime: "13:00", endTime: "15:00" },
-                        { day: 6, startTime: "13:00", endTime: "15:00" }
-                    ],
-                    room: "P.201"
-                }
-            ],
-            students: [
-                { id: 1, name: "Nguyễn Văn Tèo", email: "teo@example.com", phone: "0123456789", class: "10A1" },
-                { id: 2, name: "Trần Thị Tý", email: "ty@example.com", phone: "0123456788", class: "10A1" },
-                { id: 3, name: "Lê Văn Tủn", email: "tun@example.com", phone: "0123456787", class: "10A2" },
-                { id: 4, name: "Phạm Thị Mẹo", email: "meo@example.com", phone: "0123456786", class: "10A2" },
-                { id: 5, name: "Hoàng Văn Béo", email: "beo@example.com", phone: "0123456785", class: "11B1" }
-            ],
-            teachers: [
-                { id: 1, name: "Nguyễn Văn A", email: "teacherA@example.com", phone: "0987654321", subject: "toan", availability: [] },
-                { id: 2, name: "Trần Thị B", email: "teacherB@example.com", phone: "0987654322", subject: "ly", availability: [] },
-                { id: 3, name: "Lê Văn C", email: "teacherC@example.com", phone: "0987654323", subject: "hoa", availability: [] },
-                { id: 4, name: "Phạm Thị D", email: "teacherD@example.com", phone: "0987654324", subject: "van", availability: [] },
-                { id: 5, name: "Hoàng Văn E", email: "teacherE@example.com", phone: "0987654325", subject: "anh", availability: [] }
-            ]
-        };
 
-        // Current user data
-        let currentUser = null;
-        let userRole = 'admin'; // Default role for demo
-
-        // Initialize the application
-        function initApp() {
-            // Check if user is logged in
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                userRole = currentUser.role;
-                showApp();
-            }
-
-            // Set up event listeners
-            setupEventListeners();
-            
-            // Load demo data
-            loadDemoData();
-        }
-
-        // Set up event listeners
-        function setupEventListeners() {
-            // Login and register
-            loginBtn.addEventListener('click', login);
-            registerBtn.addEventListener('click', register);
-            showRegisterBtn.addEventListener('click', showRegister);
-            showLoginBtn.addEventListener('click', showLogin);
-            logoutBtn.addEventListener('click', logout);
-            
-            // Navigation
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const section = link.getAttribute('data-section');
-                    showSection(section);
+        // Authentication state observer
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is signed in
+                currentUser = user;
+                loginScreen.style.display = 'none';
+                registerScreen.style.display = 'none';
+                appContainer.style.display = 'block';
+                
+                // Get user data from Firestore
+                db.collection('users').doc(user.uid).get().then((doc) => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        userWelcome.textContent = `Xin chào, ${userData.name}`;
+                        
+                        // Set user badge based on role
+                        if (userData.role === 'admin') {
+                            userBadge.className = 'user-badge badge-admin';
+                            userBadge.textContent = 'Admin';
+                            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+                            document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'none');
+                        } else if (userData.role === 'teacher') {
+                            userBadge.className = 'user-badge badge-teacher';
+                            userBadge.textContent = 'Giáo viên';
+                            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+                            document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'block');
+                        } else {
+                            userBadge.className = 'user-badge badge-student';
+                            userBadge.textContent = 'Học sinh';
+                            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+                            document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'none');
+                        }
+                        
+                        // Load data based on user role
+                        loadData();
+                    }
                 });
-            });
-            
-            // Class management
-            document.getElementById('saveClassBtn').addEventListener('click', saveClass);
-            document.getElementById('addScheduleBtn').addEventListener('click', addScheduleField);
-            
-            // Student management
-            document.getElementById('saveStudentBtn').addEventListener('click', saveStudent);
-            document.getElementById('studentSearch').addEventListener('input', searchStudents);
-            
-            // Teacher management
-            document.getElementById('saveTeacherBtn').addEventListener('click', saveTeacher);
-            document.getElementById('teacherSearch').addEventListener('input', searchTeachers);
-            
-            // Schedule filter
-            document.getElementById('scheduleFilter').addEventListener('change', filterSchedule);
-            
-            // Teacher availability
-            document.getElementById('saveAvailabilityBtn').addEventListener('click', saveAvailability);
-            
-            // Excel import/export
-            document.getElementById('excelUploadArea').addEventListener('click', () => {
-                document.getElementById('excelFileInput').click();
-            });
-            document.getElementById('importExcelBtn').addEventListener('click', importExcel);
-            document.getElementById('exportDataBtn').addEventListener('click', exportData);
-            
-            // Automatic scheduling
-            document.getElementById('generateScheduleBtn').addEventListener('click', generateSchedule);
-            
-            // Remove schedule items
-            document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('remove-schedule')) {
-                    e.target.closest('.schedule-item').remove();
-                }
-            });
-        }
-
-        // Show the main application
-        function showApp() {
-            loginScreen.style.display = 'none';
-            registerScreen.style.display = 'none';
-            appContainer.style.display = 'block';
-            
-            // Update user info
-            userWelcome.textContent = `Xin chào, ${currentUser.name}`;
-            userBadge.textContent = userRole === 'admin' ? 'Admin' : (userRole === 'teacher' ? 'Giáo viên' : 'Học sinh');
-            userBadge.className = `user-badge ${userRole === 'admin' ? 'badge-admin' : (userRole === 'teacher' ? 'badge-teacher' : 'badge-student')}`;
-            
-            // Show/hide menu items based on role
-            document.querySelectorAll('.admin-only').forEach(item => {
-                item.style.display = userRole === 'admin' ? 'block' : 'none';
-            });
-            document.querySelectorAll('.teacher-only').forEach(item => {
-                item.style.display = userRole === 'teacher' ? 'block' : 'none';
-            });
-            
-            // Update avatar
-            const avatar = document.querySelector('.header img');
-            avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=4e73df&color=fff`;
-            
-            // Show dashboard by default
-            showSection('dashboard');
-        }
-
-        // Show a specific section
-        function showSection(sectionId) {
-            // Hide all sections
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Show the selected section
-            document.getElementById(sectionId).classList.add('active');
-            
-            // Update active nav link
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('data-section') === sectionId) {
-                    link.classList.add('active');
-                }
-            });
-            
-            // Load section-specific data
-            switch(sectionId) {
-                case 'dashboard':
-                    updateDashboard();
-                    break;
-                case 'schedule':
-                    renderSchedule();
-                    break;
-                case 'class-management':
-                    renderClassesTable();
-                    break;
-                case 'students':
-                    renderStudentsTable();
-                    break;
-                case 'teachers':
-                    renderTeachersTable();
-                    break;
-                case 'scheduling':
-                    initScheduling();
-                    break;
-                case 'teacher-availability':
-                    initTeacherAvailability();
-                    break;
+            } else {
+                // User is signed out
+                currentUser = null;
+                loginScreen.style.display = 'block';
+                registerScreen.style.display = 'none';
+                appContainer.style.display = 'none';
             }
-        }
+        });
 
         // Login function
-        function login() {
+        loginBtn.addEventListener('click', () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
-            if (!email || !password) {
-                alert('Vui lòng nhập email và mật khẩu');
-                return;
-            }
-            
-            // For demo purposes, we'll use a simple check
-            if (email === 'admin@mathhubvn.com' && password === '123456') {
-                currentUser = {
-                    name: 'Admin',
-                    email: email,
-                    role: 'admin'
-                };
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                userRole = 'admin';
-                showApp();
-            } else {
-                // Try to login with Firebase
-                auth.signInWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        // Get user data from Firestore
-                        const user = userCredential.user;
-                        return db.collection('users').doc(user.uid).get();
-                    })
-                    .then((doc) => {
-                        if (doc.exists) {
-                            currentUser = doc.data();
-                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                            userRole = currentUser.role;
-                            showApp();
-                        } else {
-                            alert('Tài khoản không tồn tại');
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Login error:', error);
-                        alert('Đăng nhập thất bại: ' + error.message);
-                    });
-            }
-        }
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Signed in 
+                    console.log('User logged in:', userCredential.user);
+                })
+                .catch((error) => {
+                    alert('Đăng nhập thất bại: ' + error.message);
+                });
+        });
 
         // Register function
-        function register() {
+        registerBtn.addEventListener('click', () => {
             const name = document.getElementById('registerName').value;
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
             const role = document.getElementById('registerRole').value;
             
-            if (!name || !email || !password) {
-                alert('Vui lòng điền đầy đủ thông tin');
-                return;
-            }
-            
-            if (password.length < 6) {
-                alert('Mật khẩu phải có ít nhất 6 ký tự');
-                return;
-            }
-            
-            // Create user with Firebase Auth
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Save user data to Firestore
+                    // Signed up 
                     const user = userCredential.user;
+                    
+                    // Save user data to Firestore
                     return db.collection('users').doc(user.uid).set({
                         name: name,
                         email: email,
@@ -1423,592 +1223,471 @@ const firebaseConfig = {
                     });
                 })
                 .then(() => {
-                    alert('Đăng ký thành công! Vui lòng đăng nhập.');
-                    showLogin();
+                    alert('Đăng ký thành công!');
+                    showLoginBtn.click();
                 })
                 .catch((error) => {
-                    console.error('Registration error:', error);
                     alert('Đăng ký thất bại: ' + error.message);
                 });
-        }
-
-        // Show register screen
-        function showRegister() {
-            loginScreen.style.display = 'none';
-            registerScreen.style.display = 'block';
-        }
-
-        // Show login screen
-        function showLogin() {
-            registerScreen.style.display = 'none';
-            loginScreen.style.display = 'block';
-        }
+        });
 
         // Logout function
-        function logout() {
+        logoutBtn.addEventListener('click', () => {
             auth.signOut().then(() => {
-                localStorage.removeItem('currentUser');
-                currentUser = null;
-                appContainer.style.display = 'none';
-                loginScreen.style.display = 'block';
+                console.log('User signed out');
             }).catch((error) => {
-                console.error('Logout error:', error);
+                console.error('Sign out error:', error);
             });
-        }
+        });
 
-        // Load demo data
-        function loadDemoData() {
-            // This function would normally load data from Firebase
-            // For demo, we're using static data defined above
-            
-            // Populate class selectors
-            updateClassSelectors();
-            
-            // Populate teacher selectors
-            updateTeacherSelectors();
-            
-            // Populate student selectors
-            updateStudentSelectors();
-        }
+        // Show register form
+        showRegisterBtn.addEventListener('click', () => {
+            loginScreen.style.display = 'none';
+            registerScreen.style.display = 'block';
+        });
 
-        // Update class selectors throughout the app
-        function updateClassSelectors() {
-            const classSelectors = document.querySelectorAll('#studentClass, #classToSchedule');
-            
-            classSelectors.forEach(select => {
-                // Save current value
-                const currentValue = select.value;
+        // Show login form
+        showLoginBtn.addEventListener('click', () => {
+            registerScreen.style.display = 'none';
+            loginScreen.style.display = 'block';
+        });
+
+        // Navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
                 
-                // Clear options
-                select.innerHTML = '<option value="">-- Chọn lớp --</option>';
-                
-                // Add classes
-                demoData.classes.forEach(cls => {
-                    const option = document.createElement('option');
-                    option.value = cls.id;
-                    option.textContent = cls.name;
-                    select.appendChild(option);
+                // Hide all sections
+                document.querySelectorAll('.content-section').forEach(s => {
+                    s.classList.remove('active');
                 });
                 
-                // Restore current value if possible
-                if (currentValue) {
-                    select.value = currentValue;
-                }
-            });
-        }
-
-        // Update teacher selectors throughout the app
-        function updateTeacherSelectors() {
-            const teacherSelectors = document.querySelectorAll('#classTeacher');
-            
-            teacherSelectors.forEach(select => {
-                // Save current value
-                const currentValue = select.value;
+                // Show selected section
+                document.getElementById(section).classList.add('active');
                 
-                // Clear options
-                select.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
-                
-                // Add teachers
-                demoData.teachers.forEach(teacher => {
-                    const option = document.createElement('option');
-                    option.value = teacher.id;
-                    option.textContent = teacher.name;
-                    select.appendChild(option);
+                // Update active link
+                document.querySelectorAll('.nav-link').forEach(l => {
+                    l.classList.remove('active');
                 });
-                
-                // Restore current value if possible
-                if (currentValue) {
-                    select.value = currentValue;
-                }
+                link.classList.add('active');
             });
-        }
+        });
 
-        // Update student selectors throughout the app
-        function updateStudentSelectors() {
-            const studentSelectors = document.querySelectorAll('#classStudents');
-            
-            studentSelectors.forEach(select => {
-                // Save current value
-                const currentValue = Array.from(select.selectedOptions).map(opt => opt.value);
-                
-                // Clear options
-                select.innerHTML = '';
-                
-                // Add students
-                demoData.students.forEach(student => {
-                    const option = document.createElement('option');
-                    option.value = student.id;
-                    option.textContent = student.name;
-                    select.appendChild(option);
+        // Load data from Firestore
+        function loadData() {
+            // Load classes
+            db.collection('classes').onSnapshot((snapshot) => {
+                classes = [];
+                snapshot.forEach((doc) => {
+                    classes.push({ id: doc.id, ...doc.data() });
                 });
-                
-                // Restore current values if possible
-                if (currentValue.length) {
-                    Array.from(select.options).forEach(option => {
-                        if (currentValue.includes(option.value)) {
-                            option.selected = true;
-                        }
-                    });
-                }
+                renderClasses();
+                updateDashboard();
+            });
+
+            // Load teachers
+            db.collection('teachers').onSnapshot((snapshot) => {
+                teachers = [];
+                snapshot.forEach((doc) => {
+                    teachers.push({ id: doc.id, ...doc.data() });
+                });
+                renderTeachers();
+                updateDashboard();
+            });
+
+            // Load students
+            db.collection('students').onSnapshot((snapshot) => {
+                students = [];
+                snapshot.forEach((doc) => {
+                    students.push({ id: doc.id, ...doc.data() });
+                });
+                renderStudents();
+                updateDashboard();
+            });
+
+            // Load schedules
+            db.collection('schedules').onSnapshot((snapshot) => {
+                schedules = [];
+                snapshot.forEach((doc) => {
+                    schedules.push({ id: doc.id, ...doc.data() });
+                });
+                renderSchedule();
+                updateDashboard();
             });
         }
 
-        // Update dashboard with statistics
-        function updateDashboard() {
-            document.getElementById('totalClasses').textContent = demoData.classes.length;
-            document.getElementById('totalStudents').textContent = demoData.students.length;
-            document.getElementById('totalTeachers').textContent = demoData.teachers.length;
+        // Render classes table
+        function renderClasses() {
+            const tbody = document.querySelector('#classesTable tbody');
+            tbody.innerHTML = '';
             
-            // Calculate today's classes (for demo, just a random number)
-            document.getElementById('todayClasses').textContent = Math.floor(Math.random() * 5) + 1;
-            
-            // Update upcoming classes table
-            const tableBody = document.getElementById('upcomingClassesTable').querySelector('tbody');
-            tableBody.innerHTML = '';
-            
-            // Add some demo upcoming classes
-            const demoUpcomingClasses = [
-                { class: "10A1", subject: "Toán", teacher: "Nguyễn Văn A", time: "07:00 - 09:00", room: "P.101" },
-                { class: "10A2", subject: "Vật lý", teacher: "Trần Thị B", time: "09:00 - 11:00", room: "P.102" },
-                { class: "11B1", subject: "Hóa học", teacher: "Lê Văn C", time: "13:00 - 15:00", room: "P.201" }
-            ];
-            
-            demoUpcomingClasses.forEach(cls => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${cls.class}</td>
-                    <td>${cls.subject}</td>
-                    <td>${cls.teacher}</td>
-                    <td>${cls.time}</td>
-                    <td>${cls.room}</td>
+            classes.forEach(cls => {
+                const tr = document.createElement('tr');
+                
+                // Format schedule text
+                let scheduleText = '';
+                if (cls.schedules && cls.schedules.length > 0) {
+                    scheduleText = cls.schedules.map(s => `Thứ ${s.day}: ${s.startTime} - ${s.endTime}`).join(', ');
+                }
+                
+                tr.innerHTML = `
+                    <td>${cls.name || 'N/A'}</td>
+                    <td>${getSubjectName(cls.subject)}</td>
+                    <td>${getTeacherName(cls.teacherId)}</td>
+                    <td>${cls.students ? cls.students.length : 0} học sinh</td>
+                    <td>${scheduleText}</td>
+                    <td>${cls.room || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary view-class" data-id="${cls.id}">Xem</button>
+                        <button class="btn btn-sm btn-danger delete-class" data-id="${cls.id}">Xóa</button>
+                    </td>
                 `;
-                tableBody.appendChild(row);
+                
+                tbody.appendChild(tr);
+            });
+            
+            // Populate class select in add student modal
+            const studentClassSelect = document.getElementById('studentClass');
+            studentClassSelect.innerHTML = '';
+            classes.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls.id;
+                option.textContent = cls.name;
+                studentClassSelect.appendChild(option);
+            });
+            
+            // Populate class select in scheduling
+            const classToScheduleSelect = document.getElementById('classToSchedule');
+            classToScheduleSelect.innerHTML = '<option value="">-- Chọn lớp --</option>';
+            classes.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls.id;
+                option.textContent = cls.name;
+                classToScheduleSelect.appendChild(option);
+            });
+            
+            // Populate teacher select in add class modal
+            const classTeacherSelect = document.getElementById('classTeacher');
+            classTeacherSelect.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
+            teachers.forEach(teacher => {
+                const option = document.createElement('option');
+                option.value = teacher.id;
+                option.textContent = teacher.name;
+                classTeacherSelect.appendChild(option);
+            });
+        }
+
+        // Render teachers table
+        function renderTeachers() {
+            const tbody = document.querySelector('#teachersTable tbody');
+            tbody.innerHTML = '';
+            
+            teachers.forEach(teacher => {
+                const tr = document.createElement('tr');
+                
+                // Count classes taught by this teacher
+                const classCount = classes.filter(cls => cls.teacherId === teacher.id).length;
+                
+                tr.innerHTML = `
+                    <td>${teacher.name || 'N/A'}</td>
+                    <td>${teacher.email || 'N/A'}</td>
+                    <td>${teacher.phone || 'N/A'}</td>
+                    <td>${getSubjectName(teacher.subject)}</td>
+                    <td>${classCount} lớp</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary view-teacher" data-id="${teacher.id}">Xem</button>
+                        <button class="btn btn-sm btn-danger delete-teacher" data-id="${teacher.id}">Xóa</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            // Populate teacher select in add class modal
+            const classTeacherSelect = document.getElementById('classTeacher');
+            classTeacherSelect.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
+            teachers.forEach(teacher => {
+                const option = document.createElement('option');
+                option.value = teacher.id;
+                option.textContent = teacher.name;
+                classTeacherSelect.appendChild(option);
+            });
+        }
+
+        // Render students table
+        function renderStudents() {
+            const tbody = document.querySelector('#studentsTable tbody');
+            tbody.innerHTML = '';
+            
+            students.forEach(student => {
+                const tr = document.createElement('tr');
+                
+                // Get class names
+                const classNames = student.classes ? 
+                    student.classes.map(classId => {
+                        const cls = classes.find(c => c.id === classId);
+                        return cls ? cls.name : 'N/A';
+                    }).join(', ') : 'N/A';
+                
+                tr.innerHTML = `
+                    <td>${student.name || 'N/A'}</td>
+                    <td>${student.email || 'N/A'}</td>
+                    <td>${student.phone || 'N/A'}</td>
+                    <td>${classNames}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary view-student" data-id="${student.id}">Xem</button>
+                        <button class="btn btn-sm btn-danger delete-student" data-id="${student.id}">Xóa</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
             });
         }
 
         // Render schedule table
         function renderSchedule() {
-            const tableBody = document.getElementById('scheduleTableBody');
-            tableBody.innerHTML = '';
+            const tbody = document.getElementById('scheduleTableBody');
+            tbody.innerHTML = '';
             
             // Define time slots
             const timeSlots = [
-                { start: "07:00", end: "09:00" },
-                { start: "09:00", end: "11:00" },
-                { start: "13:00", end: "15:00" },
-                { start: "15:00", end: "17:00" },
-                { start: "18:00", end: "20:00" }
+                { start: '07:00', end: '08:30' },
+                { start: '08:30', end: '10:00' },
+                { start: '10:00', end: '11:30' },
+                { start: '13:00', end: '14:30' },
+                { start: '14:30', end: '16:00' },
+                { start: '16:00', end: '17:30' },
+                { start: '18:00', end: '19:30' },
+                { start: '19:30', end: '21:00' }
             ];
             
             // Create rows for each time slot
             timeSlots.forEach(slot => {
-                const row = document.createElement('tr');
+                const tr = document.createElement('tr');
                 
-                // Add time slot cell
+                // Time slot cell
                 const timeCell = document.createElement('td');
                 timeCell.innerHTML = `<div class="time-slot">${slot.start} - ${slot.end}</div>`;
-                row.appendChild(timeCell);
+                tr.appendChild(timeCell);
                 
-                // Add cells for each day of the week
+                // Create cells for each day of the week (2 to 8, where 8 is Sunday)
                 for (let day = 2; day <= 8; day++) {
-                    const cell = document.createElement('td');
-                    cell.className = 'schedule-cell';
+                    const td = document.createElement('td');
+                    td.className = 'schedule-cell';
                     
-                    // Find classes for this time slot and day
-                    const classesInSlot = demoData.classes.filter(cls => {
-                        return cls.schedule.some(s => 
-                            s.day === day && 
-                            s.startTime === slot.start && 
-                            s.endTime === slot.end
-                        );
+                    // Find classes scheduled for this day and time slot
+                    const matchingClasses = classes.filter(cls => {
+                        if (!cls.schedules) return false;
+                        
+                        return cls.schedules.some(s => {
+                            return parseInt(s.day) === day && 
+                                   s.startTime === slot.start && 
+                                   s.endTime === slot.end;
+                        });
                     });
                     
-                    // Add classes to the cell
-                    classesInSlot.forEach(cls => {
+                    // Add class information to the cell
+                    matchingClasses.forEach(cls => {
                         const classDiv = document.createElement('div');
                         classDiv.className = 'schedule-class';
+                        
+                        // Determine time of day for styling
+                        const hour = parseInt(slot.start.split(':')[0]);
+                        if (hour < 12) {
+                            classDiv.classList.add('morning-class');
+                        } else if (hour < 18) {
+                            classDiv.classList.add('afternoon-class');
+                        } else {
+                            classDiv.classList.add('evening-class');
+                        }
+                        
                         classDiv.innerHTML = `
                             <strong>${cls.name}</strong><br>
-                            <span class="badge bg-primary">${getSubjectName(cls.subject)}</span><br>
-                            <small>${cls.teacher}</small><br>
-                            <small class="badge badge-room">${cls.room}</small>
+                            <span class="badge badge-teacher">${getTeacherName(cls.teacherId)}</span><br>
+                            <span class="badge badge-room">${cls.room || 'N/A'}</span>
                         `;
-                        cell.appendChild(classDiv);
+                        
+                        td.appendChild(classDiv);
                     });
                     
-                    row.appendChild(cell);
+                    tr.appendChild(td);
                 }
                 
-                tableBody.appendChild(row);
+                tbody.appendChild(tr);
             });
         }
 
-        // Filter schedule based on selection
-        function filterSchedule() {
-            // This would filter the schedule based on the selected value
-            // For demo, we'll just re-render the schedule
-            renderSchedule();
-        }
-
-        // Render classes table
-        function renderClassesTable() {
-            const tableBody = document.getElementById('classesTable').querySelector('tbody');
-            tableBody.innerHTML = '';
+        // Update dashboard statistics
+        function updateDashboard() {
+            document.getElementById('totalClasses').textContent = classes.length;
+            document.getElementById('totalStudents').textContent = students.length;
+            document.getElementById('totalTeachers').textContent = teachers.length;
             
-            demoData.classes.forEach(cls => {
-                const row = document.createElement('tr');
-                
-                // Format schedule text
-                const scheduleText = cls.schedule.map(s => {
-                    return `Thứ ${s.day} (${s.startTime}-${s.endTime})`;
-                }).join(', ');
-                
-                row.innerHTML = `
-                    <td>${cls.name}</td>
-                    <td>${getSubjectName(cls.subject)}</td>
-                    <td>${cls.teacher}</td>
-                    <td>${cls.students} học sinh</td>
-                    <td>${scheduleText}</td>
-                    <td>${cls.room}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Render students table
-        function renderStudentsTable() {
-            const tableBody = document.getElementById('studentsTable').querySelector('tbody');
-            tableBody.innerHTML = '';
+            // Calculate today's classes
+            const today = new Date();
+            const dayOfWeek = today.getDay() === 0 ? 8 : today.getDay() + 1; // Convert to our day format (2-8)
+            const todayClassCount = classes.filter(cls => {
+                if (!cls.schedules) return false;
+                return cls.schedules.some(s => parseInt(s.day) === dayOfWeek);
+            }).length;
             
-            demoData.students.forEach(student => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${student.name}</td>
-                    <td>${student.email}</td>
-                    <td>${student.phone}</td>
-                    <td>${student.class}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Search students
-        function searchStudents() {
-            const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
-            const tableBody = document.getElementById('studentsTable').querySelector('tbody');
+            document.getElementById('todayClasses').textContent = todayClassCount;
             
-            // Clear table
-            tableBody.innerHTML = '';
+            // Update upcoming classes table
+            const upcomingTbody = document.querySelector('#upcomingClassesTable tbody');
+            upcomingTbody.innerHTML = '';
             
-            // Filter students
-            const filteredStudents = demoData.students.filter(student => 
-                student.name.toLowerCase().includes(searchTerm) ||
-                student.email.toLowerCase().includes(searchTerm) ||
-                student.class.toLowerCase().includes(searchTerm)
-            );
+            // Get next 5 classes (simplified)
+            const upcoming = classes.slice(0, 5);
             
-            // Render filtered students
-            filteredStudents.forEach(student => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${student.name}</td>
-                    <td>${student.email}</td>
-                    <td>${student.phone}</td>
-                    <td>${student.class}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Render teachers table
-        function renderTeachersTable() {
-            const tableBody = document.getElementById('teachersTable').querySelector('tbody');
-            tableBody.innerHTML = '';
-            
-            demoData.teachers.forEach(teacher => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${teacher.name}</td>
-                    <td>${teacher.email}</td>
-                    <td>${teacher.phone}</td>
-                    <td>${getSubjectName(teacher.subject)}</td>
-                    <td>${teacher.availability.length} khung giờ</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Search teachers
-        function searchTeachers() {
-            const searchTerm = document.getElementById('teacherSearch').value.toLowerCase();
-            const tableBody = document.getElementById('teachersTable').querySelector('tbody');
-            
-            // Clear table
-            tableBody.innerHTML = '';
-            
-            // Filter teachers
-            const filteredTeachers = demoData.teachers.filter(teacher => 
-                teacher.name.toLowerCase().includes(searchTerm) ||
-                teacher.email.toLowerCase().includes(searchTerm) ||
-                teacher.subject.toLowerCase().includes(searchTerm)
-            );
-            
-            // Render filtered teachers
-            filteredTeachers.forEach(teacher => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${teacher.name}</td>
-                    <td>${teacher.email}</td>
-                    <td>${teacher.phone}</td>
-                    <td>${getSubjectName(teacher.subject)}</td>
-                    <td>${teacher.availability.length} khung giờ</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Initialize scheduling section
-        function initScheduling() {
-            // Populate class selector
-            updateClassSelectors();
-            
-            // Render constraints table
-            const tableBody = document.getElementById('constraintsTable').querySelector('tbody');
-            tableBody.innerHTML = '';
-            
-            demoData.teachers.forEach(teacher => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${teacher.name}</td>
-                    <td>${getSubjectName(teacher.subject)}</td>
-                    <td>${teacher.availability.length} khung giờ đăng ký</td>
-                    <td>${teacher.availability.length ? 'Có lịch' : 'Chưa có lịch'}</td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Initialize teacher availability section
-        function initTeacherAvailability() {
-            // Create availability slots
-            const slotsContainer = document.getElementById('availabilitySlots');
-            slotsContainer.innerHTML = '';
-            
-            // Define time slots
-            const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-            const timeSlots = [
-                '07:00-09:00', '09:00-11:00', 
-                '13:00-15:00', '15:00-17:00', 
-                '18:00-20:00', '20:00-22:00'
-            ];
-            
-            // Create slots for each day and time
-            days.forEach((day, dayIndex) => {
-                timeSlots.forEach(timeSlot => {
-                    const slot = document.createElement('div');
-                    slot.className = 'availability-slot';
-                    slot.dataset.day = dayIndex + 2;
-                    slot.dataset.time = timeSlot;
-                    slot.textContent = `${day} (${timeSlot})`;
+            upcoming.forEach(cls => {
+                if (cls.schedules && cls.schedules.length > 0) {
+                    const schedule = cls.schedules[0]; // Just show first schedule for simplicity
                     
-                    slot.addEventListener('click', () => {
-                        slot.classList.toggle('selected');
-                    });
-                    
-                    slotsContainer.appendChild(slot);
-                });
-            });
-            
-            // Display current availability
-            updateCurrentAvailability();
-        }
-
-        // Update current availability display
-        function updateCurrentAvailability() {
-            const container = document.getElementById('currentAvailability');
-            container.innerHTML = '';
-            
-            if (currentUser && currentUser.availability && currentUser.availability.length) {
-                currentUser.availability.forEach(avail => {
-                    const item = document.createElement('div');
-                    item.className = 'availability-item';
-                    item.innerHTML = `
-                        <div class="availability-time">Thứ ${avail.day} (${avail.startTime}-${avail.endTime})</div>
-                        <small>Đã đăng ký</small>
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${cls.name}</td>
+                        <td>${getSubjectName(cls.subject)}</td>
+                        <td>${getTeacherName(cls.teacherId)}</td>
+                        <td>Thứ ${schedule.day}: ${schedule.startTime} - ${schedule.endTime}</td>
+                        <td>${cls.room || 'N/A'}</td>
                     `;
-                    container.appendChild(item);
-                });
-            } else {
-                container.innerHTML = '<p class="text-muted">Bạn chưa đăng ký lịch dạy nào.</p>';
-            }
-        }
-
-        // Save teacher availability
-        function saveAvailability() {
-            const selectedSlots = document.querySelectorAll('.availability-slot.selected');
-            const availability = [];
-            
-            selectedSlots.forEach(slot => {
-                const day = parseInt(slot.dataset.day);
-                const [startTime, endTime] = slot.dataset.time.split('-');
-                
-                availability.push({
-                    day: day,
-                    startTime: startTime,
-                    endTime: endTime
-                });
-            });
-            
-            // For demo, save to currentUser
-            if (currentUser) {
-                currentUser.availability = availability;
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
-                // Also update in teachers array for demo
-                const teacherIndex = demoData.teachers.findIndex(t => t.email === currentUser.email);
-                if (teacherIndex !== -1) {
-                    demoData.teachers[teacherIndex].availability = availability;
+                    
+                    upcomingTbody.appendChild(tr);
                 }
-                
-                alert('Lưu lịch dạy thành công!');
-                updateCurrentAvailability();
-            }
+            });
         }
 
-        // Save new class
-        function saveClass() {
+        // Helper function to get subject name from key
+        function getSubjectName(subjectKey) {
+            const subjects = {
+                'toan': 'Toán',
+                'ly': 'Vật lý',
+                'hoa': 'Hóa học',
+                'van': 'Ngữ văn',
+                'anh': 'Tiếng Anh'
+            };
+            
+            return subjects[subjectKey] || subjectKey;
+        }
+
+        // Helper function to get teacher name from ID
+        function getTeacherName(teacherId) {
+            if (!teacherId) return 'N/A';
+            
+            const teacher = teachers.find(t => t.id === teacherId);
+            return teacher ? teacher.name : 'N/A';
+        }
+
+        // Add new class
+        document.getElementById('saveClassBtn').addEventListener('click', () => {
             const name = document.getElementById('className').value;
             const subject = document.getElementById('classSubject').value;
             const teacherId = document.getElementById('classTeacher').value;
             const room = document.getElementById('classRoom').value;
-            const studentIds = Array.from(document.getElementById('classStudents').selectedOptions).map(opt => opt.value);
+            const fee = document.getElementById('classFee').value;
             
-            // Get schedule items
-            const scheduleItems = [];
-            document.querySelectorAll('#classSchedules .schedule-item').forEach(item => {
-                const day = item.querySelector('[name="scheduleDay"]').value;
-                const startTime = item.querySelector('[name="scheduleStartTime"]').value;
-                const endTime = item.querySelector('[name="scheduleEndTime"]').value;
+            // Get schedules
+            const scheduleItems = document.querySelectorAll('.schedule-item');
+            const schedules = [];
+            
+            scheduleItems.forEach(item => {
+                const day = item.querySelector('.day-select').value;
+                const startTime = item.querySelector('.start-time').value;
+                const endTime = item.querySelector('.end-time').value;
                 
                 if (day && startTime && endTime) {
-                    scheduleItems.push({
-                        day: parseInt(day),
+                    schedules.push({
+                        day: day,
                         startTime: startTime,
                         endTime: endTime
                     });
                 }
             });
             
-            if (!name || !subject || !teacherId || scheduleItems.length === 0) {
-                alert('Vui lòng điền đầy đủ thông tin và ít nhất một buổi học');
-                return;
-            }
-            
-            // Find teacher
-            const teacher = demoData.teachers.find(t => t.id == teacherId);
-            if (!teacher) {
-                alert('Giáo viên không tồn tại');
-                return;
-            }
-            
-            // Count students
-            const studentCount = studentIds.length;
-            
-            // Create new class
-            const newClass = {
-                id: demoData.classes.length + 1,
+            // Save to Firestore
+            db.collection('classes').add({
                 name: name,
                 subject: subject,
-                teacher: teacher.name,
-                students: studentCount,
-                schedule: scheduleItems,
-                room: room
-            };
-            
-            // Add to classes array
-            demoData.classes.push(newClass);
-            
-            // Update student classes
-            studentIds.forEach(studentId => {
-                const student = demoData.students.find(s => s.id == studentId);
-                if (student) {
-                    student.class = name;
-                }
+                teacherId: teacherId,
+                room: room,
+                fee: fee ? parseInt(fee) : 0,
+                schedules: schedules,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert('Lớp học đã được thêm thành công!');
+                document.getElementById('addClassForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
+            })
+            .catch((error) => {
+                alert('Lỗi khi thêm lớp học: ' + error.message);
             });
-            
-            // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
-            
-            // Reset form
-            document.getElementById('addClassForm').reset();
-            document.getElementById('classSchedules').innerHTML = `
-                <div class="schedule-item mb-2">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <select class="form-select" name="scheduleDay">
-                                <option value="2">Thứ 2</option>
-                                <option value="3">Thứ 3</option>
-                                <option value="4">Thứ 4</option>
-                                <option value="5">Thứ 5</option>
-                                <option value="6">Thứ 6</option>
-                                <option value="7">Thứ 7</option>
-                                <option value="8">Chủ nhật</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <input type="time" class="form-control" name="scheduleStartTime">
-                        </div>
-                        <div class="col-md-3">
-                            <input type="time" class="form-control" name="scheduleEndTime">
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-danger remove-schedule">X</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Update UI
-            updateClassSelectors();
-            renderClassesTable();
-            
-            alert('Thêm lớp học thành công!');
-        }
+        });
 
-        // Add schedule field
-        function addScheduleField() {
-            const scheduleItem = document.createElement('div');
-            scheduleItem.className = 'schedule-item mb-2';
-            scheduleItem.innerHTML = `
+        // Add new student
+        document.getElementById('saveStudentBtn').addEventListener('click', () => {
+            const name = document.getElementById('studentName').value;
+            const email = document.getElementById('studentEmail').value;
+            const phone = document.getElementById('studentPhone').value;
+            
+            // Get selected classes
+            const selectedClasses = Array.from(document.getElementById('studentClass').selectedOptions).map(opt => opt.value);
+            
+            // Save to Firestore
+            db.collection('students').add({
+                name: name,
+                email: email,
+                phone: phone,
+                classes: selectedClasses,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert('Học sinh đã được thêm thành công!');
+                document.getElementById('addStudentForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+            })
+            .catch((error) => {
+                alert('Lỗi khi thêm học sinh: ' + error.message);
+            });
+        });
+
+        // Add new teacher
+        document.getElementById('saveTeacherBtn').addEventListener('click', () => {
+            const name = document.getElementById('teacherName').value;
+            const email = document.getElementById('teacherEmail').value;
+            const phone = document.getElementById('teacherPhone').value;
+            const subject = document.getElementById('teacherSubject').value;
+            
+            // Save to Firestore
+            db.collection('teachers').add({
+                name: name,
+                email: email,
+                phone: phone,
+                subject: subject,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert('Giáo viên đã được thêm thành công!');
+                document.getElementById('addTeacherForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
+            })
+            .catch((error) => {
+                alert('Lỗi khi thêm giáo viên: ' + error.message);
+            });
+        });
+
+        // Add schedule item
+        document.getElementById('addScheduleBtn').addEventListener('click', () => {
+            const schedulesContainer = document.getElementById('classSchedules');
+            const newSchedule = document.createElement('div');
+            newSchedule.className = 'schedule-item mb-2';
+            newSchedule.innerHTML = `
                 <div class="row">
                     <div class="col-md-4">
-                        <select class="form-select" name="scheduleDay">
+                        <select class="form-select day-select" required>
+                            <option value="">Thứ</option>
                             <option value="2">Thứ 2</option>
                             <option value="3">Thứ 3</option>
                             <option value="4">Thứ 4</option>
@@ -2018,397 +1697,30 @@ const firebaseConfig = {
                             <option value="8">Chủ nhật</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <input type="time" class="form-control" name="scheduleStartTime">
+                    <div class="col-md-4">
+                        <input type="time" class="form-control start-time" required>
                     </div>
-                    <div class="col-md-3">
-                        <input type="time" class="form-control" name="scheduleEndTime">
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" class="btn btn-danger remove-schedule">X</button>
+                    <div class="col-md-4">
+                        <input type="time" class="form-control end-time" required>
                     </div>
                 </div>
+                <span class="remove-schedule"><i class="fas fa-times"></i></span>
             `;
             
-            document.getElementById('classSchedules').appendChild(scheduleItem);
-        }
-
-        // Save new student
-        function saveStudent() {
-            const name = document.getElementById('studentName').value;
-            const email = document.getElementById('studentEmail').value;
-            const phone = document.getElementById('studentPhone').value;
-            const classId = document.getElementById('studentClass').value;
+            schedulesContainer.appendChild(newSchedule);
             
-            if (!name) {
-                alert('Vui lòng nhập tên học sinh');
-                return;
-            }
-            
-            // Find class
-            let className = '';
-            if (classId) {
-                const cls = demoData.classes.find(c => c.id == classId);
-                if (cls) {
-                    className = cls.name;
-                    
-                    // Update student count for the class
-                    cls.students += 1;
-                }
-            }
-            
-            // Create new student
-            const newStudent = {
-                id: demoData.students.length + 1,
-                name: name,
-                email: email,
-                phone: phone,
-                class: className
-            };
-            
-            // Add to students array
-            demoData.students.push(newStudent);
-            
-            // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
-            
-            // Reset form
-            document.getElementById('addStudentForm').reset();
-            
-            // Update UI
-            updateStudentSelectors();
-            renderStudentsTable();
-            renderClassesTable(); // To update student counts
-            
-            alert('Thêm học sinh thành công!');
-        }
-
-        // Save new teacher
-        function saveTeacher() {
-            const name = document.getElementById('teacherName').value;
-            const email = document.getElementById('teacherEmail').value;
-            const phone = document.getElementById('teacherPhone').value;
-            const subject = document.getElementById('teacherSubject').value;
-            
-            if (!name || !subject) {
-                alert('Vui lòng nhập tên và môn học cho giáo viên');
-                return;
-            }
-            
-            // Create new teacher
-            const newTeacher = {
-                id: demoData.teachers.length + 1,
-                name: name,
-                email: email,
-                phone: phone,
-                subject: subject,
-                availability: []
-            };
-            
-            // Add to teachers array
-            demoData.teachers.push(newTeacher);
-            
-            // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
-            
-            // Reset form
-            document.getElementById('addTeacherForm').reset();
-            
-            // Update UI
-            updateTeacherSelectors();
-            renderTeachersTable();
-            
-            alert('Thêm giáo viên thành công!');
-        }
-
-        // Generate schedule automatically
-        function generateSchedule() {
-            const classId = document.getElementById('classToSchedule').value;
-            
-            if (!classId) {
-                alert('Vui lòng chọn một lớp học');
-                return;
-            }
-            
-            // Find the class
-            const cls = demoData.classes.find(c => c.id == classId);
-            if (!cls) {
-                alert('Lớp học không tồn tại');
-                return;
-            }
-            
-            // Find the teacher
-            const teacher = demoData.teachers.find(t => t.name === cls.teacher);
-            if (!teacher) {
-                alert('Không tìm thấy thông tin giáo viên');
-                return;
-            }
-            
-            // Show loading
-            const suggestedSchedule = document.getElementById('suggestedSchedule');
-            suggestedSchedule.innerHTML = '<div class="text-center"><div class="loading-spinner"></div> <p>Đang xếp lịch...</p></div>';
-            
-            // Simulate API call
-            setTimeout(() => {
-                // Generate a suggested schedule based on teacher availability
-                let suggestedTime = null;
-                
-                if (teacher.availability && teacher.availability.length > 0) {
-                    // Use the first available slot
-                    const availableSlot = teacher.availability[0];
-                    suggestedTime = {
-                        day: availableSlot.day,
-                        startTime: availableSlot.startTime,
-                        endTime: availableSlot.endTime
-                    };
-                } else {
-                    // Default suggestion
-                    suggestedTime = {
-                        day: 3, // Wednesday
-                        startTime: "09:00",
-                        endTime: "11:00"
-                    };
-                }
-                
-                // Display the suggestion
-                suggestedSchedule.innerHTML = `
-                    <div class="alert alert-success">
-                        <h6>Đề xuất lịch học cho lớp ${cls.name}</h6>
-                        <p>Thứ ${suggestedTime.day}: ${suggestedTime.startTime} - ${suggestedTime.endTime}</p>
-                        <p>Giáo viên: ${teacher.name}</p>
-                        <p>Phòng học: ${cls.room || 'Chưa xác định'}</p>
-                    </div>
-                    <button class="btn btn-primary w-100">Áp dụng lịch này</button>
-                `;
-            }, 1500);
-        }
-
-        // Import data from Excel
-        function importExcel() {
-            const fileInput = document.getElementById('excelFileInput');
-            const dataType = document.getElementById('excelDataType').value;
-            
-            if (!fileInput.files.length) {
-                alert('Vui lòng chọn một file Excel');
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                // Get first worksheet
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                
-                if (jsonData.length === 0) {
-                    alert('File Excel không có dữ liệu');
-                    return;
-                }
-                
-                // Process data based on type
-                let importCount = 0;
-                
-                if (dataType === 'students') {
-                    jsonData.forEach(item => {
-                        const newStudent = {
-                            id: demoData.students.length + 1,
-                            name: item['Họ và tên'] || '',
-                            email: item['Email'] || '',
-                            phone: item['Số điện thoại'] || '',
-                            class: item['Lớp học'] || ''
-                        };
-                        
-                        demoData.students.push(newStudent);
-                        importCount++;
-                    });
-                    
-                    // Update student counts in classes
-                    updateStudentCounts();
-                    
-                } else if (dataType === 'teachers') {
-                    jsonData.forEach(item => {
-                        const newTeacher = {
-                            id: demoData.teachers.length + 1,
-                            name: item['Họ và tên'] || '',
-                            email: item['Email'] || '',
-                            phone: item['Số điện thoại'] || '',
-                            subject: mapSubjectName(item['Môn học'] || ''),
-                            availability: []
-                        };
-                        
-                        demoData.teachers.push(newTeacher);
-                        importCount++;
-                    });
-                    
-                } else if (dataType === 'classes') {
-                    jsonData.forEach(item => {
-                        // Parse schedule from string like "Thứ 2 (07:00-09:00), Thứ 4 (07:00-09:00)"
-                        const scheduleText = item['Lịch học'] || '';
-                        const schedule = [];
-                        
-                        const scheduleParts = scheduleText.split(', ');
-                        scheduleParts.forEach(part => {
-                            const match = part.match(/Thứ (\d+) \((\d{2}:\d{2})-(\d{2}:\d{2})\)/);
-                            if (match) {
-                                schedule.push({
-                                    day: parseInt(match[1]),
-                                    startTime: match[2],
-                                    endTime: match[3]
-                                });
-                            }
-                        });
-                        
-                        const newClass = {
-                            id: demoData.classes.length + 1,
-                            name: item['Tên lớp'] || '',
-                            subject: mapSubjectName(item['Môn học'] || ''),
-                            teacher: item['Giáo viên'] || '',
-                            students: parseInt(item['Số học sinh'] || 0),
-                            schedule: schedule,
-                            room: item['Phòng học'] || ''
-                        };
-                        
-                        demoData.classes.push(newClass);
-                        importCount++;
-                    });
-                }
-                
-                // Update UI
-                updateClassSelectors();
-                updateTeacherSelectors();
-                updateStudentSelectors();
-                
-                if (dataType === 'students' || dataType === 'classes') {
-                    renderClassesTable();
-                }
-                
-                if (dataType === 'students') {
-                    renderStudentsTable();
-                }
-                
-                if (dataType === 'teachers') {
-                    renderTeachersTable();
-                }
-                
-                alert(`Đã nhập ${importCount} bản ghi từ file Excel`);
-            };
-            
-            reader.readAsArrayBuffer(file);
-        }
-
-        // Update student counts in classes after import
-        function updateStudentCounts() {
-            demoData.classes.forEach(cls => {
-                const count = demoData.students.filter(s => s.class === cls.name).length;
-                cls.students = count;
+            // Add event listener to remove button
+            newSchedule.querySelector('.remove-schedule').addEventListener('click', () => {
+                newSchedule.remove();
             });
+        });
+
+        // Initialize the application
+        function initApp() {
+            console.log('Application initialized');
         }
 
-        // Export data to Excel
-        function exportData() {
-            const dataType = document.getElementById('exportDataType').value;
-            let dataToExport = [];
-            let fileName = '';
-            
-            if (dataType === 'schedule') {
-                // Export schedule data
-                dataToExport = demoData.classes.map(cls => {
-                    const scheduleText = cls.schedule.map(s => 
-                        `Thứ ${s.day} (${s.startTime}-${s.endTime})`
-                    ).join(', ');
-                    
-                    return {
-                        'Tên lớp': cls.name,
-                        'Môn học': getSubjectName(cls.subject),
-                        'Giáo viên': cls.teacher,
-                        'Số học sinh': cls.students,
-                        'Lịch học': scheduleText,
-                        'Phòng học': cls.room
-                    };
-                });
-                fileName = 'thoi-khoa-bieu.xlsx';
-                
-            } else if (dataType === 'students') {
-                // Export students data
-                dataToExport = demoData.students.map(student => ({
-                    'Họ và tên': student.name,
-                    'Email': student.email,
-                    'Số điện thoại': student.phone,
-                    'Lớp học': student.class
-                }));
-                fileName = 'danh-sach-hoc-sinh.xlsx';
-                
-            } else if (dataType === 'teachers') {
-                // Export teachers data
-                dataToExport = demoData.teachers.map(teacher => ({
-                    'Họ và tên': teacher.name,
-                    'Email': teacher.email,
-                    'Số điện thoại': teacher.phone,
-                    'Môn học': getSubjectName(teacher.subject)
-                }));
-                fileName = 'danh-sach-giao-vien.xlsx';
-                
-            } else if (dataType === 'classes') {
-                // Export classes data
-                dataToExport = demoData.classes.map(cls => {
-                    const scheduleText = cls.schedule.map(s => 
-                        `Thứ ${s.day} (${s.startTime}-${s.endTime})`
-                    ).join(', ');
-                    
-                    return {
-                        'Tên lớp': cls.name,
-                        'Môn học': getSubjectName(cls.subject),
-                        'Giáo viên': cls.teacher,
-                        'Số học sinh': cls.students,
-                        'Lịch học': scheduleText,
-                        'Phòng học': cls.room
-                    };
-                });
-                fileName = 'danh-sach-lop-hoc.xlsx';
-            }
-            
-            // Create worksheet
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            
-            // Create workbook
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
-            
-            // Export to file
-            XLSX.writeFile(workbook, fileName);
-        }
-
-        // Helper function to get subject name from code
-        function getSubjectName(code) {
-            const subjects = {
-                'toan': 'Toán',
-                'ly': 'Vật lý',
-                'hoa': 'Hóa học',
-                'van': 'Ngữ văn',
-                'anh': 'Tiếng Anh'
-            };
-            
-            return subjects[code] || code;
-        }
-
-        // Helper function to map subject name to code
-        function mapSubjectName(name) {
-            const subjectMap = {
-                'Toán': 'toan',
-                'Vật lý': 'ly',
-                'Hóa học': 'hoa',
-                'Ngữ văn': 'van',
-                'Tiếng Anh': 'anh'
-            };
-            
-            return subjectMap[name] || name.toLowerCase();
-        }
-
-        // Initialize the application when the page loads
+        // Run initialization when DOM is loaded
         document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
