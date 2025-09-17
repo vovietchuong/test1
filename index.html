@@ -1,1672 +1,781 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trung Tâm Dạy Thêm - Quản Lý Thời Khóa Biểu</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Thêm Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <style>
-        :root {
-            --primary-color: #4e73df;
-            --secondary-color: #f8f9fc;
-            --accent-color: #36b9cc;
-            --morning-color: #ffeeba;
-            --afternoon-color: #c3e6cb;
-            --evening-color: #b8daff;
-            --admin-color: #4e73df;
-            --teacher-color: #1cc88a;
-            --student-color: #36b9cc;
-        }
-        
-        body {
-            background-color: #f8f9fc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .sidebar {
-            background: linear-gradient(180deg, var(--primary-color) 10%, #224abe 100%);
-            color: white;
-            height: 100vh;
-            position: fixed;
-            padding-top: 20px;
-            overflow-y: auto;
-        }
-        
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8);
-            padding: 15px 20px;
-            margin: 5px 0;
-            border-radius: 5px;
-        }
-        
-        .sidebar .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-        
-        .sidebar .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
-        }
-        
-        .sidebar .nav-link i {
-            margin-right: 10px;
-        }
-        
-        .main-content {
-            margin-left: 250px;
-            padding: 20px;
-        }
-        
-        .header {
-            background-color: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .user-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        
-        .badge-admin {
-            background-color: var(--admin-color);
-            color: white;
-        }
-        
-        .badge-teacher {
-            background-color: var(--teacher-color);
-            color: white;
-        }
-        
-        .badge-student {
-            background-color: var(--student-color);
-            color: white;
-        }
-        
-        .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-            margin-bottom: 20px;
-        }
-        
-        .card-header {
-            background-color: white;
-            border-bottom: 1px solid #e3e6f0;
-            font-weight: bold;
-            padding: 15px 20px;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #2e59d9;
-            border-color: #2e59d9;
-        }
-        
-        .btn-teacher {
-            background-color: var(--teacher-color);
-            border-color: var(--teacher-color);
-            color: white;
-        }
-        
-        .btn-teacher:hover {
-            background-color: #17a673;
-            border-color: #17a673;
-            color: white;
-        }
-        
-        .table th {
-            border-top: none;
-            font-weight: 600;
-            color: #4e73df;
-        }
-        
-        .schedule-cell {
-            height: 120px;
-            border: 1px solid #e3e6f0;
-            padding: 5px;
-            position: relative;
-            vertical-align: top;
-        }
-        
-        .schedule-class {
-            background-color: #e8f4ff;
-            border-left: 4px solid var(--primary-color);
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            margin-bottom: 5px;
-            cursor: pointer;
-        }
-        
-        .morning-class {
-            background-color: var(--morning-color);
-            border-left: 4px solid #ffc107;
-        }
-        
-        .afternoon-class {
-            background-color: var(--afternoon-color);
-            border-left: 4px solid #28a745;
-        }
-        
-        .evening-class {
-            background-color: var(--evening-color);
-            border-left: 4px solid #17a2b8;
-        }
-        
-        .schedule-class:hover {
-            opacity: 0.9;
-        }
-        
-        .schedule-time {
-            font-weight: bold;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-            background-color: #eaecf4;
-            padding: 5px;
-            border-radius: 3px;
-        }
-        
-        .badge-teacher {
-            background-color: #f6c23e;
-            color: #000;
-        }
-        
-        .badge-student {
-            background-color: #1cc88a;
-        }
-        
-        .badge-room {
-            background-color: #858796;
-            color: white;
-        }
-        
-        .dashboard-stat {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
-        .content-section {
-            display: none;
-        }
-        
-        .content-section.active {
-            display: block;
-        }
-        
-        .time-slot {
-            font-weight: bold;
-            background-color: #e9ecef;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-size: 0.85rem;
-        }
-        
-        .modal-content {
-            border-radius: 10px;
-            border: none;
-        }
-        
-        .class-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-        
-        .availability-item {
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            background-color: #f8f9fa;
-            border-left: 4px solid #4e73df;
-        }
-        
-        .availability-time {
-            font-weight: bold;
-            color: #4e73df;
-        }
-        
-        .teacher-request {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            background-color: #f8f9fa;
-            border-left: 4px solid #1cc88a;
-        }
-        
-        .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
-        
-        .class-card {
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-        
-        .class-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        }
-        
-        .student-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .excel-upload-area {
-            border: 2px dashed #dee2e6;
-            border-radius: 5px;
-            padding: 20px;
-            text-align: center;
-            background-color: #f8f9fa;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .excel-upload-area:hover {
-            border-color: #4e73df;
-            background-color: #eaf0ff;
-        }
-        
-        .constraint-badge {
-            font-size: 0.75rem;
-            margin-right: 5px;
-        }
-        
-        .availability-slot {
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #e3e6f0;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .availability-slot.selected {
-            background-color: #e8f4ff;
-            border-color: #4e73df;
-        }
-        
-        .availability-slot:hover {
-            background-color: #eaf0ff;
-        }
-        
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quản lý Trung tâm - Thời khóa biểu (Có sửa)</title>
 
-        .loading-spinner {
-            display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <style>
+    :root{ --primary:#4e73df; --muted:#6c757d; }
+    body{ background:#f8f9fc; font-family: "Segoe UI", Tahoma, Arial, sans-serif; padding:20px; }
+    .card { box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .availability-slot { cursor:pointer; display:inline-block; margin:3px; padding:6px 8px; border-radius:6px; border:1px dashed #ccc; }
+    .availability-slot.selected { background:#e9f5ff; border-color:var(--primary); }
+    .schedule-cell { min-width:180px; vertical-align:top; }
+    .schedule-class { margin-bottom:6px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee; }
+    .time-slot { width:140px; font-weight:600; }
+  </style>
 </head>
 <body>
-    <!-- Login Screen (shown by default) -->
-    <div id="loginScreen">
-        <div class="login-container">
-            <div class="text-center mb-4">
-                <h3>Trung Tâm Tri Thức</h3>
-                <p class="text-muted">Đăng nhập vào hệ thống</p>
+  <div class="container">
+    <h3 class="mb-3">Quản lý Trung tâm - Thời khóa biểu</h3>
+
+    <div class="row g-3">
+      <div class="col-md-8">
+        <div class="card mb-3 p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Danh sách lớp</h5>
+            <div>
+              <button class="btn btn-sm btn-success me-2" data-bs-toggle="modal" data-bs-target="#addClassModal">Thêm lớp</button>
+              <button class="btn btn-sm btn-primary" id="generateScheduleBtn">Xếp lịch cho lớp</button>
             </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="Nhập email">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Mật khẩu</label>
-                <input type="password" class="form-control" id="password" placeholder="Nhập mật khẩu">
-            </div>
-            
-            <button class="btn btn-primary w-100" id="loginBtn">Đăng nhập</button>
-            
-            <div class="mt-3 text-center">
-                <p class="text-muted">Tài khoản demo:<br>
-                Admin: admin@mathhubvn.com/123456</p>
-                <button class="btn btn-link p-0" id="showRegisterBtn">Tạo tài khoản mới</button>
-            </div>
+          </div>
+          <div style="overflow:auto;">
+            <table class="table table-striped" id="classesTable">
+              <thead><tr><th>Tên lớp</th><th>Môn</th><th>Giáo viên</th><th>HS</th><th>Khung giờ</th><th>Phòng</th><th>Hành động</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
+
+        <div class="card p-3 mb-3">
+          <h5>Thời khóa biểu (Tuần)</h5>
+          <div style="overflow:auto;">
+            <table class="table table-bordered align-middle">
+              <thead>
+                <tr>
+                  <th>Khung giờ</th>
+                  <th>Thứ 2</th><th>Thứ 3</th><th>Thứ 4</th><th>Thứ 5</th><th>Thứ 6</th><th>Thứ 7</th><th>Chủ nhật</th>
+                </tr>
+              </thead>
+              <tbody id="scheduleTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Giáo viên</h5>
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addTeacherModal">Thêm GV</button>
+          </div>
+          <div style="max-height:220px; overflow:auto;">
+            <table class="table table-sm" id="teachersTable">
+              <thead><tr><th>Tên</th><th>Email</th><th>Hành động</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Học sinh</h5>
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addStudentModal">Thêm HS</button>
+          </div>
+          <div style="max-height:220px; overflow:auto;">
+            <table class="table table-sm" id="studentsTable">
+              <thead><tr><th>Tên</th><th>Email</th><th>Hành động</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <!-- Register Screen (hidden by default) -->
-    <div id="registerScreen" style="display: none;">
-        <div class="login-container">
-            <div class="text-center mb-4">
-                <h3>Đăng ký tài khoản</h3>
-                <p class="text-muted">Tạo tài khoản mới</p>
+    <!-- Add/Edit Modals -->
+    <!-- Add Teacher -->
+    <div class="modal fade" id="addTeacherModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Thêm Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">Tên</label><input id="teacherName" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Email</label><input id="teacherEmail" class="form-control" type="email"></div>
+            <div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Môn</label>
+              <select id="teacherSubject" class="form-select">
+                <option value="math">Toán</option>
+                <option value="physics">Vật lý</option>
+                <option value="chemistry">Hóa</option>
+                <option value="literature">Ngữ văn</option>
+                <option value="english">Tiếng Anh</option>
+                <option value="history">Lịch sử</option>
+                <option value="geography">Địa lý</option>
+              </select>
             </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Họ và tên</label>
-                <input type="text" class="form-control" id="registerName" placeholder="Nhập họ và tên">
+          </div>
+          <div class="modal-footer"><button id="saveTeacherBtn" class="btn btn-primary">Lưu</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Teacher -->
+    <div class="modal fade" id="editTeacherModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Sửa Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <input type="hidden" id="editTeacherId">
+            <div class="mb-2"><label class="form-label">Tên</label><input id="editTeacherName" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editTeacherEmail" class="form-control" type="email"></div>
+            <div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Môn</label>
+              <select id="editTeacherSubject" class="form-select">
+                <option value="math">Toán</option>
+                <option value="physics">Vật lý</option>
+                <option value="chemistry">Hóa</option>
+                <option value="literature">Ngữ văn</option>
+                <option value="english">Tiếng Anh</option>
+                <option value="history">Lịch sử</option>
+                <option value="geography">Địa lý</option>
+              </select>
             </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="registerEmail" placeholder="Nhập email">
+            <div class="text-muted small">Lưu ý: thay đổi email trong Authentication yêu cầu xử lý riêng (không tự động sửa Auth ở đây).</div>
+          </div>
+          <div class="modal-footer"><button id="updateTeacherBtn" class="btn btn-primary">Cập nhật</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Student -->
+    <div class="modal fade" id="addStudentModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email"></div>
+            <div class="mb-2"><label class="form-label">SĐT</label><input id="studentPhone" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label>
+              <select id="studentClass" class="form-select" multiple></select>
             </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Mật khẩu</label>
-                <input type="password" class="form-control" id="registerPassword" placeholder="Nhập mật khẩu (ít nhất 6 ký tự)">
+          </div>
+          <div class="modal-footer"><button id="saveStudentBtn" class="btn btn-primary">Lưu</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Student -->
+    <div class="modal fade" id="editStudentModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <input type="hidden" id="editStudentId">
+            <div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editStudentEmail" class="form-control" type="email"></div>
+            <div class="mb-2"><label class="form-label">SĐT</label><input id="editStudentPhone" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label>
+              <select id="editStudentClass" class="form-select" multiple></select>
             </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Vai trò</label>
-                <select class="form-select" id="registerRole">
-                    <option value="student">Học sinh</option>
-                    <option value="teacher">Giáo viên</option>
+            <div class="text-muted small">Lưu ý: để thay đổi email trong Authentication cần thao tác riêng.</div>
+          </div>
+          <div class="modal-footer"><button id="updateStudentBtn" class="btn btn-primary">Cập nhật</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Class -->
+    <div class="modal fade" id="addClassModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Thêm Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Môn</label>
+              <select id="classSubject" class="form-select">
+                <option value="math">Toán</option>
+                <option value="physics">Vật lý</option>
+                <option value="chemistry">Hóa</option>
+                <option value="literature">Ngữ văn</option>
+                <option value="english">Tiếng Anh</option>
+                <option value="history">Lịch sử</option>
+                <option value="geography">Địa lý</option>
+              </select>
+            </div>
+            <div class="mb-2"><label class="form-label">Giáo viên</label>
+              <select id="classTeacher" class="form-select"></select>
+            </div>
+            <div class="mb-2 row">
+              <div class="col-6"><label class="form-label">Phòng (tuỳ chọn)</label><input id="classRoom" class="form-control" placeholder="101..."></div>
+              <div class="col-6"><label class="form-label">Ngày</label>
+                <select id="classDay" class="form-select">
+                  <option value="monday">Thứ 2</option>
+                  <option value="tuesday">Thứ 3</option>
+                  <option value="wednesday">Thứ 4</option>
+                  <option value="thursday">Thứ 5</option>
+                  <option value="friday">Thứ 6</option>
+                  <option value="saturday">Thứ 7</option>
+                  <option value="sunday">Chủ nhật</option>
                 </select>
+              </div>
             </div>
-            
-            <button class="btn btn-primary w-100" id="registerBtn">Đăng ký</button>
-            
-            <div class="mt-3 text-center">
-                <button class="btn btn-link p-0" id="showLoginBtn">Quay lại đăng nhập</button>
+            <div class="mb-2"><label class="form-label">Khung giờ</label>
+              <select id="classTime" class="form-select"></select>
             </div>
+          </div>
+          <div class="modal-footer"><button id="saveClassBtn" class="btn btn-primary">Lưu lớp</button></div>
         </div>
+      </div>
     </div>
 
-    <!-- Main Application (hidden by default) -->
-    <div id="appContainer" style="display: none;">
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Sidebar -->
-                <div class="col-md-3 col-lg-2 sidebar d-md-block">
-                    <div class="text-center mb-4">
-                        <h4>Trung Tâm Tri Thức</h4>
-                        <p class="text-white-50 small">Hệ thống quản lý đào tạo</p>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#" data-section="dashboard">
-                                <i class="fas fa-tachometer-alt"></i> Tổng quan
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="schedule">
-                                <i class="fas fa-calendar-alt"></i> Thời khóa biểu
-                            </a>
-                        </li>
-                        
-                        <!-- Admin only menu items -->
-                        <li class="nav-item admin-only">
-                            <a class="nav-link" href="#" data-section="class-management">
-                                <i class="fas fa-school"></i> Quản lý lớp học
-                            </a>
-                        </li>
-                        <li class="nav-item admin-only">
-                            <a class="nav-link" href="#" data-section="students">
-                                <i class="fas fa-user-graduate"></i> Học sinh
-                            </a>
-                        </li>
-                        <li class="nav-item admin-only">
-                            <a class="nav-link" href="#" data-section="teachers">
-                                <i class="fas fa-chalkboard-teacher"></i> Giáo viên
-                            </a>
-                        </li>
-                        <li class="nav-item admin-only">
-                            <a class="nav-link" href="#" data-section="scheduling">
-                                <i class="fas fa-clock"></i> Xếp lịch
-                            </a>
-                        </li>
-                        
-                        <!-- Teacher only menu items -->
-                        <li class="nav-item teacher-only">
-                            <a class="nav-link" href="#" data-section="teacher-availability">
-                                <i class="fas fa-user-clock"></i> Đăng ký lịch dạy
-                            </a>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="settings">
-                                <i class="fas fa-cog"></i> Cài đặt
-                            </a>
-                        </li>
-                        <li class="nav-item mt-4">
-                            <a class="nav-link" href="#" id="logoutBtn">
-                                <i class="fas fa-sign-out-alt"></i> Đăng xuất
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Main Content -->
-                <div class="col-md-9 col-lg-10 main-content">
-                    <!-- Header -->
-                    <div class="header">
-                        <h5 class="m-0">Hệ thống quản lý thời khóa biểu</h5>
-                        <div>
-                            <span class="me-3" id="userWelcome">Xin chào, Admin</span>
-                            <span class="user-badge" id="userBadge">Admin</span>
-                            <img src="https://ui-avatars.com/api/?name=Admin&background=4e73df&color=fff" class="rounded-circle" width="40" height="40">
-                        </div>
-                    </div>
-
-                    <!-- Dashboard Section -->
-                    <div id="dashboard" class="content-section active">
-                        <div class="row">
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-primary h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                    Tổng số lớp học</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800 dashboard-stat" id="totalClasses">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-school fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-success h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                    Tổng số học sinh</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800 dashboard-stat" id="totalStudents">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-user-graduate fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-info h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                    Tổng số giáo viên</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800 dashboard-stat" id="totalTeachers">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-chalkboard-teacher fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-warning h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                    Lớp học hôm nay</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800 dashboard-stat" id="todayClasses">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-lg-8">
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        <h6 class="m-0 font-weight-bold">Lớp học sắp diễn ra</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered" id="upcomingClassesTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Lớp học</th>
-                                                        <th>Môn học</th>
-                                                        <th>Giáo viên</th>
-                                                        <th>Thời gian</th>
-                                                        <th>Phòng học</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Data will be populated by JavaScript -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-lg-4">
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        <h6 class="m-0 font-weight-bold">Thống kê theo môn học</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="subjectChart">
-                                            <!-- Chart will be populated by JavaScript -->
-                                            <div class="text-center py-4">
-                                                <p class="text-muted">Biểu đồ thống kê sẽ hiển thị ở đây</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Schedule Section -->
-                    <div id="schedule" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold">Thời khóa biểu</h6>
-                                <div>
-                                    <select class="form-select form-select-sm" id="scheduleFilter">
-                                        <option value="all">Tất cả lớp học</option>
-                                        <option value="my">Lớp của tôi</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                            <tr>
-                                                <th width="12%">Thời gian</th>
-                                                <th width="12%">Thứ 2</th>
-                                                <th width="12%">Thứ 3</th>
-                                                <th width="12%">Thứ 4</th>
-                                                <th width="12%">Thứ 5</th>
-                                                <th width="12%">Thứ 6</th>
-                                                <th width="12%">Thứ 7</th>
-                                                <th width="12%">Chủ nhật</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="scheduleTableBody">
-                                            <!-- Schedule will be populated by JavaScript -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Class Management Section -->
-                    <div id="class-management" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold">Quản lý lớp học</h6>
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addClassModal">
-                                    <i class="fas fa-plus"></i> Thêm lớp học
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="classesTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Tên lớp</th>
-                                                <th>Môn học</th>
-                                                <th>Giáo viên</th>
-                                                <th>Học sinh</th>
-                                                <th>Lịch học</th>
-                                                <th>Phòng học</th>
-                                                <th>Thao tác</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Classes will be populated by JavaScript -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Students Section -->
-                    <div id="students" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold">Quản lý học sinh</h6>
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
-                                    <i class="fas fa-plus"></i> Thêm học sinh
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <input type="text" class="form-control" id="studentSearch" placeholder="Tìm kiếm học sinh...">
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="studentsTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Họ và tên</th>
-                                                <th>Email</th>
-                                                <th>Số điện thoại</th>
-                                                <th>Lớp học</th>
-                                                <th>Thao tác</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Students will be populated by JavaScript -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Teachers Section -->
-                    <div id="teachers" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold">Quản lý giáo viên</h6>
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTeacherModal">
-                                    <i class="fas fa-plus"></i> Thêm giáo viên
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <input type="text" class="form-control" id="teacherSearch" placeholder="Tìm kiếm giáo viên...">
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="teachersTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Họ và tên</th>
-                                                <th>Email</th>
-                                                <th>Số điện thoại</th>
-                                                <th>Môn học</th>
-                                                <th>Lịch dạy</th>
-                                                <th>Thao tác</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Teachers will be populated by JavaScript -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Scheduling Section -->
-                    <div id="scheduling" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="m-0 font-weight-bold">Xếp lịch tự động</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row mb-4">
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header bg-primary text-white py-2">
-                                                <h6 class="m-0">Bước 1: Chọn lớp cần xếp lịch</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <select class="form-select mb-3" id="classToSchedule">
-                                                    <option value="">-- Chọn lớp --</option>
-                                                    <!-- Options will be populated by JavaScript -->
-                                                </select>
-                                                <button class="btn btn-primary w-100" id="generateScheduleBtn">Xếp lịch tự động</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header bg-success text-white py-2">
-                                                <h6 class="m-0">Bước 2: Xem lịch đề xuất</h6>
-                                            </div>
-                                            <div class="card-body" id="suggestedSchedule">
-                                                <p class="text-muted text-center">Lịch đề xuất sẽ hiển thị ở đây</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="card">
-                                    <div class="card-header bg-info text-white py-2">
-                                        <h6 class="m-0">Ràng buộc lịch dạy</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered" id="constraintsTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Giáo viên</th>
-                                                        <th>Môn học</th>
-                                                        <th>Ràng buộc</th>
-                                                        <th>Lịch dạy hiện tại</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Constraints will be populated by JavaScript -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Teacher Availability Section -->
-                    <div id="teacher-availability" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="m-0 font-weight-bold">Đăng ký lịch dạy</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle"></i> Vui lòng chọn các khung giờ bạn có thể dạy trong tuần.
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <h6>Chọn khung giờ có thể dạy:</h6>
-                                    <div id="availabilitySlots" class="d-flex flex-wrap gap-2">
-                                        <!-- Availability slots will be populated by JavaScript -->
-                                    </div>
-                                </div>
-                                
-                                <button class="btn btn-primary" id="saveAvailabilityBtn">Lưu lịch dạy</button>
-                                
-                                <div class="mt-4">
-                                    <h6>Lịch dạy hiện tại của bạn:</h6>
-                                    <div id="currentAvailability">
-                                        <!-- Current availability will be populated by JavaScript -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Settings Section -->
-                    <div id="settings" class="content-section">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="m-0 font-weight-bold">Cài đặt hệ thống</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="card mb-4">
-                                            <div class="card-header bg-primary text-white py-2">
-                                                <h6 class="m-0">Khung giờ học</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label class="form-label">Giờ bắt đầu buổi sáng</label>
-                                                    <input type="time" class="form-control" value="07:00">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Giờ kết thúc buổi sáng</label>
-                                                    <input type="time" class="form-control" value="11:00">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Giờ bắt đầu buổi chiều</label>
-                                                    <input type="time" class="form-control" value="13:00">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Giờ kết thúc buổi chiều</label>
-                                                    <input type="time" class="form-control" value="17:00">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Giờ bắt đầu buổi tối</label>
-                                                    <input type="time" class="form-control" value="18:00">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Giờ kết thúc buổi tối</label>
-                                                    <input type="time" class="form-control" value="21:00">
-                                                </div>
-                                                <button class="btn btn-primary">Lưu thay đổi</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-md-6">
-                                        <div class="card mb-4">
-                                            <div class="card-header bg-success text-white py-2">
-                                                <h6 class="m-0">Nhập dữ liệu từ Excel</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="excel-upload-area mb-3" id="excelUploadArea">
-                                                    <i class="fas fa-file-excel fa-3x text-success mb-2"></i>
-                                                    <p>Kéo thả file Excel vào đây hoặc click để chọn file</p>
-                                                    <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <select class="form-select" id="excelDataType">
-                                                        <option value="students">Dữ liệu học sinh</option>
-                                                        <option value="teachers">Dữ liệu giáo viên</option>
-                                                        <option value="classes">Dữ liệu lớp học</option>
-                                                    </select>
-                                                </div>
-                                                <button class="btn btn-success w-100" id="importExcelBtn">Nhập dữ liệu</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="card">
-                                            <div class="card-header bg-info text-white py-2">
-                                                <h6 class="m-0">Xuất dữ liệu</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <select class="form-select" id="exportDataType">
-                                                        <option value="schedule">Thời khóa biểu</option>
-                                                        <option value="students">Danh sách học sinh</option>
-                                                        <option value="teachers">Danh sách giáo viên</option>
-                                                        <option value="classes">Danh sách lớp học</option>
-                                                    </select>
-                                                </div>
-                                                <button class="btn btn-info w-100" id="exportDataBtn">Xuất dữ liệu</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Edit Class -->
+    <div class="modal fade" id="editClassModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Sửa Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <input type="hidden" id="editClassId">
+            <div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Môn</label>
+              <select id="editClassSubject" class="form-select">
+                <option value="math">Toán</option>
+                <option value="physics">Vật lý</option>
+                <option value="chemistry">Hóa</option>
+                <option value="literature">Ngữ văn</option>
+                <option value="english">Tiếng Anh</option>
+                <option value="history">Lịch sử</option>
+                <option value="geography">Địa lý</option>
+              </select>
             </div>
+            <div class="mb-2"><label class="form-label">Giáo viên</label>
+              <select id="editClassTeacher" class="form-select"></select>
+            </div>
+            <div class="mb-2 row">
+              <div class="col-6"><label class="form-label">Phòng</label><input id="editClassRoom" class="form-control" placeholder="101..."></div>
+              <div class="col-6"><label class="form-label">Ngày</label>
+                <select id="editClassDay" class="form-select">
+                  <option value="monday">Thứ 2</option>
+                  <option value="tuesday">Thứ 3</option>
+                  <option value="wednesday">Thứ 4</option>
+                  <option value="thursday">Thứ 5</option>
+                  <option value="friday">Thứ 6</option>
+                  <option value="saturday">Thứ 7</option>
+                  <option value="sunday">Chủ nhật</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-2"><label class="form-label">Khung giờ</label>
+              <select id="editClassTime" class="form-select"></select>
+            </div>
+            <div class="text-muted small">Thao tác này chỉ cập nhật document lớp; schedule liên quan có thể cần điều chỉnh thủ công hoặc chạy lại chức năng xếp lịch.</div>
+          </div>
+          <div class="modal-footer"><button id="updateClassBtn" class="btn btn-primary">Cập nhật lớp</button></div>
         </div>
+      </div>
     </div>
 
-    <!-- Add Class Modal -->
-    <div class="modal fade" id="addClassModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Thêm lớp học mới</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Tên lớp học</label>
-                        <input type="text" class="form-control" id="className">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Môn học</label>
-                        <select class="form-select" id="classSubject">
-                            <option value="">-- Chọn môn học --</option>
-                            <option value="math">Toán học</option>
-                            <option value="physics">Vật lý</option>
-                            <option value="chemistry">Hóa học</option>
-                            <option value="literature">Ngữ văn</option>
-                            <option value="english">Tiếng Anh</option>
-                            <option value="history">Lịch sử</option>
-                            <option value="geography">Địa lý</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Giáo viên</label>
-                        <select class="form-select" id="classTeacher">
-                            <option value="">-- Chọn giáo viên --</option>
-                            <!-- Options will be populated by JavaScript -->
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Phòng học</label>
-                        <input type="text" class="form-control" id="classRoom">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Lịch học</label>
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                <select class="form-select" id="classDay">
-                                    <option value="">-- Chọn ngày --</option>
-                                    <option value="monday">Thứ 2</option>
-                                    <option value="tuesday">Thứ 3</option>
-                                    <option value="wednesday">Thứ 4</option>
-                                    <option value="thursday">Thứ 5</option>
-                                    <option value="friday">Thứ 6</option>
-                                    <option value="saturday">Thứ 7</option>
-                                    <option value="sunday">Chủ nhật</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <select class="form-select" id="classTime">
-                                    <option value="">-- Chọn giờ --</option>
-                                    <option value="morning">Sáng (7h-11h)</option>
-                                    <option value="afternoon">Chiều (13h-17h)</option>
-                                    <option value="evening">Tối (18h-21h)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary" id="saveClassBtn">Lưu lớp học</button>
-                </div>
-            </div>
+    <!-- Schedule picker -->
+    <div class="modal fade" id="scheduleModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content p-3">
+          <h5>Chọn lớp để xếp lịch</h5>
+          <select id="classToSchedule" class="form-select mb-3"></select>
+          <div class="d-flex justify-content-end">
+            <button class="btn btn-secondary me-2" data-bs-dismiss="modal">Huỷ</button>
+            <button id="doGenerateBtn" class="btn btn-primary">Xếp lịch</button>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- Add Student Modal -->
-    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Thêm học sinh mới</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Họ và tên</label>
-                        <input type="text" class="form-control" id="studentName">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="studentEmail">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="tel" class="form-control" id="studentPhone">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Lớp học</label>
-                        <select class="form-select" id="studentClass" multiple>
-                            <!-- Options will be populated by JavaScript -->
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary" id="saveStudentBtn">Lưu học sinh</button>
-                </div>
-            </div>
-        </div>
-    </div>
+  </div>
 
-    <!-- Add Teacher Modal -->
-    <div class="modal fade" id="addTeacherModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Thêm giáo viên mới</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Họ và tên</label>
-                        <input type="text" class="form-control" id="teacherName">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="teacherEmail">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="tel" class="form-control" id="teacherPhone">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Môn học</label>
-                        <select class="form-select" id="teacherSubject">
-                            <option value="">-- Chọn môn học --</option>
-                            <option value="math">Toán học</option>
-                            <option value="physics">Vật lý</option>
-                            <option value="chemistry">Hóa học</option>
-                            <option value="literature">Ngữ văn</option>
-                            <option value="english">Tiếng Anh</option>
-                            <option value="history">Lịch sử</option>
-                            <option value="geography">Địa lý</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary" id="saveTeacherBtn">Lưu giáo viên</button>
-                </div>
-            </div>
-        </div>
-    </div>
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
-  authDomain: "mathhubvn.firebaseapp.com",
-  projectId: "mathhubvn",
-  storageBucket: "mathhubvn.firebasestorage.app",
-  messagingSenderId: "1001364433767",
-  appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
-  measurementId: "G-2YNQZ48JVK"
-};
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+  <script>
+    // ---------- Firebase config ----------
+    const firebaseConfig = {
+      apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+      authDomain: "mathhubvn.firebaseapp.com",
+      projectId: "mathhubvn",
+      storageBucket: "mathhubvn.firebasestorage.app",
+      messagingSenderId: "1001364433767",
+      appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+      measurementId: "G-2YNQZ48JVK"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-        // Global variables
-        let currentUser = null;
-        let classes = [];
-        let teachers = [];
-        let students = [];
-        let schedule = [];
+    // ---------- State ----------
+    let currentUser = null;
+    let classes = [], teachers = [], students = [], schedule = [];
 
-        // DOM Elements
-        const loginScreen = document.getElementById('loginScreen');
-        const registerScreen = document.getElementById('registerScreen');
-        const appContainer = document.getElementById('appContainer');
-        const userWelcome = document.getElementById('userWelcome');
-        const userBadge = document.getElementById('userBadge');
+    const ROOMS = ['101','102','103','104','105','106'];
+    const TIME_SLOTS = [
+      { id: 'slot1', name: '07:00-09:00', start: '07:00', end: '09:00' },
+      { id: 'slot2', name: '09:15-11:15', start: '09:15', end: '11:15' },
+      { id: 'slot3', name: '14:00-16:00', start: '14:00', end: '16:00' },
+      { id: 'slot4', name: '16:30-18:30', start: '16:30', end: '18:30' },
+      { id: 'slot5', name: '19:00-21:00', start: '19:00', end: '21:00' }
+    ];
 
-        // Authentication State Observer
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                showApp();
-                loadData();
-            } else {
-                showLogin();
-            }
+    function logError(e){ console.error(e); alert('Lỗi: ' + (e.message || e)); }
+
+    // ---------- Load realtime data ----------
+    function loadData(){
+      db.collection('classes').onSnapshot(snap => {
+        classes = [];
+        snap.forEach(d=> classes.push({ id:d.id, ...d.data() }));
+        renderClasses(); updateClassDropdowns();
+      }, logError);
+
+      db.collection('users').where('role','==','teacher').onSnapshot(snap=>{
+        teachers = []; snap.forEach(d=> teachers.push({ id:d.id, ...d.data() }));
+        renderTeachers(); updateTeacherDropdowns();
+      }, logError);
+
+      db.collection('users').where('role','==','student').onSnapshot(snap=>{
+        students = []; snap.forEach(d=> students.push({ id:d.id, ...d.data() }));
+        renderStudents(); updateStudentClassDropdowns();
+      }, logError);
+
+      db.collection('schedule').onSnapshot(snap=>{
+        schedule = []; snap.forEach(d=> schedule.push({ id:d.id, ...d.data() }));
+        renderSchedule();
+      }, logError);
+    }
+
+    // ---------- Render functions (include Edit buttons) ----------
+    function renderClasses(){
+      const tbody = document.querySelector('#classesTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      classes.forEach(c=>{
+        const tr = document.createElement('tr');
+        const teacherName = getTeacherName(c.teacherId);
+        const studentCount = (c.students||[]).length;
+        tr.innerHTML = `
+          <td>${c.name}</td>
+          <td>${getSubjectName(c.subject)}</td>
+          <td>${teacherName}</td>
+          <td>${studentCount} hs</td>
+          <td>${getDayName(c.day)||''} ${getTimeSlotName(c.time)||''}</td>
+          <td>${c.room||'Chưa'}</td>
+          <td>
+            <button class="btn btn-sm btn-primary edit-class" data-id="${c.id}">Sửa</button>
+            <button class="btn btn-sm btn-danger delete-class" data-id="${c.id}">Xóa</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderTeachers(){
+      const tbody = document.querySelector('#teachersTable tbody'); if(!tbody) return;
+      tbody.innerHTML = '';
+      teachers.forEach(t=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.name}</td><td>${t.email||''}</td><td>
+          <button class="btn btn-sm btn-primary edit-teacher" data-id="${t.id}">Sửa</button>
+          <button class="btn btn-sm btn-danger delete-teacher" data-id="${t.id}">Xóa</button>
+        </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderStudents(){
+      const tbody = document.querySelector('#studentsTable tbody'); if(!tbody) return;
+      tbody.innerHTML = '';
+      students.forEach(s=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${s.name}</td><td>${s.email||''}</td><td>
+          <button class="btn btn-sm btn-primary edit-student" data-id="${s.id}">Sửa</button>
+          <button class="btn btn-sm btn-danger delete-student" data-id="${s.id}">Xóa</button>
+        </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderSchedule(){
+      const tbody = document.getElementById('scheduleTableBody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      TIME_SLOTS.forEach(slot=>{
+        const tr = document.createElement('tr');
+        let html = `<td class="time-slot">${slot.name}</td>`;
+        days.forEach(day=>{
+          html += `<td class="schedule-cell">`;
+          const entries = schedule.filter(s => s.day===day && s.time===slot.id);
+          entries.forEach(en=>{
+            const cls = classes.find(c=>c.id===en.classId);
+            const teacher = getTeacherName(en.teacherId|| (cls?cls.teacherId:null));
+            html += `<div class="schedule-class">
+              <div class="fw-bold">${cls?cls.name:'(Lớp đã xóa)'}</div>
+              <div class="small">${getSubjectName(cls?cls.subject:null)} - ${teacher}</div>
+              <div class="small">Phòng: ${en.room|| (cls?cls.room:'Chưa')}</div>
+            </div>`;
+          });
+          html += `</td>`;
         });
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+      });
+    }
 
-        // Event Listeners
-        document.getElementById('loginBtn').addEventListener('click', login);
-        document.getElementById('registerBtn').addEventListener('click', register);
-        document.getElementById('showRegisterBtn').addEventListener('click', showRegister);
-        document.getElementById('showLoginBtn').addEventListener('click', showLogin);
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-        
-        // Navigation
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const section = link.getAttribute('data-section');
-                showSection(section);
-            });
+    // ---------- Helpers ----------
+    function getSubjectName(id){ const map = {math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}; return map[id]||''; }
+    function getTeacherName(id){ if(!id) return 'Chưa'; const t = teachers.find(x=>x.id===id); return t? t.name : 'Chưa'; }
+    function getDayName(day){ const m={monday:'Thứ 2',tuesday:'Thứ 3',wednesday:'Thứ 4',thursday:'Thứ 5',friday:'Thứ 6',saturday:'Thứ 7',sunday:'Chủ nhật'}; return m[day]||''; }
+    function getTimeSlotName(id){ const s = TIME_SLOTS.find(x=>x.id===id); return s? s.name : ''; }
+
+    // ---------- Dropdown updates ----------
+    function updateTeacherDropdowns(){
+      const sel = document.getElementById('classTeacher');
+      const selEdit = document.getElementById('editClassTeacher');
+      if(sel){ sel.innerHTML = '<option value="">-- Chọn giáo viên --</option>'; teachers.forEach(t=> { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name + ' (' + (t.subject?getSubjectName(t.subject):'') + ')'; sel.appendChild(o); }); }
+      if(selEdit){ selEdit.innerHTML = '<option value="">-- Chọn giáo viên --</option>'; teachers.forEach(t=> { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name + ' (' + (t.subject?getSubjectName(t.subject):'') + ')'; selEdit.appendChild(o); }); }
+    }
+    function updateClassDropdowns(){
+      const select = document.getElementById('studentClass');
+      if(select){ select.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; select.appendChild(o); }); }
+      const scheduleSel = document.getElementById('classToSchedule');
+      if(scheduleSel){ scheduleSel.innerHTML = '<option value="">-- Chọn lớp --</option>'; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; scheduleSel.appendChild(o); }); }
+      // Also update edit-student class select
+      const editSelect = document.getElementById('editStudentClass');
+      if(editSelect){ editSelect.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; editSelect.appendChild(o); }); }
+      const addStudentSelect = document.getElementById('studentClass');
+      if(addStudentSelect){ addStudentSelect.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; addStudentSelect.appendChild(o); }); }
+    }
+    function updateStudentClassDropdowns(){ updateClassDropdowns(); }
+
+    // ---------- CRUD operations ----------
+    async function addTeacher(){
+      const name = document.getElementById('teacherName').value.trim();
+      const email = document.getElementById('teacherEmail').value.trim();
+      const phone = document.getElementById('teacherPhone').value.trim();
+      const subject = document.getElementById('teacherSubject').value;
+      if(!name||!email||!subject) return alert('Vui lòng điền đầy đủ');
+      try{
+        const password = Math.random().toString(36).slice(-8);
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+        await userCredential.user.updateProfile({ displayName: name });
+        await db.collection('users').doc(uid).set({ name, email, phone, role: 'teacher', subject, availability: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        alert('Tạo giáo viên thành công. Mật khẩu tạm thời: ' + password);
+        var modal = bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')); modal.hide();
+      } catch(e){ logError(e); }
+    }
+
+    async function addStudent(){
+      const name = document.getElementById('studentName').value.trim();
+      const email = document.getElementById('studentEmail').value.trim();
+      const phone = document.getElementById('studentPhone').value.trim();
+      const classIds = Array.from(document.getElementById('studentClass').selectedOptions).map(o=>o.value);
+      if(!name||!email) return alert('Vui lòng điền tên và email');
+      try{
+        const password = Math.random().toString(36).slice(-8);
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+        await userCredential.user.updateProfile({ displayName: name });
+        await db.collection('users').doc(uid).set({ name, email, phone, role: 'student', classes: classIds, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        // Update classes: push student ids
+        const batch = db.batch();
+        classIds.forEach(cid => {
+          const clsRef = db.collection('classes').doc(cid);
+          batch.update(clsRef, { students: firebase.firestore.FieldValue.arrayUnion(uid) });
         });
+        await batch.commit();
+        alert('Tạo học sinh thành công. Mật khẩu tạm thời: ' + password);
+        bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+      } catch(e){ logError(e); }
+    }
 
-        // Thêm event listeners cho các nút lưu
-        document.getElementById('saveClassBtn').addEventListener('click', addClass);
-        document.getElementById('saveStudentBtn').addEventListener('click', addStudent);
-        document.getElementById('saveTeacherBtn').addEventListener('click', addTeacher);
+    async function addClass(){
+      const name = document.getElementById('className').value.trim();
+      const subject = document.getElementById('classSubject').value;
+      const teacherId = document.getElementById('classTeacher').value;
+      const room = document.getElementById('classRoom').value.trim();
+      const day = document.getElementById('classDay').value;
+      const time = document.getElementById('classTime').value;
+      if(!name||!subject||!teacherId||!day||!time) return alert('Vui lòng điền đầy đủ thông tin lớp và lịch');
+      try{
+        const classRef = await db.collection('classes').add({ name, subject, teacherId, room: room||null, day, time, students: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        // Also add an initial schedule entry
+        await db.collection('schedule').add({ classId: classRef.id, day, time, room: room||null, teacherId });
+        alert('Đã tạo lớp và lịch ban đầu');
+        bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
+      } catch(e){ logError(e); }
+    }
 
-        // Functions
-        function showLogin() {
-            loginScreen.style.display = 'block';
-            registerScreen.style.display = 'none';
-            appContainer.style.display = 'none';
-        }
+    // ---------- Edit handlers ----------
+    // Open edit modals and prefill
+    document.addEventListener('click', (e)=>{
+      // Edit teacher
+      if(e.target.matches('.edit-teacher')){
+        const id = e.target.dataset.id;
+        const t = teachers.find(x=>x.id===id);
+        if(!t) return alert('Không tìm thấy giáo viên');
+        document.getElementById('editTeacherId').value = t.id;
+        document.getElementById('editTeacherName').value = t.name || '';
+        document.getElementById('editTeacherEmail').value = t.email || '';
+        document.getElementById('editTeacherPhone').value = t.phone || '';
+        document.getElementById('editTeacherSubject').value = t.subject || '';
+        new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
+      }
 
-        function showRegister() {
-            loginScreen.style.display = 'none';
-            registerScreen.style.display = 'block';
-            appContainer.style.display = 'none';
-        }
-
-        function showApp() {
-            loginScreen.style.display = 'none';
-            registerScreen.style.display = 'none';
-            appContainer.style.display = 'block';
-            
-            // Update UI based on user role
-            const isAdmin = currentUser.email === 'admin@mathhubvn.com';
-            const isTeacher = currentUser.email.includes('@mathhubvn.com') && !isAdmin;
-            
-            document.querySelectorAll('.admin-only').forEach(el => {
-                el.style.display = isAdmin ? 'block' : 'none';
-            });
-            
-            document.querySelectorAll('.teacher-only').forEach(el => {
-                el.style.display = isTeacher ? 'block' : 'none';
-            });
-            
-            userWelcome.textContent = `Xin chào, ${currentUser.displayName || currentUser.email}`;
-            
-            if (isAdmin) {
-                userBadge.textContent = 'Admin';
-                userBadge.className = 'user-badge badge-admin';
-            } else if (isTeacher) {
-                userBadge.textContent = 'Giáo viên';
-                userBadge.className = 'user-badge badge-teacher';
-            } else {
-                userBadge.textContent = 'Học sinh';
-                userBadge.className = 'user-badge badge-student';
-            }
-        }
-
-        function showSection(sectionId) {
-            // Hide all sections
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Show the selected section
-            document.getElementById(sectionId).classList.add('active');
-        }
-
-        function login() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    // Login successful
-                    console.log('Logged in:', userCredential.user);
-                })
-                .catch((error) => {
-                    alert('Đăng nhập thất bại: ' + error.message);
-                });
-        }
-
-        function register() {
-            const name = document.getElementById('registerName').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            const role = document.getElementById('registerRole').value;
-            
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    // Update user profile
-                    return userCredential.user.updateProfile({
-                        displayName: name
-                    }).then(() => {
-                        // Add user data to Firestore
-                        return db.collection('users').doc(userCredential.user.uid).set({
-                            name: name,
-                            email: email,
-                            role: role,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    });
-                })
-                .then(() => {
-                    alert('Đăng ký thành công! Vui lòng đăng nhập.');
-                    showLogin();
-                })
-                .catch((error) => {
-                    alert('Đăng ký thất bại: ' + error.message);
-                });
-        }
-
-        function logout() {
-            auth.signOut().then(() => {
-                console.log('User signed out');
-            });
-        }
-
-        function loadData() {
-            // Load classes
-            db.collection('classes').onSnapshot((snapshot) => {
-                classes = [];
-                snapshot.forEach((doc) => {
-                    classes.push({ id: doc.id, ...doc.data() });
-                });
-                renderClasses();
-                updateClassDropdowns();
-            });
-
-            // Load teachers
-            db.collection('users').where('role', '==', 'teacher').onSnapshot((snapshot) => {
-                teachers = [];
-                snapshot.forEach((doc) => {
-                    teachers.push({ id: doc.id, ...doc.data() });
-                });
-                renderTeachers();
-                updateTeacherDropdown();
-            });
-
-            // Load students
-            db.collection('users').where('role', '==', 'student').onSnapshot((snapshot) => {
-                students = [];
-                snapshot.forEach((doc) => {
-                    students.push({ id: doc.id, ...doc.data() });
-                });
-                renderStudents();
-                updateStudentClassDropdown();
-            });
-
-            // Load schedule
-            db.collection('schedule').onSnapshot((snapshot) => {
-                schedule = [];
-                snapshot.forEach((doc) => {
-                    schedule.push({ id: doc.id, ...doc.data() });
-                });
-                renderSchedule();
-                updateDashboard();
-            });
-        }
-
-        function renderClasses() {
-            const tbody = document.querySelector('#classesTable tbody');
-            tbody.innerHTML = '';
-            
-            classes.forEach(cls => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${cls.name}</td>
-                    <td>${getSubjectName(cls.subject)}</td>
-                    <td>${getTeacherName(cls.teacherId)}</td>
-                    <td>${cls.students ? cls.students.length : 0} học sinh</td>
-                    <td>${getDayName(cls.day)} ${getTimeSlot(cls.time)}</td>
-                    <td>${cls.room || 'Chưa xác định'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function renderTeachers() {
-            const tbody = document.querySelector('#teachersTable tbody');
-            tbody.innerHTML = '';
-            
-            teachers.forEach(teacher => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${teacher.name}</td>
-                    <td>${teacher.email}</td>
-                    <td>${teacher.phone || 'Chưa cập nhật'}</td>
-                    <td>${getSubjectName(teacher.subject)}</td>
-                    <td>${teacher.availability ? teacher.availability.length + ' khung giờ' : 'Chưa đăng ký'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function renderStudents() {
-            const tbody = document.querySelector('#studentsTable tbody');
-            tbody.innerHTML = '';
-            
-            students.forEach(student => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${student.name}</td>
-                    <td>${student.email}</td>
-                    <td>${student.phone || 'Chưa cập nhật'}</td>
-                    <td>${student.classes ? student.classes.length + ' lớp' : 'Chưa có lớp'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Sửa</button>
-                        <button class="btn btn-sm btn-danger">Xóa</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function renderSchedule() {
-            const tbody = document.getElementById('scheduleTableBody');
-            tbody.innerHTML = '';
-            
-            // Define time slots
-            const timeSlots = [
-                { id: 'morning', name: 'Sáng (7h-11h)' },
-                { id: 'afternoon', name: 'Chiều (13h-17h)' },
-                { id: 'evening', name: 'Tối (18h-21h)' }
-            ];
-            
-            // Create rows for each time slot
-            timeSlots.forEach(timeSlot => {
-                const tr = document.createElement('tr');
-                let html = `<td class="time-slot">${timeSlot.name}</td>`;
-                
-                // Create cells for each day
-                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-                days.forEach(day => {
-                    html += `<td class="schedule-cell">`;
-                    
-                    // Find classes for this day and time slot
-                    const classForSlot = schedule.filter(item => 
-                        item.day === day && item.time === timeSlot.id
-                    );
-                    
-                    // Display each class
-                    classForSlot.forEach(item => {
-                        const cls = classes.find(c => c.id === item.classId);
-                        if (cls) {
-                            html += `
-                                <div class="schedule-class ${timeSlot.id}-class">
-                                    <div class="fw-bold">${cls.name}</div>
-                                    <div class="small">${getSubjectName(cls.subject)}</div>
-                                    <div class="small">${getTeacherName(cls.teacherId)}</div>
-                                    <span class="badge bg-secondary">${cls.room}</span>
-                                </div>
-                            `;
-                        }
-                    });
-                    
-                    html += `</td>`;
-                });
-                
-                tr.innerHTML = html;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function updateDashboard() {
-            // Update statistics
-            document.getElementById('totalClasses').textContent = classes.length;
-            document.getElementById('totalStudents').textContent = students.length;
-            document.getElementById('totalTeachers').textContent = teachers.length;
-            
-            // Calculate today's classes
-            const today = new Date().getDay();
-            const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday' };
-            const todayDay = dayMap[today];
-            
-            const todayClasses = schedule.filter(item => item.day === todayDay).length;
-            document.getElementById('todayClasses').textContent = todayClasses;
-            
-            // Update upcoming classes table
-            const upcomingTbody = document.querySelector('#upcomingClassesTable tbody');
-            upcomingTbody.innerHTML = '';
-            
-            // Get next 5 classes
-            const upcoming = schedule.slice(0, 5);
-            upcoming.forEach(item => {
-                const cls = classes.find(c => c.id === item.classId);
-                if (cls) {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${cls.name}</td>
-                        <td>${getSubjectName(cls.subject)}</td>
-                        <td>${getTeacherName(cls.teacherId)}</td>
-                        <td>${getDayName(item.day)} ${getTimeSlot(item.time)}</td>
-                        <td>${cls.room || 'Chưa xác định'}</td>
-                    `;
-                    upcomingTbody.appendChild(tr);
-                }
-            });
-        }
-
-        function updateClassDropdowns() {
-            const classDropdown = document.getElementById('studentClass');
-            classDropdown.innerHTML = '';
-            
-            classes.forEach(cls => {
-                const option = document.createElement('option');
-                option.value = cls.id;
-                option.textContent = cls.name;
-                classDropdown.appendChild(option);
-            });
-            
-            const scheduleDropdown = document.getElementById('classToSchedule');
-            scheduleDropdown.innerHTML = '<option value="">-- Chọn lớp --</option>';
-            
-            classes.forEach(cls => {
-                const option = document.createElement('option');
-                option.value = cls.id;
-                option.textContent = cls.name;
-                scheduleDropdown.appendChild(option);
-            });
-        }
-
-        function updateTeacherDropdown() {
-            const teacherDropdown = document.getElementById('classTeacher');
-            teacherDropdown.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
-            
-            teachers.forEach(teacher => {
-                const option = document.createElement('option');
-                option.value = teacher.id;
-                option.textContent = teacher.name;
-                teacherDropdown.appendChild(option);
-            });
-        }
-
-        function updateStudentClassDropdown() {
-            // This function might be used later for student class assignments
-        }
-
-        function getSubjectName(subjectId) {
-            const subjects = {
-                'math': 'Toán học',
-                'physics': 'Vật lý',
-                'chemistry': 'Hóa học',
-                'literature': 'Ngữ văn',
-                'english': 'Tiếng Anh',
-                'history': 'Lịch sử',
-                'geography': 'Địa lý'
-            };
-            return subjects[subjectId] || 'Chưa xác định';
-        }
-
-        function getTeacherName(teacherId) {
-            const teacher = teachers.find(t => t.id === teacherId);
-            return teacher ? teacher.name : 'Chưa xác định';
-        }
-
-        function getDayName(dayId) {
-            const days = {
-                'monday': 'Thứ 2',
-                'tuesday': 'Thứ 3',
-                'wednesday': 'Thứ 4',
-                'thursday': 'Thứ 5',
-                'friday': 'Thứ 6',
-                'saturday': 'Thứ 7',
-                'sunday': 'Chủ nhật'
-            };
-            return days[dayId] || 'Chưa xác định';
-        }
-
-        function getTimeSlot(timeId) {
-            const times = {
-                'morning': 'Sáng (7h-11h)',
-                'afternoon': 'Chiều (13h-17h)',
-                'evening': 'Tối (18h-21h)'
-            };
-            return times[timeId] || 'Chưa xác định';
-        }
-
-        // Thêm lớp học mới
-        function addClass() {
-            const name = document.getElementById('className').value;
-            const subject = document.getElementById('classSubject').value;
-            const teacherId = document.getElementById('classTeacher').value;
-            const room = document.getElementById('classRoom').value;
-            const day = document.getElementById('classDay').value;
-            const time = document.getElementById('classTime').value;
-
-            if (!name || !subject || !teacherId || !room || !day || !time) {
-                alert('Vui lòng điền đầy đủ thông tin!');
-                return;
-            }
-
-            // Thêm lớp học vào Firestore
-            db.collection('classes').add({
-                name: name,
-                subject: subject,
-                teacherId: teacherId,
-                room: room,
-                day: day,
-                time: time,
-                students: [],
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then((docRef) => {
-                // Thêm lịch học vào collection schedule
-                return db.collection('schedule').add({
-                    classId: docRef.id,
-                    day: day,
-                    time: time
-                });
-            })
-            .then(() => {
-                alert('Thêm lớp học thành công!');
-                // Đóng modal và reset form
-                bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
-                document.getElementById('className').value = '';
-                document.getElementById('classSubject').value = '';
-                document.getElementById('classTeacher').value = '';
-                document.getElementById('classRoom').value = '';
-                document.getElementById('classDay').value = '';
-                document.getElementById('classTime').value = '';
-            })
-            .catch((error) => {
-                alert('Lỗi khi thêm lớp học: ' + error.message);
-            });
-        }
-
-        // Thêm học sinh mới
-        function addStudent() {
-            const name = document.getElementById('studentName').value;
-            const email = document.getElementById('studentEmail').value;
-            const phone = document.getElementById('studentPhone').value;
-            const classIds = Array.from(document.getElementById('studentClass').selectedOptions).map(option => option.value);
-
-            if (!name || !email) {
-                alert('Vui lòng điền ít nhất tên và email!');
-                return;
-            }
-
-            // Tạo tài khoản học sinh
-            const password = Math.random().toString(36).slice(-8); // Mật khẩu ngẫu nhiên
-
-            auth.createUserWithEmailAndPassword(email, password)
-            .then((userCredential) => {
-                // Cập nhật thông tin người dùng
-                return userCredential.user.updateProfile({
-                    displayName: name
-                }).then(() => {
-                    // Lưu thông tin học sinh vào Firestore
-                    return db.collection('users').doc(userCredential.user.uid).set({
-                        name: name,
-                        email: email,
-                        phone: phone,
-                        role: 'student',
-                        classes: classIds,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                });
-            })
-            .then(() => {
-                alert('Thêm học sinh thành công!');
-                // Đóng modal và reset form
-                bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
-                document.getElementById('studentName').value = '';
-                document.getElementById('studentEmail').value = '';
-                document.getElementById('studentPhone').value = '';
-                document.getElementById('studentClass').selectedIndex = -1;
-            })
-            .catch((error) => {
-                alert('Lỗi khi thêm học sinh: ' + error.message);
-            });
-        }
-
-        // Thêm giáo viên mới
-        function addTeacher() {
-            const name = document.getElementById('teacherName').value;
-            const email = document.getElementById('teacherEmail').value;
-            const phone = document.getElementById('teacherPhone').value;
-            const subject = document.getElementById('teacherSubject').value;
-
-            if (!name || !email || !subject) {
-                alert('Vui lòng điền đầy đủ thông tin!');
-                return;
-            }
-
-            // Tạo tài khoản giáo viên
-            const password = Math.random().toString(36).slice(-8); // Mật khẩu ngẫu nhiên
-
-            auth.createUserWithEmailAndPassword(email, password)
-            .then((userCredential) => {
-                // Cập nhật thông tin người dùng
-                return userCredential.user.updateProfile({
-                    displayName: name
-                }).then(() => {
-                    // Lưu thông tin giáo viên vào Firestore
-                    return db.collection('users').doc(userCredential.user.uid).set({
-                        name: name,
-                        email: email,
-                        phone: phone,
-                        role: 'teacher',
-                        subject: subject,
-                        availability: [],
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                });
-            })
-            .then(() => {
-                alert('Thêm giáo viên thành công!');
-                // Đóng modal và reset form
-                bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
-                document.getElementById('teacherName').value = '';
-                document.getElementById('teacherEmail').value = '';
-                document.getElementById('teacherPhone').value = '';
-                document.getElementById('teacherSubject').value = '';
-            })
-            .catch((error) => {
-                alert('Lỗi khi thêm giáo viên: ' + error.message);
-            });
-        }
-
-        // Khởi tạo ứng dụng
-        document.addEventListener('DOMContentLoaded', function() {
-            // Kiểm tra xem có user đang đăng nhập không
-            auth.onAuthStateChanged((user) => {
-                if (user) {
-                    currentUser = user;
-                    showApp();
-                    loadData();
-                } else {
-                    showLogin();
-                }
-            });
+      // Edit student
+      if(e.target.matches('.edit-student')){
+        const id = e.target.dataset.id;
+        const s = students.find(x=>x.id===id);
+        if(!s) return alert('Không tìm thấy học sinh');
+        document.getElementById('editStudentId').value = s.id;
+        document.getElementById('editStudentName').value = s.name || '';
+        document.getElementById('editStudentEmail').value = s.email || '';
+        document.getElementById('editStudentPhone').value = s.phone || '';
+        // populate class multi-select and preselect current classes
+        const sel = document.getElementById('editStudentClass');
+        sel.innerHTML = '';
+        classes.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c.id; o.textContent = c.name;
+          if((s.classes||[]).includes(c.id)) o.selected = true;
+          sel.appendChild(o);
         });
-    </script>
+        new bootstrap.Modal(document.getElementById('editStudentModal')).show();
+      }
+
+      // Edit class
+      if(e.target.matches('.edit-class')){
+        const id = e.target.dataset.id;
+        const c = classes.find(x=>x.id===id);
+        if(!c) return alert('Không tìm thấy lớp');
+        document.getElementById('editClassId').value = c.id;
+        document.getElementById('editClassName').value = c.name || '';
+        document.getElementById('editClassSubject').value = c.subject || '';
+        // teacher dropdown
+        const sel = document.getElementById('editClassTeacher');
+        sel.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
+        teachers.forEach(t=> { const o=document.createElement('option'); o.value=t.id; o.textContent = t.name; sel.appendChild(o); });
+        document.getElementById('editClassTeacher').value = c.teacherId || '';
+        document.getElementById('editClassRoom').value = c.room || '';
+        document.getElementById('editClassDay').value = c.day || 'monday';
+        document.getElementById('editClassTime').value = c.time || '';
+        new bootstrap.Modal(document.getElementById('editClassModal')).show();
+      }
+    });
+
+    // Update teacher
+    document.getElementById('updateTeacherBtn').addEventListener('click', async ()=>{
+      const id = document.getElementById('editTeacherId').value;
+      const name = document.getElementById('editTeacherName').value.trim();
+      const email = document.getElementById('editTeacherEmail').value.trim();
+      const phone = document.getElementById('editTeacherPhone').value.trim();
+      const subject = document.getElementById('editTeacherSubject').value;
+      if(!id) return alert('Không có id giáo viên');
+      try{
+        await db.collection('users').doc(id).update({ name, email, phone, subject });
+        alert('Cập nhật giáo viên thành công');
+        bootstrap.Modal.getInstance(document.getElementById('editTeacherModal')).hide();
+      } catch(e){ logError(e); }
+    });
+
+    // Update student (handle class arrays)
+    document.getElementById('updateStudentBtn').addEventListener('click', async ()=>{
+      const id = document.getElementById('editStudentId').value;
+      const name = document.getElementById('editStudentName').value.trim();
+      const email = document.getElementById('editStudentEmail').value.trim();
+      const phone = document.getElementById('editStudentPhone').value.trim();
+      const selectedClassIds = Array.from(document.getElementById('editStudentClass').selectedOptions).map(o=>o.value);
+      if(!id) return alert('Không có id học sinh');
+      try{
+        // get current classes from students[] in memory (watchers keep it updated)
+        const studentDoc = students.find(s=>s.id===id) || { classes: [] };
+        const prev = studentDoc.classes || [];
+
+        // compute removed and added
+        const toRemove = prev.filter(x=> !selectedClassIds.includes(x));
+        const toAdd = selectedClassIds.filter(x=> !prev.includes(x));
+
+        const batch = db.batch();
+        // update student's user doc
+        batch.update(db.collection('users').doc(id), { name, email, phone, classes: selectedClassIds });
+        // remove from old classes
+        toRemove.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayRemove(id) }));
+        // add to new classes
+        toAdd.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(id) }));
+        await batch.commit();
+        alert('Cập nhật học sinh thành công');
+        bootstrap.Modal.getInstance(document.getElementById('editStudentModal')).hide();
+      } catch(e){ logError(e); }
+    });
+
+    // Update class
+    document.getElementById('updateClassBtn').addEventListener('click', async ()=>{
+      const id = document.getElementById('editClassId').value;
+      const name = document.getElementById('editClassName').value.trim();
+      const subject = document.getElementById('editClassSubject').value;
+      const teacherId = document.getElementById('editClassTeacher').value;
+      const room = document.getElementById('editClassRoom').value.trim();
+      const day = document.getElementById('editClassDay').value;
+      const time = document.getElementById('editClassTime').value;
+      if(!id) return alert('Không có id lớp');
+      try{
+        await db.collection('classes').doc(id).update({ name, subject, teacherId: teacherId || null, room: room || null, day, time });
+        alert('Cập nhật lớp thành công');
+        bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
+      } catch(e){ logError(e); }
+    });
+
+    // ---------- Delete handlers ----------
+    document.addEventListener('click', async (e)=>{
+      if(e.target.matches('.delete-class')){
+        const id = e.target.dataset.id;
+        if(!confirm('Xác nhận xóa lớp?')) return;
+        try{
+          const snaps = await db.collection('schedule').where('classId','==',id).get();
+          const batch = db.batch();
+          snaps.forEach(d => batch.delete(d.ref));
+          batch.delete(db.collection('classes').doc(id));
+          await batch.commit();
+          alert('Đã xóa lớp và lịch liên quan');
+        } catch(err){ logError(err); }
+      }
+      if(e.target.matches('.delete-teacher')){
+        const id = e.target.dataset.id;
+        if(!confirm('Xóa giáo viên? Các lớp sẽ không có giáo viên cho đến khi gán lại.')) return;
+        try{
+          const clsSnap = await db.collection('classes').where('teacherId','==',id).get();
+          const batch = db.batch();
+          clsSnap.forEach(d => batch.update(d.ref, { teacherId: null }));
+          batch.delete(db.collection('users').doc(id));
+          await batch.commit();
+          alert('Đã xóa giáo viên và cập nhật lớp');
+        } catch(err){ logError(err); }
+      }
+      if(e.target.matches('.delete-student')){
+        const id = e.target.dataset.id;
+        if(!confirm('Xóa học sinh?')) return;
+        try{
+          const clsSnap = await db.collection('classes').where('students','array-contains',id).get();
+          const batch = db.batch();
+          clsSnap.forEach(d => batch.update(d.ref, { students: firebase.firestore.FieldValue.arrayRemove(id) }));
+          batch.delete(db.collection('users').doc(id));
+          await batch.commit();
+          alert('Đã xóa học sinh');
+        } catch(err){ logError(err); }
+      }
+    });
+
+    // ---------- Scheduling algorithm (same as before) ----------
+    async function generateScheduleForClass(classId){
+      const cls = classes.find(c=>c.id===classId);
+      if(!cls) return alert('Lớp không tồn tại');
+      const existing = schedule.filter(s=>s.classId===classId);
+      if(existing.length >= 2) return alert('Lớp đã có tối đa 2 buổi/tuần');
+      const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      for(const day of days){
+        for(const slot of TIME_SLOTS){
+          const teacherConflict = schedule.some(s=> s.day===day && s.time===slot.id && s.teacherId === cls.teacherId);
+          if(teacherConflict) continue;
+          const studentIds = cls.students || [];
+          let studentConflict = false;
+          for(const stId of studentIds){
+            if( schedule.some(s=> s.day===day && s.time===slot.id && ( s.studentIds ? s.studentIds.includes(stId) : ( s.classId && classes.find(c=>c.id===s.classId && (c.students||[]).includes(stId) ) ) ) ) ){
+              studentConflict = true; break;
+            }
+          }
+          if(studentConflict) continue;
+          const studentCount = studentIds.length;
+          let roomChoice = null;
+          if(studentCount > 25){
+            const preferred = ['101','102'];
+            for(const r of preferred){
+              const occupied = schedule.some(s=> s.day===day && s.time===slot.id && s.room===r);
+              if(!occupied){ roomChoice = r; break; }
+            }
+          }
+          if(!roomChoice){
+            if(cls.subject === 'english'){
+              const occ = schedule.some(s=> s.day===day && s.time===slot.id && s.room === '101');
+              if(!occ) roomChoice = '101';
+            }
+          }
+          if(!roomChoice){
+            roomChoice = ROOMS.find(r => !schedule.some(s=> s.day===day && s.time===slot.id && s.room===r));
+          }
+          if(!roomChoice) continue;
+          try{
+            const payload = { classId: classId, day, time: slot.id, room: roomChoice, teacherId: cls.teacherId };
+            await db.collection('schedule').add(payload);
+            await db.collection('classes').doc(classId).update({ room: roomChoice });
+            alert('Đã xếp lịch cho ' + cls.name + ' — ' + getDayName(day) + ' ' + slot.name + ' phòng ' + roomChoice);
+            return;
+          } catch(e){ logError(e); return; }
+        }
+      }
+      alert('Không tìm được khung giờ phù hợp (có thể do trùng giáo viên/học sinh/phòng)');
+    }
+
+    // Hook up generateScheduleBtn
+    document.getElementById('generateScheduleBtn').addEventListener('click', ()=>{
+      const modalEl = document.getElementById('scheduleModal');
+      const modal = new bootstrap.Modal(modalEl);
+      updateClassDropdowns();
+      modal.show();
+    });
+    document.getElementById('doGenerateBtn').addEventListener('click', async ()=>{
+      const cid = document.getElementById('classToSchedule').value;
+      if(!cid) return alert('Chọn lớp cần xếp lịch');
+      await generateScheduleForClass(cid);
+      bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+    });
+
+    // ---------- Wire up add/save buttons ----------
+    document.getElementById('saveTeacherBtn').addEventListener('click', addTeacher);
+    document.getElementById('saveStudentBtn').addEventListener('click', addStudent);
+    document.getElementById('saveClassBtn').addEventListener('click', addClass);
+
+    // ---------- Availability UI init ----------
+    function initAvailabilityUI(){
+      // intentionally left minimal; availability saving exists in earlier version
+    }
+
+    // ---------- Init on auth state ----------
+    auth.onAuthStateChanged(user=>{
+      if(user){
+        currentUser = user;
+        loadData();
+        initAvailabilityUI();
+        // prepopulate classTime selects
+        const classTime = document.getElementById('classTime');
+        const editClassTime = document.getElementById('editClassTime');
+        [classTime, editClassTime].forEach(ct=>{
+          if(ct){
+            ct.innerHTML = '';
+            TIME_SLOTS.forEach(s=>{ const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; ct.appendChild(o); });
+          }
+        });
+      } else {
+        // still load data to allow admin usage if not enforced by auth rules
+        loadData();
+        initAvailabilityUI();
+        const classTime = document.getElementById('classTime');
+        const editClassTime = document.getElementById('editClassTime');
+        [classTime, editClassTime].forEach(ct=>{
+          if(ct){
+            ct.innerHTML = '';
+            TIME_SLOTS.forEach(s=>{ const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; ct.appendChild(o); });
+          }
+        });
+      }
+    });
+
+    // ---------- Initial DOM wiring ----------
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // nothing special; data listeners will populate UI
+    });
+  </script>
 </body>
 </html>
