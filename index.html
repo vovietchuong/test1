@@ -14,18 +14,10 @@
     /* --- THEME & VARIABLES --- */
     /* ------------------------- */
     :root {
-      --primary: #4e73df;
-      --secondary: #858796;
-      --success: #1cc88a;
-      --info: #36b9cc;
-      --warning: #f6c23e;
-      --danger: #e74a3b;
-      --light: #f8f9fc;
-      --dark: #5a5c69;
-      --sidebar-width: 220px;
-      --header-height: 60px;
-      --body-bg: #f8f9fc;
-      --card-bg: #fff;
+      --primary: #4e73df; --secondary: #858796; --success: #1cc88a;
+      --info: #36b9cc; --warning: #f6c23e; --danger: #e74a3b;
+      --light: #f8f9fc; --dark: #5a5c69; --sidebar-width: 220px;
+      --header-height: 60px; --body-bg: #f8f9fc; --card-bg: #fff;
       --border-color: #e3e6f0;
       --box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
       --border-radius: 0.35rem;
@@ -54,10 +46,9 @@
       width: calc(100% - var(--sidebar-width));
     }
     #main-content { padding: 24px; }
-    .page-section { display: none; } /* Hide all pages by default */
-    .page-section.active { display: block; } /* Show only the active page */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
     
-    /* Responsive Sidebar */
     @media (max-width: 768px) {
       #sidebar { margin-left: calc(-1 * var(--sidebar-width)); }
       #sidebar.toggled { margin-left: 0; }
@@ -69,53 +60,32 @@
     /* ----------------- */
     /* Sidebar */
     .sidebar-brand {
-      height: var(--header-height);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #fff;
-      text-decoration: none;
+      height: var(--header-height); display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none;
     }
     .sidebar-nav-item {
-      display: block;
-      color: rgba(255,255,255,0.8);
-      padding: 1rem 1.5rem;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      cursor: pointer;
+      display: block; color: rgba(255,255,255,0.8); padding: 1rem 1.5rem;
+      text-decoration: none; transition: all 0.2s ease; cursor: pointer;
     }
     .sidebar-nav-item:hover, .sidebar-nav-item.active {
-      background-color: rgba(255,255,255,0.1);
-      color: #fff;
+      background-color: rgba(255,255,255,0.1); color: #fff;
     }
     .sidebar-nav-item i { margin-right: 10px; }
 
     /* Header */
     #header {
-      height: var(--header-height);
-      background: var(--card-bg);
-      box-shadow: var(--box-shadow);
-      padding: 0 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 1020;
+      height: var(--header-height); background: var(--card-bg); box-shadow: var(--box-shadow);
+      padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 1020;
     }
 
     /* Cards */
     .card {
-      border: 1px solid var(--border-color);
-      box-shadow: var(--box-shadow);
-      border-radius: var(--border-radius);
-      margin-bottom: 24px;
+      border: 1px solid var(--border-color); box-shadow: var(--box-shadow);
+      border-radius: var(--border-radius); margin-bottom: 24px;
     }
     .stat-card {
-      border-left: 4px solid var(--primary);
-      transition: transform 0.2s ease-in-out;
+      border-left: 4px solid var(--primary); transition: transform 0.2s ease-in-out;
     }
     .stat-card:hover { transform: translateY(-5px); }
     .stat-card.border-success { border-color: var(--success); }
@@ -126,10 +96,7 @@
     .stat-card .stat-icon { font-size: 2rem; opacity: 0.3; }
 
     /* Conflict List */
-    #conflict-card .list-group-item {
-        font-size: 0.9rem;
-        padding: 0.5rem 1rem;
-    }
+    #conflict-card .list-group-item { font-size: 0.9rem; padding: 0.5rem 1rem; }
 
     /* FullCalendar style */
     .fc {
@@ -139,20 +106,13 @@
       height: 75vh;
     }
     .fc .fc-toolbar-title { font-size: 1.25rem; }
-    .fc .fc-daygrid-day.fc-day-today { background-color: var(--fc-today-bg-color); }
     .fc-event {
-        padding: 4px 6px;
-        font-size: 0.8em;
-        border-radius: 4px;
-        cursor: pointer;
-        color: #fff !important;
+        padding: 4px 6px; font-size: 0.8em; border-radius: 4px;
+        cursor: pointer; color: #fff !important;
     }
     .fc-event.conflict-event {
         background-color: var(--danger) !important;
         border: 2px dashed #fff !important;
-    }
-    .fc-timegrid-event-harness-inset .fc-event {
-        margin-bottom: 3px !important;
     }
     
     /* ----------------- */
@@ -160,29 +120,21 @@
     /* ----------------- */
     .text-primary { color: var(--primary) !important; }
     .text-danger { color: var(--danger) !important; }
-    
+    .table-responsive-cards .no-data-row td { text-align: center; color: var(--secondary); font-style: italic; }
+
     /* Responsive table */
     @media (max-width: 767px) {
         .table-responsive-cards thead { display: none; }
         .table-responsive-cards tr {
-            display: block;
-            margin-bottom: 1rem;
-            border: 1px solid var(--border-color);
+            display: block; margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);
         }
         .table-responsive-cards td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-top: 1px solid var(--border-color);
-            text-align: right;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); text-align: right;
         }
         .table-responsive-cards tr td:first-child { border-top: none; }
         .table-responsive-cards td::before {
-            content: attr(data-label);
-            font-weight: 600;
-            margin-right: auto;
-            text-align: left;
+            content: attr(data-label); font-weight: 600; margin-right: auto; text-align: left;
         }
     }
   </style>
@@ -193,7 +145,7 @@
     <nav id="sidebar">
       <a class="sidebar-brand" href="#">
         <i class="bi bi-calendar-check"></i>
-        <span>Scheduler</span>
+        <span>TRUNG TÂM KIÊN NĂNG</span>
       </a>
       <a class="sidebar-nav-item active" data-target="dashboard-page"><i class="bi bi-speedometer2"></i> Dashboard</a>
       <a class="sidebar-nav-item" data-target="classes-page"><i class="bi bi-easel"></i> Lớp học</a>
@@ -206,7 +158,7 @@
           <button id="sidebar-toggle" class="btn d-md-none"><i class="bi bi-list"></i></button>
           <div class="input-group" style="max-width: 400px;">
               <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm...">
-              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn"><i class="bi bi-x-lg"></i></button>
           </div>
           <div class="ms-auto">
               <span class="d-none d-lg-inline me-2 text-secondary">Admin</span>
@@ -225,12 +177,8 @@
           </div>
           
           <div id="conflict-card" class="card border-danger" style="display: none;">
-              <div class="card-header bg-danger text-white">
-                  <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Chi tiết các xung đột lịch</h6>
-              </div>
-              <div class="card-body p-0">
-                  <ul class="list-group list-group-flush" id="conflict-details-list"></ul>
-              </div>
+              <div class="card-header bg-danger text-white"><h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Chi tiết các xung đột lịch</h6></div>
+              <div class="card-body p-0"><ul class="list-group list-group-flush" id="conflict-details-list"></ul></div>
           </div>
 
           <div class="row">
@@ -238,15 +186,13 @@
               <div class="card">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
                   <h5 class="mb-0 text-primary fw-bold me-3"><i class="bi bi-calendar-week me-2"></i>Thời khóa biểu</h5>
-                  <div class="btn-group" role="group">
-                    <button id="calendar-view-month" class="btn btn-sm btn-outline-primary">Tháng</button>
-                    <button id="calendar-view-week" class="btn btn-sm btn-outline-primary active">Tuần</button>
-                    <button id="calendar-view-day" class="btn btn-sm btn-outline-primary">Ngày</button>
+                  <div class="btn-group" role="group" id="calendar-view-buttons">
+                    <button data-view="dayGridMonth" class="btn btn-sm btn-outline-primary">Tháng</button>
+                    <button data-view="timeGridWeek" class="btn btn-sm btn-outline-primary active">Tuần</button>
+                    <button data-view="timeGridDay" class="btn btn-sm btn-outline-primary">Ngày</button>
                   </div>
                 </div>
-                <div class="card-body">
-                  <div id="calendar"></div>
-                </div>
+                <div class="card-body"><div id="calendar"></div></div>
               </div>
             </div>
           </div>
@@ -307,13 +253,14 @@
   </div>
 
   <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
-  <div class="modal fade" id="addTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addTeacherForm"><div class="modal-header"><h5 class="modal-title">Thêm Giáo viên</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="teacherName" class="form-control"></div><div class="mb-2"><label class="form-label">Email</label><input id="teacherEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="teacherSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div></div><div class="modal-footer"><button type="button" id="saveTeacherBtn" class="btn btn-primary">Lưu</button></div></form></div></div></div>
-  <div class="modal fade" id="editTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editTeacherId"><div class="mb-2"><label class="form-label">Tên</label><input id="editTeacherName" class="form-control"></div><div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editTeacherEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="editTeacherSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="text-muted small">Lưu ý: thay đổi email trong Authentication yêu cầu xử lý riêng.</div></div><div class="modal-footer"><button id="updateTeacherBtn" class="btn btn-primary">Cập nhật</button></div></div></div></div>
-  <div class="modal fade" id="addStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addStudentForm"><div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control"></div><div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="studentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label><select id="studentClass" class="form-select" multiple></select></div></div><div class="modal-footer"><button type="button" id="saveStudentBtn" class="btn btn-primary">Lưu</button></div></form></div></div></div>
-  <div class="modal fade" id="editStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editStudentId"><div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control"></div><div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editStudentEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editStudentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label><select id="editStudentClass" class="form-select" multiple></select></div><div class="text-muted small">Lưu ý: để thay đổi email trong Authentication cần thao tác riêng.</div></div><div class="modal-footer"><button id="updateStudentBtn" class="btn btn-primary">Cập nhật</button></div></div></div></div>
-  <div class="modal fade" id="addClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><form id="addClassForm"><div class="modal-header"><h5 class="modal-title">Thêm Lớp</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="classSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="classTeacher" class="form-select"></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom" class="form-control" placeholder="101..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay" class="form-select"><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime" class="form-select"></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay2" class="form-select"><option value="">-- Không chọn --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime2" class="form-select"></select></div></div></div></div></div><div class="modal-footer"><button type="button" id="saveClassBtn" class="btn btn-primary">Lưu lớp</button></div></form></div></div></div>
-  <div class="modal fade" id="editClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editClassId"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="editClassSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="editClassTeacher" class="form-select"></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom" class="form-control" placeholder="101..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay" class="form-select"><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime" class="form-select"></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay2" class="form-select"><option value="">-- Không chọn --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime2" class="form-select"></select></div></div></div></div><div class="text-muted small mt-2">Lưu ý: Thao tác này sẽ tự động cập nhật lại thời khóa biểu cho lớp học.</div></div><div class="modal-footer"><button id="updateClassBtn" class="btn btn-primary">Cập nhật lớp</button></div></div></div></div>
-  
+
+  <div class="modal fade" id="addTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addTeacherForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Giáo viên</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="teacherName" class="form-control" required><div class="invalid-feedback">Vui lòng nhập tên.</div></div><div class="mb-2"><label class="form-label">Email</label><input id="teacherEmail" class="form-control" type="email" required><div class="invalid-feedback">Vui lòng nhập email hợp lệ.</div></div><div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="teacherSubject" class="form-select" required><option selected disabled value="">Chọn môn...</option><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select><div class="invalid-feedback">Vui lòng chọn môn học.</div></div></div><div class="modal-footer"><button type="submit" id="saveTeacherBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span><span class="button-text">Lưu</span></button></div></form></div></div></div>
+  <div class="modal fade" id="editTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="editTeacherForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editTeacherId"><div class="mb-2"><label class="form-label">Tên</label><input id="editTeacherName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="editTeacherEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="editTeacherSubject" class="form-select" required><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="text-muted small">Lưu ý: thay đổi email trong Authentication yêu cầu xử lý riêng.</div></div><div class="modal-footer"><button type="submit" id="updateTeacherBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
+  <div class="modal fade" id="addStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addStudentForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="studentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label><select id="studentClass" class="form-select" multiple size="5"></select></div></div><div class="modal-footer"><button type="submit" id="saveStudentBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span><span class="button-text">Lưu</span></button></div></form></div></div></div>
+  <div class="modal fade" id="editStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="editStudentForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editStudentId"><div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="editStudentEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editStudentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label><select id="editStudentClass" class="form-select" multiple size="5"></select></div><div class="text-muted small">Lưu ý: để thay đổi email trong Authentication cần thao tác riêng.</div></div><div class="modal-footer"><button type="submit" id="updateStudentBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
+  <div class="modal fade" id="addClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><form id="addClassForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Lớp</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control" required></div><div class="mb-2"><label class="form-label">Môn</label><select id="classSubject" class="form-select" required><option selected disabled value="">Chọn môn...</option><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="classTeacher" class="form-select" required></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom" class="form-control" placeholder="101..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay" class="form-select" required><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime" class="form-select" required></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay2" class="form-select"><option value="">-- Không chọn --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime2" class="form-select"></select></div></div></div></div></div><div class="modal-footer"><button type="submit" id="saveClassBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span><span class="button-text">Lưu lớp</span></button></div></form></div></div></div>
+  <div class="modal fade" id="editClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><form id="editClassForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editClassId"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control" required></div><div class="mb-2"><label class="form-label">Môn</label><select id="editClassSubject" class="form-select" required><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="editClassTeacher" class="form-select" required></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom" class="form-control" placeholder="101..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay" class="form-select" required><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime" class="form-select" required></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay2" class="form-select"><option value="">-- Không chọn --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime2" class="form-select"></select></div></div></div></div><div class="text-muted small mt-2">Lưu ý: Thao tác này sẽ tự động cập nhật lại thời khóa biểu cho lớp học.</div></div><div class="modal-footer"><button type="submit" id="updateClassBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="deleteConfirmModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-danger" id="confirmDeleteBtn">Xóa</button></div></div></div></div>
   
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -324,6 +271,8 @@
     // ------------------------------------
     // --- 1. CONFIG & INITIALIZATION ---
     // ------------------------------------
+    // CẢNH BÁO BẢO MẬT: Không bao giờ đưa thông tin nhạy cảm (API keys) trực tiếp vào code
+    // trong môi trường production. Hãy sử dụng biến môi trường hoặc các dịch vụ quản lý cấu hình.
     const firebaseConfig = {
       apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
       authDomain: "mathhubvn.firebaseapp.com",
@@ -341,6 +290,7 @@
     let currentUser = null;
     let classes = [], teachers = [], students = [], schedule = [];
     let calendar = null;
+    let deleteConfirmModalInstance = null;
     const TIME_SLOTS = [
       { id: 'slot1', start: '07:00', end: '09:00', name: '07:00-09:00' }, 
       { id: 'slot2', start: '09:15', end: '11:15', name: '09:15-11:15' },
@@ -360,7 +310,7 @@
         if (!toastContainer) return;
         const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
         const bgColors = { success: 'bg-success', error: 'bg-danger', warning: 'bg-warning', info: 'bg-info' };
-        const toastId = 'toast-' + Math.random().toString(36).substr(2, 9);
+        const toastId = 'toast-' + Date.now();
         const toastHTML = `<div id="${toastId}" class="toast align-items-center text-white ${bgColors[type] || 'bg-secondary'} border-0" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body"><i class="bi ${icons[type] || 'bi-bell-fill'} me-2"></i>${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
         toastContainer.insertAdjacentHTML('beforeend', toastHTML);
         const toastElement = document.getElementById(toastId);
@@ -369,15 +319,50 @@
         toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
     }
 
-    function logError(e) { console.error(e); showToast('Lỗi: ' + (e.message || e), 'error'); }
+    function logError(e, context = 'Lỗi không xác định') { 
+        console.error(context, e); 
+        showToast(`${context}: ${e.message || e}`, 'error'); 
+    }
+
+    function setButtonLoadingState(button, isLoading) {
+        if (!button) return;
+        const buttonText = button.querySelector('.button-text');
+        const spinner = button.querySelector('.spinner-border');
+        button.disabled = isLoading;
+        if (isLoading) {
+            buttonText?.classList.add('d-none');
+            spinner?.classList.remove('d-none');
+        } else {
+            buttonText?.classList.remove('d-none');
+            spinner?.classList.add('d-none');
+        }
+    }
+
+    function showDeleteConfirmModal(title, body, onConfirmCallback) {
+        document.getElementById('deleteConfirmModalLabel').textContent = title;
+        document.getElementById('deleteConfirmModalBody').innerHTML = body;
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        
+        // Clone and replace the button to remove old event listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        newConfirmBtn.addEventListener('click', () => {
+            onConfirmCallback();
+            deleteConfirmModalInstance.hide();
+        }, { once: true });
+        
+        deleteConfirmModalInstance.show();
+    }
+
 
     // Data mapping helpers
-    function getSubjectName(id){ const map = {math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}; return map[id]||''; }
-    function getTeacherName(id){ if(!id) return 'N/A'; const t = teachers.find(x=>x.id===id); return t? t.name : 'N/A'; }
-    function getClassName(id){ if(!id) return 'N/A'; const c = classes.find(x=>x.id===id); return c? c.name : 'N/A'; }
-    function getStudentName(id){ if(!id) return 'N/A'; const s = students.find(x=>x.id===id); return s? s.name : 'N/A'; }
-    function getDayName(dayKey){ const m={monday:'Thứ 2',tuesday:'Thứ 3',wednesday:'Thứ 4',thursday:'Thứ 5',friday:'Thứ 6',saturday:'Thứ 7',sunday:'CN'}; return m[dayKey]||''; }
-    function getTimeSlotName(id){ const s = TIME_SLOTS.find(x=>x.id===id); return s? s.name : ''; }
+    const getSubjectName = (id) => ({math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}[id]||'');
+    const getTeacherName = (id) => teachers.find(x=>x.id===id)?.name || 'N/A';
+    const getClassName = (id) => classes.find(x=>x.id===id)?.name || 'N/A';
+    const getStudentName = (id) => students.find(x=>x.id===id)?.name || 'N/A';
+    const getDayName = (dayKey) => ({monday:'Thứ 2',tuesday:'Thứ 3',wednesday:'Thứ 4',thursday:'Thứ 5',friday:'Thứ 6',saturday:'Thứ 7',sunday:'CN'}[dayKey]||'');
+    const getTimeSlotName = (id) => TIME_SLOTS.find(x=>x.id===id)?.name || '';
 
     function stringToColor(str) {
         if (!str) return '#858796'; // Default color
@@ -386,8 +371,7 @@
         let color = '#';
         for (let i = 0; i < 3; i++) {
             let value = (hash >> (i * 8)) & 0xFF;
-            value = Math.floor((value + 180)); // Make colors lighter
-            color += ('00' + value.toString(16)).substr(-2);
+            color += ('00' + (Math.floor((value + 180))).toString(16)).substr(-2);
         }
         return color;
     }
@@ -397,10 +381,27 @@
     // ------------------------------------
     
     function loadAllData(){
-      db.collection('classes').onSnapshot(snap => { classes = snap.docs.map(d => ({ id:d.id, ...d.data() })); updateUI(); }, logError);
-      db.collection('users').where('role','==','teacher').onSnapshot(snap=>{ teachers = snap.docs.map(d => ({ id:d.id, ...d.data() })); updateUI(); }, logError);
-      db.collection('users').where('role','==','student').onSnapshot(snap=>{ students = snap.docs.map(d => ({ id:d.id, ...d.data() })); updateUI(); }, logError);
-      db.collection('schedule').onSnapshot(snap=>{ schedule = snap.docs.map(d => ({ id:d.id, ...d.data() })); updateUI(); }, logError);
+      const collections = {
+        'classes': (data) => classes = data,
+        'schedule': (data) => schedule = data,
+      };
+      
+      Object.entries(collections).forEach(([name, setter]) => {
+        db.collection(name).onSnapshot(snap => {
+          setter(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          updateUI();
+        }, e => logError(e, `Lỗi tải ${name}`));
+      });
+      
+      db.collection('users').where('role','==','teacher').onSnapshot(snap => {
+        teachers = snap.docs.map(d => ({ id:d.id, ...d.data() })); 
+        updateUI();
+      }, e => logError(e, 'Lỗi tải giáo viên'));
+      
+      db.collection('users').where('role','==','student').onSnapshot(snap => {
+        students = snap.docs.map(d => ({ id:d.id, ...d.data() })); 
+        updateUI();
+      }, e => logError(e, 'Lỗi tải học sinh'));
     }
     
     function updateUI() {
@@ -431,8 +432,8 @@
                   
                   const c1 = classes.find(c => c.id === s1.classId);
                   const c2 = classes.find(c => c.id === s2.classId);
-                  if(c1 && c2) {
-                    const commonStudents = (c1.students || []).filter(stId => (c2.students || []).includes(stId));
+                  if(c1?.students && c2?.students) {
+                    const commonStudents = c1.students.filter(stId => c2.students.includes(stId));
                     commonStudents.forEach(studentId => {
                         conflicts.push({ type: 'student', studentId, s1, s2 });
                     });
@@ -460,63 +461,95 @@
         const listElement = document.getElementById('conflict-details-list');
         if (!container || !listElement) return;
 
-        if (conflictList.length === 0) {
-            container.style.display = 'none';
-            return;
-        }
-        
-        container.style.display = 'block';
-        listElement.innerHTML = conflictList.map(c => {
-            const timeInfo = `${getDayName(c.s1.day)} ${getTimeSlotName(c.s1.time)}`;
-            const class1Name = getClassName(c.s1.classId);
-            const class2Name = getClassName(c.s2.classId);
+        container.style.display = conflictList.length === 0 ? 'none' : 'block';
+        if (conflictList.length > 0) {
+            listElement.innerHTML = conflictList.map(c => {
+                const timeInfo = `<strong>${getDayName(c.s1.day)} ${getTimeSlotName(c.s1.time)}</strong>`;
+                const class1Name = getClassName(c.s1.classId);
+                const class2Name = getClassName(c.s2.classId);
 
-            if (c.type === 'teacher') return `<li class="list-group-item"><strong>GV Trùng Lịch:</strong> ${getTeacherName(c.s1.teacherId)} dạy lớp '${class1Name}' và '${class2Name}' cùng lúc (${timeInfo}).</li>`;
-            if (c.type === 'room') return `<li class="list-group-item"><strong>Phòng Trùng Lịch:</strong> Phòng ${c.s1.room} được sử dụng bởi lớp '${class1Name}' và '${class2Name}' cùng lúc (${timeInfo}).</li>`;
-            if (c.type === 'student') return `<li class="list-group-item"><strong>HS Trùng Lịch:</strong> HS ${getStudentName(c.studentId)} bị trùng lịch giữa lớp '${class1Name}' và '${class2Name}' (${timeInfo}).</li>`;
-            return '';
-        }).join('');
+                if (c.type === 'teacher') return `<li class="list-group-item"><i class="bi bi-person-video3 text-danger me-2"></i><strong>GV Trùng Lịch:</strong> ${getTeacherName(c.s1.teacherId)} dạy lớp '<strong>${class1Name}</strong>' và '<strong>${class2Name}</strong>' cùng lúc (${timeInfo}).</li>`;
+                if (c.type === 'room') return `<li class="list-group-item"><i class="bi bi-door-open text-danger me-2"></i><strong>Phòng Trùng Lịch:</strong> Phòng ${c.s1.room} được sử dụng bởi lớp '<strong>${class1Name}</strong>' và '<strong>${class2Name}</strong>' cùng lúc (${timeInfo}).</li>`;
+                if (c.type === 'student') return `<li class="list-group-item"><i class="bi bi-person text-danger me-2"></i><strong>HS Trùng Lịch:</strong> HS ${getStudentName(c.studentId)} bị trùng lịch giữa lớp '<strong>${class1Name}</strong>' và '<strong>${class2Name}</strong>' (${timeInfo}).</li>`;
+                return '';
+            }).join('');
+        }
     }
 
-    // **FIXED**: Re-implemented the rendering functions
-    function renderClasses(){
-      const tbody = document.querySelector('#classesTable tbody');
+    function renderTable(tableId, data, renderRowCallback, columns) {
+      const tbody = document.querySelector(`#${tableId} tbody`);
       if(!tbody) return;
-      tbody.innerHTML = classes.map(c => {
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr class="no-data-row"><td colspan="${columns}">Chưa có dữ liệu</td></tr>`;
+      } else {
+        tbody.innerHTML = data.map(renderRowCallback).join('');
+      }
+    }
+
+    function renderClasses(){
+      renderTable('classesTable', classes, c => {
         const teacherName = getTeacherName(c.teacherId);
-        const studentCount = (c.students||[]).length;
         const s1 = `${getDayName(c.day)} ${getTimeSlotName(c.time)} (P:${c.room||'?'})`;
         const s2 = c.day2 ? `<br>${getDayName(c.day2)} ${getTimeSlotName(c.time2)} (P:${c.room2||'?'})` : '';
-        return `<tr data-search-content="${c.name} ${getSubjectName(c.subject)} ${teacherName}"><td data-label="Tên lớp">${c.name}</td><td data-label="Môn">${getSubjectName(c.subject)}</td><td data-label="Giáo viên">${teacherName}</td><td data-label="HS">${studentCount}</td><td data-label="Lịch học">${s1}${s2}</td><td data-label="Hành động"><button class="btn btn-sm btn-outline-primary edit-class" data-id="${c.id}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-class" data-id="${c.id}"><i class="bi bi-trash"></i></button></td></tr>`;
-      }).join('');
+        const searchContent = `${c.name} ${getSubjectName(c.subject)} ${teacherName}`.toLowerCase();
+        return `<tr data-search-content="${searchContent}">
+                  <td data-label="Tên lớp">${c.name}</td>
+                  <td data-label="Môn">${getSubjectName(c.subject)}</td>
+                  <td data-label="Giáo viên">${teacherName}</td>
+                  <td data-label="HS">${(c.students||[]).length}</td>
+                  <td data-label="Lịch học">${s1}${s2}</td>
+                  <td data-label="Hành động">
+                    <button class="btn btn-sm btn-outline-primary edit-class" data-id="${c.id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger delete-class" data-id="${c.id}" data-name="${c.name}"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>`;
+      }, 6);
     }
 
     function renderTeachers(){
-      const tbody = document.querySelector('#teachersTable tbody'); if(!tbody) return;
-      tbody.innerHTML = teachers.map(t => `<tr data-search-content="${t.name} ${t.email}"><td data-label="Tên">${t.name}</td><td data-label="Email">${t.email||''}</td><td data-label="Môn">${getSubjectName(t.subject)}</td><td data-label="Hành động"><button class="btn btn-sm btn-outline-primary edit-teacher" data-id="${t.id}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-teacher" data-id="${t.id}"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+      renderTable('teachersTable', teachers, t => {
+        const searchContent = `${t.name} ${t.email}`.toLowerCase();
+        return `<tr data-search-content="${searchContent}">
+                  <td data-label="Tên">${t.name}</td>
+                  <td data-label="Email">${t.email||''}</td>
+                  <td data-label="Môn">${getSubjectName(t.subject)}</td>
+                  <td data-label="Hành động">
+                    <button class="btn btn-sm btn-outline-primary edit-teacher" data-id="${t.id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger delete-teacher" data-id="${t.id}" data-name="${t.name}"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>`;
+      }, 4);
     }
 
     function renderStudents(){
-      const tbody = document.querySelector('#studentsTable tbody'); if(!tbody) return;
-      tbody.innerHTML = students.map(s => {
-        const registeredClasses = (s.classes || []).map(cid => getClassName(cid)).join(', ');
-        return `<tr data-search-content="${s.name} ${s.email}"><td data-label="Tên">${s.name}</td><td data-label="Email">${s.email||''}</td><td data-label="Lớp">${registeredClasses}</td><td data-label="Hành động"><button class="btn btn-sm btn-outline-primary edit-student" data-id="${s.id}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-student" data-id="${s.id}"><i class="bi bi-trash"></i></button></td></tr>`;
-      }).join('');
+      renderTable('studentsTable', students, s => {
+        const registeredClasses = (s.classes || []).map(getClassName).join(', ') || 'Chưa đăng ký';
+        const searchContent = `${s.name} ${s.email}`.toLowerCase();
+        return `<tr data-search-content="${searchContent}">
+                  <td data-label="Tên">${s.name}</td>
+                  <td data-label="Email">${s.email||''}</td>
+                  <td data-label="Lớp">${registeredClasses}</td>
+                  <td data-label="Hành động">
+                    <button class="btn btn-sm btn-outline-primary edit-student" data-id="${s.id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger delete-student" data-id="${s.id}" data-name="${s.name}"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>`;
+      }, 4);
     }
     
     function initializeCalendar() {
         const calendarEl = document.getElementById('calendar');
-        if (!calendarEl) return;
+        if (!calendarEl || calendar) return;
         calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'vi', firstDay: 1, 
             headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
             initialView: 'timeGridWeek',
             slotMinTime: '07:00:00', slotMaxTime: '22:00:00',
-            allDaySlot: false, editable: true, eventDisplay: 'list-item', 
+            allDaySlot: false, editable: true, eventDisplay: 'block', 
             events: (fetchInfo, successCallback, failureCallback) => {
                 const conflicts = detectConflicts();
-                const conflictIds = new Set();
-                conflicts.forEach(c => { conflictIds.add(c.s1.id); conflictIds.add(c.s2.id); });
+                const conflictIds = new Set(conflicts.flatMap(c => [c.s1.id, c.s2.id]));
+                
                 const calendarEvents = schedule.map(s => {
                     const cls = classes.find(c => c.id === s.classId);
                     const timeSlot = TIME_SLOTS.find(ts => ts.id === s.time);
@@ -527,11 +560,10 @@
                     return {
                         id: s.id, title: `${cls.name} (P: ${s.room || '?'})`,
                         daysOfWeek: [dayNumber], 
-                        startTime: `${timeSlot.start}:00`, endTime: `${timeSlot.end}:00`,
+                        startTime: timeSlot.start, endTime: timeSlot.end,
                         backgroundColor: color, borderColor: color,
-                        extendedProps: { classId: cls.id, originalDay: s.day, originalTime: s.time },
+                        extendedProps: { classId: cls.id, originalDay: s.day, originalTime: s.time, description: `GV: ${getTeacherName(s.teacherId)}`},
                         className: conflictIds.has(s.id) ? 'conflict-event' : '',
-                        description: `GV: ${getTeacherName(s.teacherId)}`
                     };
                 }).filter(Boolean);
                 successCallback(calendarEvents);
@@ -540,42 +572,39 @@
             eventDrop: async (info) => {
               const scheduleId = info.event.id;
               const newDate = info.event.start;
-              const newDayOfWeek = newDate.getDay();
-              const newDayKey = REVERSE_DAY_MAP[newDayOfWeek];
+              const newDayKey = REVERSE_DAY_MAP[newDate.getDay()];
 
               let newTimeSlotId = null;
               let minDiff = Infinity;
               
+              const newEventTime = newDate.getHours() * 60 + newDate.getMinutes();
               TIME_SLOTS.forEach(slot => {
                   const [h, m] = slot.start.split(':');
                   const slotTime = parseInt(h) * 60 + parseInt(m);
-                  const newEventTime = newDate.getHours() * 60 + newDate.getMinutes();
                   const diff = Math.abs(slotTime - newEventTime);
                   if (diff < minDiff) { minDiff = diff; newTimeSlotId = slot.id; }
               });
 
               if (!newDayKey || !newTimeSlotId) { showToast('Vị trí thả không hợp lệ', 'error'); info.revert(); return; }
               try {
-                  const scheduleDocRef = db.collection('schedule').doc(scheduleId);
                   const classId = info.event.extendedProps.classId;
-                  const classDocRef = db.collection('classes').doc(classId);
-                  const classDoc = await classDocRef.get();
+                  const classDoc = await db.collection('classes').doc(classId).get();
                   if (!classDoc.exists) throw new Error("Không tìm thấy lớp học!");
 
                   const classData = classDoc.data();
                   const batch = db.batch();
-                  batch.update(scheduleDocRef, { day: newDayKey, time: newTimeSlotId });
+                  batch.update(db.collection('schedule').doc(scheduleId), { day: newDayKey, time: newTimeSlotId });
 
                   if (classData.day === info.event.extendedProps.originalDay && classData.time === info.event.extendedProps.originalTime) {
-                      batch.update(classDocRef, { day: newDayKey, time: newTimeSlotId });
+                      batch.update(db.collection('classes').doc(classId), { day: newDayKey, time: newTimeSlotId });
                   } else if (classData.day2 === info.event.extendedProps.originalDay && classData.time2 === info.event.extendedProps.originalTime) {
-                      batch.update(classDocRef, { day2: newDayKey, time2: newTimeSlotId });
+                      batch.update(db.collection('classes').doc(classId), { day2: newDayKey, time2: newTimeSlotId });
                   } else {
                       throw new Error("Không thể xác định buổi học để cập nhật.");
                   }
                   await batch.commit();
                   showToast('Cập nhật lịch học thành công!', 'success');
-              } catch (e) { logError(e); info.revert(); }
+              } catch (e) { logError(e, 'Lỗi cập nhật lịch'); info.revert(); }
             },
             eventDidMount: function(info) {
               new bootstrap.Tooltip(info.el, { title: info.event.extendedProps.description, placement: 'top', trigger: 'hover', container: 'body' });
@@ -586,8 +615,9 @@
 
     function updateTeacherDropdowns(){
       const options = teachers.map(t => `<option value="${t.id}">${t.name} (${getSubjectName(t.subject)})</option>`).join('');
-      document.getElementById('classTeacher').innerHTML = `<option value="">-- Chọn --</option>${options}`;
-      document.getElementById('editClassTeacher').innerHTML = `<option value="">-- Chọn --</option>${options}`;
+      const defaultOption = `<option value="" selected disabled>-- Chọn giáo viên --</option>`;
+      document.getElementById('classTeacher').innerHTML = defaultOption + options;
+      document.getElementById('editClassTeacher').innerHTML = defaultOption + options;
     }
     function updateClassDropdowns(){
       const options = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -595,79 +625,6 @@
       document.getElementById('editStudentClass').innerHTML = options;
     }
 
-    // ------------------------------------
-    // --- 5. CRUD OPERATIONS ---
-    // ------------------------------------
-    async function addTeacher(){
-      const name = document.getElementById('teacherName').value.trim();
-      const email = document.getElementById('teacherEmail').value.trim();
-      const phone = document.getElementById('teacherPhone').value.trim();
-      const subject = document.getElementById('teacherSubject').value;
-      if(!name||!email||!subject) return showToast('Vui lòng điền đầy đủ', 'warning');
-      try{
-        const password = Math.random().toString(36).slice(-8);
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const uid = userCredential.user.uid;
-        await db.collection('users').doc(uid).set({ name, email, phone, role: 'teacher', subject, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        showToast(`Tạo GV thành công. MK: ${password}`, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
-      } catch(e){ logError(e); }
-    }
-
-    async function addStudent(){
-      const name = document.getElementById('studentName').value.trim();
-      const email = document.getElementById('studentEmail').value.trim();
-      const phone = document.getElementById('studentPhone').value.trim();
-      const classIds = Array.from(document.getElementById('studentClass').selectedOptions).map(o=>o.value);
-      if(!name||!email) return showToast('Vui lòng điền tên và email', 'warning');
-      try{
-        const password = Math.random().toString(36).slice(-8);
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const uid = userCredential.user.uid;
-        await db.collection('users').doc(uid).set({ name, email, phone, role: 'student', classes: classIds, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        
-        const batch = db.batch();
-        classIds.forEach(cid => {
-          batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(uid) });
-        });
-        await batch.commit();
-        showToast(`Tạo HS thành công. MK: ${password}`, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
-      } catch(e){ logError(e); }
-    }
-
-    async function addClass(){
-      const name = document.getElementById('className').value.trim();
-      const subject = document.getElementById('classSubject').value;
-      const teacherId = document.getElementById('classTeacher').value;
-      const room = document.getElementById('classRoom').value.trim();
-      const dayKey = REVERSE_DAY_MAP[document.getElementById('classDay').value];
-      const time = document.getElementById('classTime').value;
-      const room2 = document.getElementById('classRoom2').value.trim();
-      const dayKey2 = REVERSE_DAY_MAP[document.getElementById('classDay2').value];
-      const time2 = document.getElementById('classTime2').value;
-
-      if(!name || !subject || !teacherId || !dayKey || !time) return showToast('Điền đủ thông tin và ít nhất Buổi học 1', 'warning');
-      
-      try {
-        const classData = { name, subject, teacherId, room: room || null, day: dayKey, time, students: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-        if (dayKey2 && time2) {
-            classData.day2 = dayKey2;
-            classData.time2 = time2;
-            classData.room2 = room2 || null;
-        }
-        const classRef = await db.collection('classes').add(classData);
-        const batch = db.batch();
-        batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: dayKey, time, room: room || null, teacherId });
-        if (dayKey2 && time2) {
-            batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: dayKey2, time: time2, room: room2 || null, teacherId });
-        }
-        await batch.commit();
-        showToast('Đã tạo lớp và lịch thành công!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
-      } catch (e) { logError(e); }
-    }
-    
     function populateEditClassModal(classId) {
         const c = classes.find(x => x.id === classId);
         if(!c) return showToast('Không tìm thấy lớp', 'error');
@@ -683,196 +640,272 @@
         document.getElementById('editClassTime2').value = c.time2 || '';
         new bootstrap.Modal(document.getElementById('editClassModal')).show();
     }
+
+    function populateEditTeacherModal(id) {
+        const t = teachers.find(x=>x.id===id);
+        if(!t) return showToast('Không tìm thấy giáo viên', 'error');
+        document.getElementById('editTeacherId').value = t.id;
+        document.getElementById('editTeacherName').value = t.name || '';
+        document.getElementById('editTeacherEmail').value = t.email || '';
+        document.getElementById('editTeacherPhone').value = t.phone || '';
+        document.getElementById('editTeacherSubject').value = t.subject || '';
+        new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
+    }
+
+    function populateEditStudentModal(id) {
+        const s = students.find(x=>x.id===id);
+        if(!s) return showToast('Không tìm thấy học sinh', 'error');
+        document.getElementById('editStudentId').value = s.id;
+        document.getElementById('editStudentName').value = s.name || '';
+        document.getElementById('editStudentEmail').value = s.email || '';
+        document.getElementById('editStudentPhone').value = s.phone || '';
+        Array.from(document.getElementById('editStudentClass').options).forEach(opt => {
+          opt.selected = (s.classes || []).includes(opt.value);
+        });
+        new bootstrap.Modal(document.getElementById('editStudentModal')).show();
+    }
+    
+    // ------------------------------------
+    // --- 5. CRUD OPERATIONS ---
+    // ------------------------------------
+    async function handleFormSubmit(form, button, actionCallback) {
+        form.classList.add('was-validated');
+        if (!form.checkValidity()) return;
+        setButtonLoadingState(button, true);
+        try {
+            await actionCallback();
+        } catch (e) {
+            logError(e, 'Thao tác thất bại');
+        } finally {
+            setButtonLoadingState(button, false);
+            form.classList.remove('was-validated');
+        }
+    }
+
+    async function addTeacher() {
+      const email = document.getElementById('teacherEmail').value.trim();
+      const name = document.getElementById('teacherName').value.trim();
+      const phone = document.getElementById('teacherPhone').value.trim();
+      const subject = document.getElementById('teacherSubject').value;
+      const password = Math.random().toString(36).slice(-8);
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      const uid = userCredential.user.uid;
+      await db.collection('users').doc(uid).set({ name, email, phone, role: 'teacher', subject, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      showToast(`Tạo GV thành công. MK: ${password}`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
+    }
+
+    async function addStudent() {
+      const email = document.getElementById('studentEmail').value.trim();
+      const name = document.getElementById('studentName').value.trim();
+      const phone = document.getElementById('studentPhone').value.trim();
+      const classIds = Array.from(document.getElementById('studentClass').selectedOptions).map(o=>o.value);
+      const password = Math.random().toString(36).slice(-8);
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      const uid = userCredential.user.uid;
+      await db.collection('users').doc(uid).set({ name, email, phone, role: 'student', classes: classIds, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      
+      const batch = db.batch();
+      classIds.forEach(cid => {
+        batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(uid) });
+      });
+      await batch.commit();
+      showToast(`Tạo HS thành công. MK: ${password}`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+    }
+
+    async function addClass() {
+      const name = document.getElementById('className').value.trim();
+      const subject = document.getElementById('classSubject').value;
+      const teacherId = document.getElementById('classTeacher').value;
+      const room = document.getElementById('classRoom').value.trim();
+      const dayKey = REVERSE_DAY_MAP[document.getElementById('classDay').value];
+      const time = document.getElementById('classTime').value;
+      const room2 = document.getElementById('classRoom2').value.trim();
+      const dayKey2 = REVERSE_DAY_MAP[document.getElementById('classDay2').value];
+      const time2 = document.getElementById('classTime2').value;
+
+      const classData = { name, subject, teacherId, room: room || null, day: dayKey, time, students: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (dayKey2 && time2) {
+          classData.day2 = dayKey2; classData.time2 = time2; classData.room2 = room2 || null;
+      }
+      const classRef = await db.collection('classes').add(classData);
+      const batch = db.batch();
+      batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: dayKey, time, room: room || null, teacherId });
+      if (dayKey2 && time2) {
+          batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: dayKey2, time: time2, room: room2 || null, teacherId });
+      }
+      await batch.commit();
+      showToast('Đã tạo lớp và lịch thành công!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
+    }
     
     // ------------------------------------
     // --- 6. EVENT LISTENERS & INIT ---
     // ------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
+        deleteConfirmModalInstance = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+
         // --- Page Navigation ---
-        document.querySelectorAll('.sidebar-nav-item').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const targetId = link.getAttribute('data-target');
-                document.querySelectorAll('.sidebar-nav-item').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
-                document.querySelectorAll('.page-section').forEach(page => {
-                    page.classList.remove('active');
-                    if (page.id === targetId) page.classList.add('active');
-                });
-            });
+        document.getElementById('sidebar').addEventListener('click', (e) => {
+            const link = e.target.closest('.sidebar-nav-item');
+            if (!link) return;
+            e.preventDefault();
+            const targetId = link.dataset.target;
+            document.querySelectorAll('.sidebar-nav-item').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            document.querySelectorAll('.page-section').forEach(page => page.classList.toggle('active', page.id === targetId));
         });
 
-        // Search functionality
-        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+        // --- Search functionality ---
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('keyup', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             document.querySelectorAll('#classesTable tbody tr, #teachersTable tbody tr, #studentsTable tbody tr').forEach(row => {
+                if (row.classList.contains('no-data-row')) return;
                 const content = (row.dataset.searchContent || '').toLowerCase();
                 row.style.display = content.includes(searchTerm) ? '' : 'none';
             });
         });
-        
-        // CRUD event listeners
-        document.addEventListener('click', (e) => {
-            const editTeacherBtn = e.target.closest('.edit-teacher');
-            if(editTeacherBtn) {
-                const id = editTeacherBtn.dataset.id;
-                const t = teachers.find(x=>x.id===id);
-                if(!t) return showToast('Không tìm thấy giáo viên', 'error');
-                document.getElementById('editTeacherId').value = t.id;
-                document.getElementById('editTeacherName').value = t.name || '';
-                document.getElementById('editTeacherEmail').value = t.email || '';
-                document.getElementById('editTeacherPhone').value = t.phone || '';
-                document.getElementById('editTeacherSubject').value = t.subject || '';
-                new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
-            }
-
-            const editStudentBtn = e.target.closest('.edit-student');
-            if(editStudentBtn) {
-                const id = editStudentBtn.dataset.id;
-                const s = students.find(x=>x.id===id);
-                if(!s) return showToast('Không tìm thấy học sinh', 'error');
-                document.getElementById('editStudentId').value = s.id;
-                document.getElementById('editStudentName').value = s.name || '';
-                document.getElementById('editStudentEmail').value = s.email || '';
-                document.getElementById('editStudentPhone').value = s.phone || '';
-                Array.from(document.getElementById('editStudentClass').options).forEach(opt => {
-                  opt.selected = (s.classes || []).includes(opt.value);
-                });
-                new bootstrap.Modal(document.getElementById('editStudentModal')).show();
-            }
-
-            const editClassBtn = e.target.closest('.edit-class');
-            if(editClassBtn) { populateEditClassModal(editClassBtn.dataset.id); }
+        document.getElementById('clearSearchBtn').addEventListener('click', () => {
+          searchInput.value = '';
+          searchInput.dispatchEvent(new Event('keyup'));
         });
-
-        document.getElementById('updateTeacherBtn').addEventListener('click', async ()=>{
+        
+        // --- Form Submissions ---
+        document.getElementById('addTeacherForm').addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, addTeacher); });
+        document.getElementById('addStudentForm').addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, addStudent); });
+        document.getElementById('addClassForm').addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, addClass); });
+        
+        document.getElementById('editTeacherForm').addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, async () => {
           const id = document.getElementById('editTeacherId').value;
           const data = { name: document.getElementById('editTeacherName').value.trim(), email: document.getElementById('editTeacherEmail').value.trim(), phone: document.getElementById('editTeacherPhone').value.trim(), subject: document.getElementById('editTeacherSubject').value };
-          if(!id) return showToast('Không có id giáo viên', 'error');
-          try{ await db.collection('users').doc(id).update(data); showToast('Cập nhật giáo viên thành công', 'success'); bootstrap.Modal.getInstance(document.getElementById('editTeacherModal')).hide(); } catch(e){ logError(e); }
-        });
+          await db.collection('users').doc(id).update(data);
+          showToast('Cập nhật giáo viên thành công', 'success');
+          bootstrap.Modal.getInstance(document.getElementById('editTeacherModal')).hide();
+        }); });
 
-        document.getElementById('updateStudentBtn').addEventListener('click', async ()=>{
+        document.getElementById('editStudentForm').addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, async () => {
           const id = document.getElementById('editStudentId').value;
-          const name = document.getElementById('editStudentName').value.trim();
-          const email = document.getElementById('editStudentEmail').value.trim();
-          const phone = document.getElementById('editStudentPhone').value.trim();
-          const selectedClassIds = Array.from(document.getElementById('editStudentClass').selectedOptions).map(o=>o.value);
-          if(!id) return showToast('Không có id học sinh', 'error');
-          try{
-            const prev = (students.find(s=>s.id===id) || { classes: [] }).classes || [];
-            const toRemove = prev.filter(x=> !selectedClassIds.includes(x));
-            const toAdd = selectedClassIds.filter(x=> !prev.includes(x));
-            const batch = db.batch();
-            batch.update(db.collection('users').doc(id), { name, email, phone, classes: selectedClassIds });
-            toRemove.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayRemove(id) }));
-            toAdd.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(id) }));
-            await batch.commit();
-            showToast('Cập nhật học sinh thành công', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editStudentModal')).hide();
-          } catch(e){ logError(e); }
-        });
+          const data = { name: document.getElementById('editStudentName').value.trim(), email: document.getElementById('editStudentEmail').value.trim(), phone: document.getElementById('editStudentPhone').value.trim(), classes: Array.from(document.getElementById('editStudentClass').selectedOptions).map(o=>o.value) };
+          const prev = (students.find(s=>s.id===id) || { classes: [] }).classes || [];
+          const toRemove = prev.filter(x=> !data.classes.includes(x));
+          const toAdd = data.classes.filter(x=> !prev.includes(x));
+          const batch = db.batch();
+          batch.update(db.collection('users').doc(id), data);
+          toRemove.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayRemove(id) }));
+          toAdd.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(id) }));
+          await batch.commit();
+          showToast('Cập nhật học sinh thành công', 'success');
+          bootstrap.Modal.getInstance(document.getElementById('editStudentModal')).hide();
+        }); });
 
-        document.getElementById('updateClassBtn').addEventListener('click', async ()=>{
+        document.getElementById('editClassForm').addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, async () => {
           const id = document.getElementById('editClassId').value;
-          const name = document.getElementById('editClassName').value.trim();
-          const subject = document.getElementById('editClassSubject').value;
-          const teacherId = document.getElementById('editClassTeacher').value;
-          const room = document.getElementById('editClassRoom').value.trim();
-          const dayKey = REVERSE_DAY_MAP[document.getElementById('editClassDay').value];
-          const time = document.getElementById('editClassTime').value;
-          const room2 = document.getElementById('editClassRoom2').value.trim();
-          const dayKey2 = REVERSE_DAY_MAP[document.getElementById('editClassDay2').value];
-          const time2 = document.getElementById('editClassTime2').value;
-
-          if(!id || !name || !subject || !teacherId || !dayKey || !time) return showToast('Vui lòng điền đủ thông tin Buổi học 1', 'warning');
-
-          try{
-            const updateData = { name, subject, teacherId, room: room||null, day: dayKey, time, day2: dayKey2||null, time2: time2||null, room2: room2||null };
-            if (!dayKey2 || !time2) {
-                updateData.day2 = firebase.firestore.FieldValue.delete();
-                updateData.time2 = firebase.firestore.FieldValue.delete();
-                updateData.room2 = firebase.firestore.FieldValue.delete();
-            }
-            const batch = db.batch();
-            batch.update(db.collection('classes').doc(id), updateData);
+          const updateData = { 
+            name: document.getElementById('editClassName').value.trim(), subject: document.getElementById('editClassSubject').value,
+            teacherId: document.getElementById('editClassTeacher').value, room: document.getElementById('editClassRoom').value.trim() || null,
+            day: REVERSE_DAY_MAP[document.getElementById('editClassDay').value], time: document.getElementById('editClassTime').value,
+            day2: REVERSE_DAY_MAP[document.getElementById('editClassDay2').value] || null, time2: document.getElementById('editClassTime2').value || null,
+            room2: document.getElementById('editClassRoom2').value.trim() || null
+          };
+          if (!updateData.day2 || !updateData.time2) {
+              updateData.day2 = firebase.firestore.FieldValue.delete(); updateData.time2 = firebase.firestore.FieldValue.delete(); updateData.room2 = firebase.firestore.FieldValue.delete();
+          }
+          const batch = db.batch();
+          batch.update(db.collection('classes').doc(id), updateData);
+          (await db.collection('schedule').where('classId', '==', id).get()).forEach(doc => batch.delete(doc.ref));
+          batch.set(db.collection('schedule').doc(), { classId: id, day: updateData.day, time: updateData.time, room: updateData.room, teacherId: updateData.teacherId });
+          if (updateData.day2 && updateData.time2) {
+              batch.set(db.collection('schedule').doc(), { classId: id, day: updateData.day2, time: updateData.time2, room: updateData.room2, teacherId: updateData.teacherId });
+          }
+          await batch.commit();
+          showToast('Cập nhật lớp thành công!', 'success');
+          bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
+        }); });
+        
+        // --- Table Actions (Edit/Delete) ---
+        document.getElementById('main-content').addEventListener('click', async (e) => {
+            const editClassBtn = e.target.closest('.edit-class'); if(editClassBtn) { populateEditClassModal(editClassBtn.dataset.id); return; }
+            const editTeacherBtn = e.target.closest('.edit-teacher'); if(editTeacherBtn) { populateEditTeacherModal(editTeacherBtn.dataset.id); return; }
+            const editStudentBtn = e.target.closest('.edit-student'); if(editStudentBtn) { populateEditStudentModal(editStudentBtn.dataset.id); return; }
             
-            const oldSchedules = await db.collection('schedule').where('classId', '==', id).get();
-            oldSchedules.forEach(doc => batch.delete(doc.ref));
-            
-            batch.set(db.collection('schedule').doc(), { classId: id, day: dayKey, time, room: room || null, teacherId });
-            if (dayKey2 && time2) {
-                batch.set(db.collection('schedule').doc(), { classId: id, day: dayKey2, time: time2, room: room2 || null, teacherId });
+            const deleteClassBtn = e.target.closest('.delete-class'); if(deleteClassBtn) {
+              showDeleteConfirmModal('Xóa lớp học', `Bạn có chắc muốn xóa lớp "<strong>${deleteClassBtn.dataset.name}</strong>"? Lịch học liên quan cũng sẽ bị xóa.`, async () => {
+                try {
+                  const id = deleteClassBtn.dataset.id;
+                  const snaps = await db.collection('schedule').where('classId','==',id).get();
+                  const batch = db.batch();
+                  snaps.forEach(d => batch.delete(d.ref));
+                  batch.delete(db.collection('classes').doc(id));
+                  await batch.commit();
+                  showToast('Đã xóa lớp và lịch liên quan', 'success');
+                } catch(err){ logError(err, 'Lỗi xóa lớp'); }
+              });
+              return;
             }
-            await batch.commit();
-            showToast('Cập nhật lớp thành công!', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
-          } catch(e){ logError(e); }
-        });
-
-        document.addEventListener('click', async (e)=>{
-          if(e.target.closest('.delete-class')){
-            const id = e.target.closest('.delete-class').dataset.id;
-            if(!confirm('Xác nhận xóa lớp? Thao tác này sẽ xóa cả lịch học liên quan.')) return;
-            try{
-              const snaps = await db.collection('schedule').where('classId','==',id).get();
-              const batch = db.batch();
-              snaps.forEach(d => batch.delete(d.ref));
-              batch.delete(db.collection('classes').doc(id));
-              await batch.commit();
-              showToast('Đã xóa lớp và lịch liên quan', 'success');
-            } catch(err){ logError(err); }
-          }
-          if(e.target.closest('.delete-teacher')){
-            const id = e.target.closest('.delete-teacher').dataset.id;
-            if(!confirm('Xóa giáo viên? Lớp học của giáo viên này sẽ không bị xóa.')) return;
-            try{
-              const clsSnap = await db.collection('classes').where('teacherId','==',id).get();
-              const batch = db.batch();
-              clsSnap.forEach(d => batch.update(d.ref, { teacherId: null }));
-              batch.delete(db.collection('users').doc(id));
-              await batch.commit();
-              showToast('Đã xóa giáo viên', 'success');
-            } catch(err){ logError(err); }
-          }
-          if(e.target.closest('.delete-student')){
-            const id = e.target.closest('.delete-student').dataset.id;
-            if(!confirm('Xóa học sinh? Học sinh sẽ được xóa khỏi các lớp đã đăng ký.')) return;
-            try{
-              const clsSnap = await db.collection('classes').where('students','array-contains',id).get();
-              const batch = db.batch();
-              clsSnap.forEach(d => batch.update(d.ref, { students: firebase.firestore.FieldValue.arrayRemove(id) }));
-              batch.delete(db.collection('users').doc(id));
-              await batch.commit();
-              showToast('Đã xóa học sinh', 'success');
-            } catch(err){ logError(err); }
-          }
+            const deleteTeacherBtn = e.target.closest('.delete-teacher'); if(deleteTeacherBtn) {
+              showDeleteConfirmModal('Xóa giáo viên', `Bạn có chắc muốn xóa giáo viên "<strong>${deleteTeacherBtn.dataset.name}</strong>"? Lớp học của giáo viên này sẽ không bị xóa.`, async () => {
+                try {
+                  const id = deleteTeacherBtn.dataset.id;
+                  const clsSnap = await db.collection('classes').where('teacherId','==',id).get();
+                  const batch = db.batch();
+                  clsSnap.forEach(d => batch.update(d.ref, { teacherId: null }));
+                  batch.delete(db.collection('users').doc(id));
+                  await batch.commit();
+                  showToast('Đã xóa giáo viên', 'success');
+                } catch(err){ logError(err, 'Lỗi xóa giáo viên'); }
+              });
+              return;
+            }
+            const deleteStudentBtn = e.target.closest('.delete-student'); if(deleteStudentBtn) {
+              showDeleteConfirmModal('Xóa học sinh', `Bạn có chắc muốn xóa học sinh "<strong>${deleteStudentBtn.dataset.name}</strong>"? Học sinh sẽ được xóa khỏi các lớp đã đăng ký.`, async () => {
+                try {
+                  const id = deleteStudentBtn.dataset.id;
+                  const clsSnap = await db.collection('classes').where('students','array-contains',id).get();
+                  const batch = db.batch();
+                  clsSnap.forEach(d => batch.update(d.ref, { students: firebase.firestore.FieldValue.arrayRemove(id) }));
+                  batch.delete(db.collection('users').doc(id));
+                  await batch.commit();
+                  showToast('Đã xóa học sinh', 'success');
+                } catch(err){ logError(err, 'Lỗi xóa học sinh'); }
+              });
+            }
         });
         
-        // Other listeners
+        // --- Other listeners ---
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('toggled'));
-        document.getElementById('saveTeacherBtn').addEventListener('click', addTeacher);
-        document.getElementById('saveStudentBtn').addEventListener('click', addStudent);
-        document.getElementById('saveClassBtn').addEventListener('click', addClass);
-        document.getElementById('addTeacherModal').addEventListener('hidden.bs.modal', () => document.getElementById('addTeacherForm').reset());
-        document.getElementById('addStudentModal').addEventListener('hidden.bs.modal', () => document.getElementById('addStudentForm').reset());
-        document.getElementById('addClassModal').addEventListener('hidden.bs.modal', () => document.getElementById('addClassForm').reset());
-        document.getElementById('calendar-view-month').addEventListener('click', (e) => { calendar.changeView('dayGridMonth'); });
-        document.getElementById('calendar-view-week').addEventListener('click', (e) => { calendar.changeView('timeGridWeek'); });
-        document.getElementById('calendar-view-day').addEventListener('click', (e) => { calendar.changeView('timeGridDay'); });
+        document.getElementById('calendar-view-buttons').addEventListener('click', e => {
+            const button = e.target.closest('button');
+            if(!button || button.classList.contains('active')) return;
+            calendar.changeView(button.dataset.view);
+            document.querySelectorAll('#calendar-view-buttons button').forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+        });
+        document.querySelectorAll('.modal').forEach(modalEl => {
+          modalEl.addEventListener('hidden.bs.modal', () => {
+            const form = modalEl.querySelector('form');
+            if(form) {
+              form.reset();
+              form.classList.remove('was-validated');
+            }
+          });
+          modalEl.addEventListener('shown.bs.modal', () => {
+            modalEl.querySelector('input, select')?.focus();
+          });
+        });
         
         // --- Authentication & Data Loading ---
         auth.onAuthStateChanged(user => {
-            if(user) { currentUser = user; }
+            // Có thể thêm logic kiểm tra quyền user ở đây trong tương lai
+            // if(user) { currentUser = user; } else { window.location.href = '/login.html'; }
             initializeCalendar();
             loadAllData();
-            
             const timeOptions = TIME_SLOTS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-            const timeOptionsOptional = `<option value="">-- Chọn --</option>${timeOptions}`;
             document.getElementById('classTime').innerHTML = timeOptions;
-            document.getElementById('classTime2').innerHTML = timeOptionsOptional;
             document.getElementById('editClassTime').innerHTML = timeOptions;
-            document.getElementById('editClassTime2').innerHTML = timeOptionsOptional;
+            document.getElementById('classTime2').innerHTML = `<option value="">-- Chọn --</option>${timeOptions}`;
+            document.getElementById('editClassTime2').innerHTML = `<option value="">-- Chọn --</option>${timeOptions}`;
         });
     });
   </script>
