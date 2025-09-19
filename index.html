@@ -186,10 +186,18 @@
               <div class="card">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
                   <h5 class="mb-0 text-primary fw-bold me-3"><i class="bi bi-calendar-week me-2"></i>Thời khóa biểu</h5>
-                  <div class="btn-group" role="group" id="calendar-view-buttons">
-                    <button data-view="dayGridMonth" class="btn btn-sm btn-outline-primary">Tháng</button>
-                    <button data-view="timeGridWeek" class="btn btn-sm btn-outline-primary active">Tuần</button>
-                    <button data-view="timeGridDay" class="btn btn-sm btn-outline-primary">Ngày</button>
+                  <div class="d-flex align-items-center ms-auto">
+                      <div class="me-2">
+                        <label for="teacher-filter-select" class="visually-hidden">Lọc theo giáo viên</label>
+                        <select id="teacher-filter-select" class="form-select form-select-sm">
+                            <option value="all">Tất cả giáo viên</option>
+                        </select>
+                      </div>
+                      <div class="btn-group" role="group" id="calendar-view-buttons">
+                        <button data-view="dayGridMonth" class="btn btn-sm btn-outline-primary">Tháng</button>
+                        <button data-view="timeGridWeek" class="btn btn-sm btn-outline-primary active">Tuần</button>
+                        <button data-view="timeGridDay" class="btn btn-sm btn-outline-primary">Ngày</button>
+                      </div>
                   </div>
                 </div>
                 <div class="card-body"><div id="calendar"></div></div>
@@ -407,6 +415,7 @@
     function updateUI() {
         renderClasses(); renderTeachers(); renderStudents();
         updateClassDropdowns(); updateTeacherDropdowns();
+        updateTeacherFilterDropdown(); // <-- Update filter dropdown
         updateStats(); renderConflicts();
         if(calendar) calendar.refetchEvents();
     }
@@ -547,10 +556,15 @@
             slotMinTime: '07:00:00', slotMaxTime: '22:00:00',
             allDaySlot: false, editable: true, eventDisplay: 'block', 
             events: (fetchInfo, successCallback, failureCallback) => {
+                const selectedTeacherId = document.getElementById('teacher-filter-select').value;
+                const filteredSchedule = selectedTeacherId === 'all' 
+                    ? schedule 
+                    : schedule.filter(s => s.teacherId === selectedTeacherId);
+
                 const conflicts = detectConflicts();
                 const conflictIds = new Set(conflicts.flatMap(c => [c.s1.id, c.s2.id]));
                 
-                const calendarEvents = schedule.map(s => {
+                const calendarEvents = filteredSchedule.map(s => {
                     const cls = classes.find(c => c.id === s.classId);
                     const timeSlot = TIME_SLOTS.find(ts => ts.id === s.time);
                     if (!cls || !timeSlot) return null;
@@ -619,6 +633,16 @@
       document.getElementById('classTeacher').innerHTML = defaultOption + options;
       document.getElementById('editClassTeacher').innerHTML = defaultOption + options;
     }
+    
+    function updateTeacherFilterDropdown() {
+        const select = document.getElementById('teacher-filter-select');
+        if (!select) return;
+        const selectedValue = select.value;
+        const options = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        select.innerHTML = '<option value="all">Tất cả giáo viên</option>' + options;
+        select.value = selectedValue;
+    }
+
     function updateClassDropdowns(){
       const options = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
       document.getElementById('studentClass').innerHTML = options;
@@ -875,6 +899,7 @@
         
         // --- Other listeners ---
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('toggled'));
+        
         document.getElementById('calendar-view-buttons').addEventListener('click', e => {
             const button = e.target.closest('button');
             if(!button || button.classList.contains('active')) return;
@@ -882,6 +907,11 @@
             document.querySelectorAll('#calendar-view-buttons button').forEach(b => b.classList.remove('active'));
             button.classList.add('active');
         });
+
+        document.getElementById('teacher-filter-select').addEventListener('change', () => {
+            if (calendar) calendar.refetchEvents();
+        });
+
         document.querySelectorAll('.modal').forEach(modalEl => {
           modalEl.addEventListener('hidden.bs.modal', () => {
             const form = modalEl.querySelector('form');
