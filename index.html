@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-t" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Quản lý Trung tâm - Thời khóa biểu (Hỗ trợ 2 buổi/tuần)</title>
+  <title>Quản lý Trung tâm - Thời khóa biểu (Đã nâng cấp)</title>
 
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
@@ -17,7 +16,7 @@
     .schedule-cell { min-width:180px; vertical-align:top; }
     .schedule-class { margin-bottom:6px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee; }
     .time-slot { width:140px; font-weight:600; }
-    .small-muted{ font-size:0.85rem; color:#6c757d; }
+    .conflict { border:2px solid red !important; background:#ffe6e6 !important; }
   </style>
 </head>
 <body>
@@ -36,7 +35,7 @@
           </div>
           <div style="overflow:auto;">
             <table class="table table-striped" id="classesTable">
-              <thead><tr><th>Tên lớp</th><th>Môn</th><th>Giáo viên</th><th>HS</th><th>Khung giờ</th><th>Phòng</th><th>Hành động</th></tr></thead>
+              <thead><tr><th>Tên lớp</th><th>Môn</th><th>Giáo viên</th><th>HS</th><th>Lịch học</th><th>Hành động</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -88,8 +87,6 @@
       </div>
     </div>
 
-    <!-- Add/Edit Modals -->
-    <!-- Add Teacher -->
     <div class="modal fade" id="addTeacherModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -100,13 +97,7 @@
             <div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div>
             <div class="mb-2"><label class="form-label">Môn</label>
               <select id="teacherSubject" class="form-select">
-                <option value="math">Toán</option>
-                <option value="physics">Vật lý</option>
-                <option value="chemistry">Hóa</option>
-                <option value="literature">Ngữ văn</option>
-                <option value="english">Tiếng Anh</option>
-                <option value="history">Lịch sử</option>
-                <option value="geography">Địa lý</option>
+                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
               </select>
             </div>
           </div>
@@ -114,8 +105,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Edit Teacher -->
     <div class="modal fade" id="editTeacherModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -127,13 +116,7 @@
             <div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div>
             <div class="mb-2"><label class="form-label">Môn</label>
               <select id="editTeacherSubject" class="form-select">
-                <option value="math">Toán</option>
-                <option value="physics">Vật lý</option>
-                <option value="chemistry">Hóa</option>
-                <option value="literature">Ngữ văn</option>
-                <option value="english">Tiếng Anh</option>
-                <option value="history">Lịch sử</option>
-                <option value="geography">Địa lý</option>
+                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
               </select>
             </div>
             <div class="text-muted small">Lưu ý: thay đổi email trong Authentication yêu cầu xử lý riêng (không tự động sửa Auth ở đây).</div>
@@ -142,8 +125,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Add Student -->
     <div class="modal fade" id="addStudentModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -160,8 +141,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Edit Student -->
     <div class="modal fade" id="editStudentModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -181,7 +160,6 @@
       </div>
     </div>
 
-    <!-- Add Class -->
     <div class="modal fade" id="addClassModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -190,73 +168,45 @@
             <div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control"></div>
             <div class="mb-2"><label class="form-label">Môn</label>
               <select id="classSubject" class="form-select">
-                <option value="math">Toán</option>
-                <option value="physics">Vật lý</option>
-                <option value="chemistry">Hóa</option>
-                <option value="literature">Ngữ văn</option>
-                <option value="english">Tiếng Anh</option>
-                <option value="history">Lịch sử</option>
-                <option value="geography">Địa lý</option>
+                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
               </select>
             </div>
             <div class="mb-2"><label class="form-label">Giáo viên</label>
               <select id="classTeacher" class="form-select"></select>
             </div>
+            <hr>
+            <p class="fw-bold">Buổi học 1</p>
+            <div class="mb-2"><label class="form-label">Phòng 1</label><input id="classRoom" class="form-control" placeholder="101..."></div>
             <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Phòng (tuỳ chọn)</label><input id="classRoom" class="form-control" placeholder="101..."></div>
-              <div class="col-6"><label class="form-label">Số buổi/tuần</label>
-                <select id="sessionsPerWeek" class="form-select">
-                  <option value="1">1 buổi/tuần</option>
-                  <option value="2">2 buổi/tuần</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Ngày (buổi 1)</label>
+              <div class="col-6"><label class="form-label">Ngày</label>
                 <select id="classDay" class="form-select">
-                  <option value="monday">Thứ 2</option>
-                  <option value="tuesday">Thứ 3</option>
-                  <option value="wednesday">Thứ 4</option>
-                  <option value="thursday">Thứ 5</option>
-                  <option value="friday">Thứ 6</option>
-                  <option value="saturday">Thứ 7</option>
-                  <option value="sunday">Chủ nhật</option>
+                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
                 </select>
               </div>
-              <div class="col-6"><label class="form-label">Khung giờ (buổi 1)</label>
+               <div class="col-6"><label class="form-label">Khung giờ</label>
                 <select id="classTime" class="form-select"></select>
               </div>
             </div>
-
-            <div id="secondSessionArea" style="display:none; border-left:3px solid #e9ecef; padding-left:10px; margin-top:10px;">
-              <div class="small-muted mb-2">Cấu hình cho buổi thứ 2</div>
-              <div class="mb-2 row">
-                <div class="col-6"><label class="form-label">Phòng (buổi 2)</label><input id="classRoom2" class="form-control" placeholder="101..."></div>
-                <div class="col-6"><label class="form-label">Ngày (buổi 2)</label>
-                  <select id="classDay2" class="form-select">
-                    <option value="monday">Thứ 2</option>
-                    <option value="tuesday">Thứ 3</option>
-                    <option value="wednesday">Thứ 4</option>
-                    <option value="thursday">Thứ 5</option>
-                    <option value="friday">Thứ 6</option>
-                    <option value="saturday">Thứ 7</option>
-                    <option value="sunday">Chủ nhật</option>
-                  </select>
-                </div>
+            <hr>
+            <p class="fw-bold">Buổi học 2 (tùy chọn)</p>
+            <div class="mb-2"><label class="form-label">Phòng 2</label><input id="classRoom2" class="form-control" placeholder="102..."></div>
+             <div class="mb-2 row">
+              <div class="col-6"><label class="form-label">Ngày 2</label>
+                <select id="classDay2" class="form-select">
+                  <option value="">-- Không chọn --</option>
+                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
+                </select>
               </div>
-              <div class="mb-2"><label class="form-label">Khung giờ (buổi 2)</label>
+              <div class="col-6"><label class="form-label">Khung giờ 2</label>
                 <select id="classTime2" class="form-select"></select>
               </div>
             </div>
-
           </div>
           <div class="modal-footer"><button id="saveClassBtn" class="btn btn-primary">Lưu lớp</button></div>
         </div>
       </div>
     </div>
 
-    <!-- Edit Class -->
     <div class="modal fade" id="editClassModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -266,74 +216,46 @@
             <div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control"></div>
             <div class="mb-2"><label class="form-label">Môn</label>
               <select id="editClassSubject" class="form-select">
-                <option value="math">Toán</option>
-                <option value="physics">Vật lý</option>
-                <option value="chemistry">Hóa</option>
-                <option value="literature">Ngữ văn</option>
-                <option value="english">Tiếng Anh</option>
-                <option value="history">Lịch sử</option>
-                <option value="geography">Địa lý</option>
+                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
               </select>
             </div>
             <div class="mb-2"><label class="form-label">Giáo viên</label>
               <select id="editClassTeacher" class="form-select"></select>
             </div>
+            <hr>
+            <p class="fw-bold">Buổi học 1</p>
+            <div class="mb-2"><label class="form-label">Phòng 1</label><input id="editClassRoom" class="form-control" placeholder="101..."></div>
             <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Số buổi/tuần</label>
-                <select id="editSessionsPerWeek" class="form-select">
-                  <option value="1">1 buổi/tuần</option>
-                  <option value="2">2 buổi/tuần</option>
-                </select>
-              </div>
-              <div class="col-6"><label class="form-label">Phòng (buổi 1)</label><input id="editClassRoom" class="form-control" placeholder="101..."></div>
-            </div>
-
-            <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Ngày (buổi 1)</label>
+              <div class="col-6"><label class="form-label">Ngày</label>
                 <select id="editClassDay" class="form-select">
-                  <option value="monday">Thứ 2</option>
-                  <option value="tuesday">Thứ 3</option>
-                  <option value="wednesday">Thứ 4</option>
-                  <option value="thursday">Thứ 5</option>
-                  <option value="friday">Thứ 6</option>
-                  <option value="saturday">Thứ 7</option>
-                  <option value="sunday">Chủ nhật</option>
+                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
                 </select>
               </div>
-              <div class="col-6"><label class="form-label">Khung giờ (buổi 1)</label>
+              <div class="col-6"><label class="form-label">Khung giờ</label>
                 <select id="editClassTime" class="form-select"></select>
               </div>
             </div>
-
-            <div id="editSecondSessionArea" style="display:none; border-left:3px solid #e9ecef; padding-left:10px; margin-top:10px;">
-              <div class="small-muted mb-2">Cấu hình cho buổi thứ 2</div>
-              <div class="mb-2 row">
-                <div class="col-6"><label class="form-label">Phòng (buổi 2)</label><input id="editClassRoom2" class="form-control" placeholder="101..."></div>
-                <div class="col-6"><label class="form-label">Ngày (buổi 2)</label>
-                  <select id="editClassDay2" class="form-select">
-                    <option value="monday">Thứ 2</option>
-                    <option value="tuesday">Thứ 3</option>
-                    <option value="wednesday">Thứ 4</option>
-                    <option value="thursday">Thứ 5</option>
-                    <option value="friday">Thứ 6</option>
-                    <option value="saturday">Thứ 7</option>
-                    <option value="sunday">Chủ nhật</option>
-                  </select>
-                </div>
+            <hr>
+            <p class="fw-bold">Buổi học 2 (tùy chọn)</p>
+            <div class="mb-2"><label class="form-label">Phòng 2</label><input id="editClassRoom2" class="form-control" placeholder="102..."></div>
+            <div class="mb-2 row">
+              <div class="col-6"><label class="form-label">Ngày 2</label>
+                <select id="editClassDay2" class="form-select">
+                  <option value="">-- Không chọn --</option>
+                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
+                </select>
               </div>
-              <div class="mb-2"><label class="form-label">Khung giờ (buổi 2)</label>
+              <div class="col-6"><label class="form-label">Khung giờ 2</label>
                 <select id="editClassTime2" class="form-select"></select>
               </div>
             </div>
-
-            <div class="text-muted small">Thao tác này cập nhật document lớp; lịch (collection <code>schedule</code>) sẽ được điều chỉnh tương ứng (xóa lịch cũ của lớp và thêm lại theo cấu hình).</div>
+            <div class="text-muted small mt-2">Lưu ý: Thao tác này sẽ tự động cập nhật lại thời khóa biểu cho lớp học.</div>
           </div>
           <div class="modal-footer"><button id="updateClassBtn" class="btn btn-primary">Cập nhật lớp</button></div>
         </div>
       </div>
     </div>
 
-    <!-- Schedule picker -->
     <div class="modal fade" id="scheduleModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content p-3">
@@ -349,12 +271,10 @@
 
   </div>
 
-  <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
@@ -363,7 +283,7 @@
       apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
       authDomain: "mathhubvn.firebaseapp.com",
       projectId: "mathhubvn",
-      storageBucket: "mathhubvn.firebasestorage.app",
+      storageBucket: "mathhubvn.appspot.com",
       messagingSenderId: "1001364433767",
       appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
       measurementId: "G-2YNQZ48JVK"
@@ -402,7 +322,7 @@
 
       db.collection('users').where('role','==','student').onSnapshot(snap=>{
         students = []; snap.forEach(d=> students.push({ id:d.id, ...d.data() }));
-        renderStudents(); updateStudentClassDropdowns();
+        renderStudents();
       }, logError);
 
       db.collection('schedule').onSnapshot(snap=>{
@@ -420,19 +340,16 @@
         const tr = document.createElement('tr');
         const teacherName = getTeacherName(c.teacherId);
         const studentCount = (c.students||[]).length;
-        const sessions = c.sessionsPerWeek || 1;
-        let timeInfo = '';
-        if(sessions === 1){ timeInfo = getDayName(c.day)||'' + ' ' + getTimeSlotName(c.time)||''; }
-        else {
-          timeInfo = (getDayName(c.day)||'' ) + ' ' + (getTimeSlotName(c.time)||'') + ' \n' + (getDayName(c.day2)||'') + ' ' + (getTimeSlotName(c.time2)||'');
-        }
+        
+        let session1Info = `${getDayName(c.day)} ${getTimeSlotName(c.time)} (P: ${c.room || 'Chưa'})`;
+        let session2Info = c.day2 ? `<br>${getDayName(c.day2)} ${getTimeSlotName(c.time2)} (P: ${c.room2 || 'Chưa'})` : '';
+
         tr.innerHTML = `
           <td>${c.name}</td>
           <td>${getSubjectName(c.subject)}</td>
           <td>${teacherName}</td>
           <td>${studentCount} hs</td>
-          <td>${sessions} buổi/tuần<br>${escapeHtml(timeInfo).replace(/\n/g,'<br>')}</td>
-          <td>${c.room||'Chưa'}</td>
+          <td>${session1Info}${session2Info}</td>
           <td>
             <button class="btn btn-sm btn-primary edit-class" data-id="${c.id}">Sửa</button>
             <button class="btn btn-sm btn-danger delete-class" data-id="${c.id}">Xóa</button>
@@ -467,6 +384,7 @@
     }
 
     function renderSchedule(){
+      const conflicts = detectConflicts();
       const tbody = document.getElementById('scheduleTableBody');
       if(!tbody) return;
       tbody.innerHTML = '';
@@ -475,15 +393,20 @@
         const tr = document.createElement('tr');
         let html = `<td class="time-slot">${slot.name}</td>`;
         days.forEach(day=>{
-          html += `<td class="schedule-cell">`;
           const entries = schedule.filter(s => s.day===day && s.time===slot.id);
+          let cellClass = "schedule-cell";
+          let tooltip = "";
+          const relatedConf = conflicts.filter(cf => cf.s1.day===day && cf.s1.time===slot.id);
+          if(relatedConf.length>0){ cellClass += " conflict"; tooltip = relatedConf.map(cf=>cf.type+" trùng").join(", "); }
+          
+          html += `<td class=\"${cellClass}\" title=\"${tooltip}\">`;
           entries.forEach(en=>{
             const cls = classes.find(c=>c.id===en.classId);
             const teacher = getTeacherName(en.teacherId|| (cls?cls.teacherId:null));
             html += `<div class="schedule-class">
               <div class="fw-bold">${cls?cls.name:'(Lớp đã xóa)'}</div>
               <div class="small">${getSubjectName(cls?cls.subject:null)} - ${teacher}</div>
-              <div class="small">Phòng: ${en.room|| (cls?cls.room:'Chưa')}</div>
+              <div class="small">Phòng: ${en.room||'(Chưa)'}</div>
             </div>`;
           });
           html += `</td>`;
@@ -493,12 +416,35 @@
       });
     }
 
+    
+    // --- Hàm phát hiện trùng lịch ---
+    function detectConflicts(){
+      const conflicts = [];
+      schedule.forEach((s1,i)=>{
+        schedule.forEach((s2,j)=>{
+          if(i>=j) return;
+          if(s1.day===s2.day && s1.time===s2.time){
+            if(s1.teacherId && s1.teacherId===s2.teacherId) conflicts.push({type:'Giáo viên',s1,s2});
+            if(s1.room && s1.room===s2.room) conflicts.push({type:'Phòng',s1,s2});
+            if(s1.classId && s2.classId){
+              const c1 = classes.find(c=>c.id===s1.classId);
+              const c2 = classes.find(c=>c.id===s2.classId);
+              if(c1 && c2){
+                const common = (c1.students||[]).filter(x=> (c2.students||[]).includes(x));
+                if(common.length>0) conflicts.push({type:'Học sinh',s1,s2});
+              }
+            }
+          }
+        });
+      });
+      return conflicts;
+    }
+    
     // ---------- Helpers ----------
     function getSubjectName(id){ const map = {math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}; return map[id]||''; }
     function getTeacherName(id){ if(!id) return 'Chưa'; const t = teachers.find(x=>x.id===id); return t? t.name : 'Chưa'; }
     function getDayName(day){ const m={monday:'Thứ 2',tuesday:'Thứ 3',wednesday:'Thứ 4',thursday:'Thứ 5',friday:'Thứ 6',saturday:'Thứ 7',sunday:'Chủ nhật'}; return m[day]||''; }
     function getTimeSlotName(id){ const s = TIME_SLOTS.find(x=>x.id===id); return s? s.name : ''; }
-    function escapeHtml(unsafe){ return (unsafe||'').replace(/[&<"'>]/g, function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#039;"}[m];}); }
 
     // ---------- Dropdown updates ----------
     function updateTeacherDropdowns(){
@@ -508,17 +454,15 @@
       if(selEdit){ selEdit.innerHTML = '<option value="">-- Chọn giáo viên --</option>'; teachers.forEach(t=> { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name + ' (' + (t.subject?getSubjectName(t.subject):'') + ')'; selEdit.appendChild(o); }); }
     }
     function updateClassDropdowns(){
-      const select = document.getElementById('studentClass');
-      if(select){ select.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; select.appendChild(o); }); }
+      const studentClassSel = document.getElementById('studentClass');
+      if(studentClassSel){ studentClassSel.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; studentClassSel.appendChild(o); }); }
+      
       const scheduleSel = document.getElementById('classToSchedule');
       if(scheduleSel){ scheduleSel.innerHTML = '<option value="">-- Chọn lớp --</option>'; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; scheduleSel.appendChild(o); }); }
-      // Also update edit-student class select
-      const editSelect = document.getElementById('editStudentClass');
-      if(editSelect){ editSelect.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; editSelect.appendChild(o); }); }
-      const addStudentSelect = document.getElementById('studentClass');
-      if(addStudentSelect){ addStudentSelect.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; addStudentSelect.appendChild(o); }); }
+      
+      const editStudentClassSel = document.getElementById('editStudentClass');
+      if(editStudentClassSel){ editStudentClassSel.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; editStudentClassSel.appendChild(o); }); }
     }
-    function updateStudentClassDropdowns(){ updateClassDropdowns(); }
 
     // ---------- CRUD operations ----------
     async function addTeacher(){
@@ -534,7 +478,7 @@
         await userCredential.user.updateProfile({ displayName: name });
         await db.collection('users').doc(uid).set({ name, email, phone, role: 'teacher', subject, availability: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         alert('Tạo giáo viên thành công. Mật khẩu tạm thời: ' + password);
-        var modal = bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')); modal.hide();
+        bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
       } catch(e){ logError(e); }
     }
 
@@ -550,7 +494,7 @@
         const uid = userCredential.user.uid;
         await userCredential.user.updateProfile({ displayName: name });
         await db.collection('users').doc(uid).set({ name, email, phone, role: 'student', classes: classIds, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        // Update classes: push student ids
+        
         const batch = db.batch();
         classIds.forEach(cid => {
           const clsRef = db.collection('classes').doc(cid);
@@ -566,33 +510,51 @@
       const name = document.getElementById('className').value.trim();
       const subject = document.getElementById('classSubject').value;
       const teacherId = document.getElementById('classTeacher').value;
+      
       const room = document.getElementById('classRoom').value.trim();
-      const sessionsPerWeek = parseInt(document.getElementById('sessionsPerWeek').value || '1');
       const day = document.getElementById('classDay').value;
       const time = document.getElementById('classTime').value;
-      let day2 = null, time2 = null, room2 = null;
-      if(sessionsPerWeek === 2){
-        day2 = document.getElementById('classDay2').value;
-        time2 = document.getElementById('classTime2').value;
-        room2 = document.getElementById('classRoom2').value.trim() || null;
-      }
-      if(!name||!subject||!teacherId||!day||!time) return alert('Vui lòng điền đầy đủ thông tin lớp và lịch (ít nhất buổi 1)');
-      try{
-        const classRef = await db.collection('classes').add({ name, subject, teacherId, room: room||null, day, time, sessionsPerWeek, day2: day2||null, time2: time2||null, room2: room2||null, students: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        // Add schedule entries according to sessionsPerWeek
-        await db.collection('schedule').add({ classId: classRef.id, day, time, room: room||null, teacherId });
-        if(sessionsPerWeek === 2 && day2 && time2){
-          await db.collection('schedule').add({ classId: classRef.id, day: day2, time: time2, room: room2||null, teacherId });
+      
+      const room2 = document.getElementById('classRoom2').value.trim();
+      const day2 = document.getElementById('classDay2').value;
+      const time2 = document.getElementById('classTime2').value;
+
+      if(!name || !subject || !teacherId || !day || !time) return alert('Vui lòng điền đầy đủ thông tin lớp và ít nhất Buổi học 1');
+      
+      try {
+        const classData = {
+            name, subject, teacherId,
+            room: room || null, day, time,
+            students: [],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (day2 && time2) {
+            classData.day2 = day2;
+            classData.time2 = time2;
+            classData.room2 = room2 || null;
         }
-        alert('Đã tạo lớp và lịch ban đầu');
+
+        const classRef = await db.collection('classes').add(classData);
+        const batch = db.batch();
+        
+        batch.set(db.collection('schedule').doc(), { classId: classRef.id, day, time, room: room || null, teacherId });
+        
+        if (day2 && time2) {
+            batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: day2, time: time2, room: room2 || null, teacherId });
+        }
+        await batch.commit();
+
+        alert('Đã tạo lớp và lịch thành công!');
         bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
-      } catch(e){ logError(e); }
+      } catch (e) {
+          logError(e);
+      }
     }
 
+
     // ---------- Edit handlers ----------
-    // Open edit modals and prefill
     document.addEventListener('click', (e)=>{
-      // Edit teacher
       if(e.target.matches('.edit-teacher')){
         const id = e.target.dataset.id;
         const t = teachers.find(x=>x.id===id);
@@ -605,7 +567,6 @@
         new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
       }
 
-      // Edit student
       if(e.target.matches('.edit-student')){
         const id = e.target.dataset.id;
         const s = students.find(x=>x.id===id);
@@ -614,7 +575,7 @@
         document.getElementById('editStudentName').value = s.name || '';
         document.getElementById('editStudentEmail').value = s.email || '';
         document.getElementById('editStudentPhone').value = s.phone || '';
-        // populate class multi-select and preselect current classes
+        
         const sel = document.getElementById('editStudentClass');
         sel.innerHTML = '';
         classes.forEach(c => {
@@ -626,7 +587,6 @@
         new bootstrap.Modal(document.getElementById('editStudentModal')).show();
       }
 
-      // Edit class
       if(e.target.matches('.edit-class')){
         const id = e.target.dataset.id;
         const c = classes.find(x=>x.id===id);
@@ -634,29 +594,20 @@
         document.getElementById('editClassId').value = c.id;
         document.getElementById('editClassName').value = c.name || '';
         document.getElementById('editClassSubject').value = c.subject || '';
-        // teacher dropdown
-        const sel = document.getElementById('editClassTeacher');
-        sel.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
-        teachers.forEach(t=> { const o=document.createElement('option'); o.value=t.id; o.textContent = t.name; sel.appendChild(o); });
         document.getElementById('editClassTeacher').value = c.teacherId || '';
+        
         document.getElementById('editClassRoom').value = c.room || '';
-        document.getElementById('editSessionsPerWeek').value = (c.sessionsPerWeek||1).toString();
         document.getElementById('editClassDay').value = c.day || 'monday';
         document.getElementById('editClassTime').value = c.time || '';
-        // populate second session if exists
-        if((c.sessionsPerWeek||1) === 2){
-          document.getElementById('editSecondSessionArea').style.display = 'block';
-          document.getElementById('editClassRoom2').value = c.room2 || '';
-          document.getElementById('editClassDay2').value = c.day2 || 'monday';
-          document.getElementById('editClassTime2').value = c.time2 || '';
-        } else {
-          document.getElementById('editSecondSessionArea').style.display = 'none';
-        }
+        
+        document.getElementById('editClassRoom2').value = c.room2 || '';
+        document.getElementById('editClassDay2').value = c.day2 || '';
+        document.getElementById('editClassTime2').value = c.time2 || '';
+
         new bootstrap.Modal(document.getElementById('editClassModal')).show();
       }
     });
 
-    // Update teacher
     document.getElementById('updateTeacherBtn').addEventListener('click', async ()=>{
       const id = document.getElementById('editTeacherId').value;
       const name = document.getElementById('editTeacherName').value.trim();
@@ -671,7 +622,6 @@
       } catch(e){ logError(e); }
     });
 
-    // Update student (handle class arrays)
     document.getElementById('updateStudentBtn').addEventListener('click', async ()=>{
       const id = document.getElementById('editStudentId').value;
       const name = document.getElementById('editStudentName').value.trim();
@@ -680,20 +630,15 @@
       const selectedClassIds = Array.from(document.getElementById('editStudentClass').selectedOptions).map(o=>o.value);
       if(!id) return alert('Không có id học sinh');
       try{
-        // get current classes from students[] in memory (watchers keep it updated)
         const studentDoc = students.find(s=>s.id===id) || { classes: [] };
         const prev = studentDoc.classes || [];
 
-        // compute removed and added
         const toRemove = prev.filter(x=> !selectedClassIds.includes(x));
         const toAdd = selectedClassIds.filter(x=> !prev.includes(x));
 
         const batch = db.batch();
-        // update student's user doc
         batch.update(db.collection('users').doc(id), { name, email, phone, classes: selectedClassIds });
-        // remove from old classes
         toRemove.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayRemove(id) }));
-        // add to new classes
         toAdd.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(id) }));
         await batch.commit();
         alert('Cập nhật học sinh thành công');
@@ -701,38 +646,55 @@
       } catch(e){ logError(e); }
     });
 
-    // Update class
     document.getElementById('updateClassBtn').addEventListener('click', async ()=>{
       const id = document.getElementById('editClassId').value;
       const name = document.getElementById('editClassName').value.trim();
       const subject = document.getElementById('editClassSubject').value;
       const teacherId = document.getElementById('editClassTeacher').value;
+      
       const room = document.getElementById('editClassRoom').value.trim();
-      const sessionsPerWeek = parseInt(document.getElementById('editSessionsPerWeek').value || '1');
       const day = document.getElementById('editClassDay').value;
       const time = document.getElementById('editClassTime').value;
-      let day2 = null, time2 = null, room2 = null;
-      if(sessionsPerWeek === 2){
-        day2 = document.getElementById('editClassDay2').value;
-        time2 = document.getElementById('editClassTime2').value;
-        room2 = document.getElementById('editClassRoom2').value.trim() || null;
-      }
+      
+      const room2 = document.getElementById('editClassRoom2').value.trim();
+      const day2 = document.getElementById('editClassDay2').value;
+      const time2 = document.getElementById('editClassTime2').value;
+
       if(!id) return alert('Không có id lớp');
-      if(!name||!subject||!teacherId||!day||!time) return alert('Vui lòng điền đủ thông tin buổi 1');
+      if(!name || !subject || !teacherId || !day || !time) return alert('Vui lòng điền đầy đủ thông tin lớp và ít nhất Buổi học 1');
+
       try{
-        // Update class document
-        await db.collection('classes').doc(id).update({ name, subject, teacherId: teacherId || null, room: room || null, sessionsPerWeek, day, time, day2: day2||null, time2: time2||null, room2: room2||null });
-        // Rebuild schedule entries for this class: delete existing then add according to config
-        const snaps = await db.collection('schedule').where('classId','==',id).get();
-        const batch = db.batch();
-        snaps.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        // add new schedule docs
-        await db.collection('schedule').add({ classId: id, day, time, room: room||null, teacherId });
-        if(sessionsPerWeek === 2 && day2 && time2){
-          await db.collection('schedule').add({ classId: id, day: day2, time: time2, room: room2||null, teacherId });
+        const updateData = {
+            name, subject, teacherId,
+            room: room || null, day, time,
+            day2: day2 || null, time2: time2 || null, room2: room2 || null,
+        };
+        // Xóa các trường của buổi 2 nếu không được chọn, để giữ data sạch
+        if (!day2 || !time2) {
+            updateData.day2 = firebase.firestore.FieldValue.delete();
+            updateData.time2 = firebase.firestore.FieldValue.delete();
+            updateData.room2 = firebase.firestore.FieldValue.delete();
         }
-        alert('Cập nhật lớp và lịch thành công');
+
+        const batch = db.batch();
+        // 1. Cập nhật document của lớp
+        const classRef = db.collection('classes').doc(id);
+        batch.update(classRef, updateData);
+
+        // 2. Xóa tất cả lịch cũ của lớp này
+        const oldScheduleSnaps = await db.collection('schedule').where('classId', '==', id).get();
+        oldScheduleSnaps.forEach(doc => batch.delete(doc.ref));
+
+        // 3. Tạo lại lịch cho buổi 1
+        batch.set(db.collection('schedule').doc(), { classId: id, day, time, room: room || null, teacherId });
+        
+        // 4. Tạo lại lịch cho buổi 2 nếu có
+        if (day2 && time2) {
+            batch.set(db.collection('schedule').doc(), { classId: id, day: day2, time: time2, room: room2 || null, teacherId });
+        }
+
+        await batch.commit();
+        alert('Cập nhật lớp và lịch học thành công!');
         bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
       } catch(e){ logError(e); }
     });
@@ -741,7 +703,7 @@
     document.addEventListener('click', async (e)=>{
       if(e.target.matches('.delete-class')){
         const id = e.target.dataset.id;
-        if(!confirm('Xác nhận xóa lớp?')) return;
+        if(!confirm('Xác nhận xóa lớp? Thao tác này sẽ xóa cả lịch học liên quan.')) return;
         try{
           const snaps = await db.collection('schedule').where('classId','==',id).get();
           const batch = db.batch();
@@ -753,7 +715,7 @@
       }
       if(e.target.matches('.delete-teacher')){
         const id = e.target.dataset.id;
-        if(!confirm('Xóa giáo viên? Các lớp sẽ không có giáo viên cho đến khi gán lại.')) return;
+        if(!confirm('Xóa giáo viên? Các lớp do giáo viên này dạy sẽ bị bỏ trống giáo viên.')) return;
         try{
           const clsSnap = await db.collection('classes').where('teacherId','==',id).get();
           const batch = db.batch();
@@ -777,50 +739,40 @@
       }
     });
 
-    // ---------- Scheduling algorithm (updated to respect sessionsPerWeek) ----------
+    // ---------- Scheduling algorithm ----------
     async function generateScheduleForClass(classId){
       const cls = classes.find(c=>c.id===classId);
       if(!cls) return alert('Lớp không tồn tại');
       const existing = schedule.filter(s=>s.classId===classId);
-      const maxSessions = cls.sessionsPerWeek || 1;
-      if(existing.length >= maxSessions) return alert('Lớp đã có tối đa ' + maxSessions + ' buổi/tuần');
+      if(existing.length >= 2) return alert('Lớp đã có tối đa 2 buổi/tuần. Vui lòng sửa trực tiếp.');
       const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
       for(const day of days){
         for(const slot of TIME_SLOTS){
-          // skip if this day/time already used by this class
-          if(schedule.some(s => s.classId===classId && s.day===day && s.time===slot.id)) continue;
           const teacherConflict = schedule.some(s=> s.day===day && s.time===slot.id && s.teacherId === cls.teacherId);
           if(teacherConflict) continue;
-          const studentIds = cls.students || [];
+          
           let studentConflict = false;
-          for(const stId of studentIds){
-            if( schedule.some(s=> s.day===day && s.time===slot.id && ( s.classId ? (classes.find(c=>c.id===s.classId) && (classes.find(c=>c.id===s.classId).students||[]).includes(stId)) : false ) ) ){
-              studentConflict = true; break;
-            }
+          for(const stId of (cls.students || [])){
+              const studentClasses = schedule.filter(s => {
+                  const scheduledClass = classes.find(c => c.id === s.classId);
+                  return scheduledClass && (scheduledClass.students || []).includes(stId);
+              });
+              if(studentClasses.some(s => s.day === day && s.time === slot.id)) {
+                  studentConflict = true;
+                  break;
+              }
           }
           if(studentConflict) continue;
-          const studentCount = studentIds.length;
-          let roomChoice = null;
-          if(studentCount > 25){
-            const preferred = ['101','102'];
-            for(const r of preferred){
-              const occupied = schedule.some(s=> s.day===day && s.time===slot.id && s.room===r);
-              if(!occupied){ roomChoice = r; break; }
-            }
-          }
-          if(!roomChoice){
-            if(cls.subject === 'english'){
-              const occ = schedule.some(s=> s.day===day && s.time===slot.id && s.room === '101');
-              if(!occ) roomChoice = '101';
-            }
-          }
-          if(!roomChoice){
-            roomChoice = ROOMS.find(r => !schedule.some(s=> s.day===day && s.time===slot.id && s.room===r));
-          }
+          
+          const roomChoice = ROOMS.find(r => !schedule.some(s=> s.day===day && s.time===slot.id && s.room===r));
           if(!roomChoice) continue;
+          
           try{
-            const payload = { classId: classId, day, time: slot.id, room: roomChoice, teacherId: cls.teacherId };
-            await db.collection('schedule').add(payload);
+            await db.collection('schedule').add({ classId, day, time: slot.id, room: roomChoice, teacherId: cls.teacherId });
+            // Cập nhật lại document của lớp để lưu thông tin lịch
+            const updateField = existing.length === 0 ? { day, time: slot.id, room: roomChoice } : { day2: day, time2: slot.id, room2: roomChoice };
+            await db.collection('classes').doc(classId).update(updateField);
+            
             alert('Đã xếp lịch cho ' + cls.name + ' — ' + getDayName(day) + ' ' + slot.name + ' phòng ' + roomChoice);
             return;
           } catch(e){ logError(e); return; }
@@ -829,12 +781,8 @@
       alert('Không tìm được khung giờ phù hợp (có thể do trùng giáo viên/học sinh/phòng)');
     }
 
-    // Hook up generateScheduleBtn
     document.getElementById('generateScheduleBtn').addEventListener('click', ()=>{
-      const modalEl = document.getElementById('scheduleModal');
-      const modal = new bootstrap.Modal(modalEl);
-      updateClassDropdowns();
-      modal.show();
+      new bootstrap.Modal(document.getElementById('scheduleModal')).show();
     });
     document.getElementById('doGenerateBtn').addEventListener('click', async ()=>{
       const cid = document.getElementById('classToSchedule').value;
@@ -848,43 +796,30 @@
     document.getElementById('saveStudentBtn').addEventListener('click', addStudent);
     document.getElementById('saveClassBtn').addEventListener('click', addClass);
 
-    // ---------- UI toggles for second session ----------
-    document.getElementById('sessionsPerWeek').addEventListener('change', (e)=>{
-      const v = parseInt(e.target.value || '1');
-      document.getElementById('secondSessionArea').style.display = v===2 ? 'block' : 'none';
-    });
-    document.getElementById('editSessionsPerWeek').addEventListener('change', (e)=>{
-      const v = parseInt(e.target.value || '1');
-      document.getElementById('editSecondSessionArea').style.display = v===2 ? 'block' : 'none';
-    });
-
-    // ---------- Availability UI init ----------
-    function initAvailabilityUI(){
-      // prepopulate time selects for class creation and editing
-      const classTime = document.getElementById('classTime');
-      const classTime2 = document.getElementById('classTime2');
-      const editClassTime = document.getElementById('editClassTime');
-      const editClassTime2 = document.getElementById('editClassTime2');
-      [classTime, classTime2, editClassTime, editClassTime2].forEach(ct=>{
-        if(ct){ ct.innerHTML = ''; TIME_SLOTS.forEach(s=>{ const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; ct.appendChild(o); }); }
-      });
-    }
-
     // ---------- Init on auth state ----------
     auth.onAuthStateChanged(user=>{
-      if(user){
-        currentUser = user;
+        if(user){ currentUser = user; }
         loadData();
-        initAvailabilityUI();
-      } else {
-        loadData();
-        initAvailabilityUI();
-      }
-    });
-
-    // ---------- Initial DOM wiring ----------
-    document.addEventListener('DOMContentLoaded', ()=>{
-      // nothing special; data listeners will populate UI
+        
+        const classTime = document.getElementById('classTime');
+        const classTime2 = document.getElementById('classTime2');
+        const editClassTime = document.getElementById('editClassTime');
+        const editClassTime2 = document.getElementById('editClassTime2');
+        
+        [classTime, classTime2, editClassTime, editClassTime2].forEach(selectEl => {
+            if(selectEl){
+                selectEl.innerHTML = '';
+                if (selectEl.id.includes('2')) {
+                    selectEl.innerHTML = '<option value="">-- Chọn khung giờ --</option>';
+                }
+                TIME_SLOTS.forEach(s=>{ 
+                    const o = document.createElement('option'); 
+                    o.value = s.id; 
+                    o.textContent = s.name; 
+                    selectEl.appendChild(o); 
+                });
+            }
+        });
     });
   </script>
 </body>
