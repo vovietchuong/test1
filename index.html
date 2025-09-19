@@ -1,284 +1,324 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-t" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Quản lý Trung tâm - Thời khóa biểu (Đã nâng cấp)</title>
+  <title>Quản lý Trung tâm - Dashboard</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
   <style>
-    :root{ --primary:#4e73df; --muted:#6c757d; }
-    body{ background:#f8f9fc; font-family: "Segoe UI", Tahoma, Arial, sans-serif; padding:20px; }
-    .card { box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
-    .availability-slot { cursor:pointer; display:inline-block; margin:3px; padding:6px 8px; border-radius:6px; border:1px dashed #ccc; }
-    .availability-slot.selected { background:#e9f5ff; border-color:var(--primary); }
-    .schedule-cell { min-width:180px; vertical-align:top; }
-    .schedule-class { margin-bottom:6px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee; }
-    .time-slot { width:140px; font-weight:600; }
-    .conflict { border:2px solid red !important; background:#ffe6e6 !important; }
+    /* ------------------------- */
+    /* --- THEME & VARIABLES --- */
+    /* ------------------------- */
+    :root {
+      --primary: #4e73df;
+      --secondary: #858796;
+      --success: #1cc88a;
+      --info: #36b9cc;
+      --warning: #f6c23e;
+      --danger: #e74a3b;
+      --light: #f8f9fc;
+      --dark: #5a5c69;
+      --sidebar-width: 220px;
+      --header-height: 60px;
+      --body-bg: #f8f9fc;
+      --card-bg: #fff;
+      --border-color: #e3e6f0;
+      --box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+      --border-radius: 0.35rem;
+    }
+
+    /* ----------------- */
+    /* --- BASE & LAYOUT --- */
+    /* ----------------- */
+    body {
+      background-color: var(--body-bg);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      color: var(--dark);
+    }
+    #wrapper { display: flex; }
+    #sidebar {
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background-color: var(--primary);
+      transition: margin-left 0.3s ease;
+    }
+    #content-wrapper {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      width: calc(100% - var(--sidebar-width));
+    }
+    #main-content { padding: 24px; }
+    
+    /* Responsive Sidebar */
+    @media (max-width: 768px) {
+      #sidebar { margin-left: calc(-1 * var(--sidebar-width)); }
+      #sidebar.toggled { margin-left: 0; }
+      #content-wrapper { width: 100%; }
+    }
+
+    /* ----------------- */
+    /* --- COMPONENTS --- */
+    /* ----------------- */
+    /* Sidebar */
+    .sidebar-brand {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #fff;
+    }
+    .sidebar-nav-item {
+      display: block;
+      color: rgba(255,255,255,0.8);
+      padding: 1rem 1.5rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .sidebar-nav-item:hover, .sidebar-nav-item.active {
+      background-color: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    .sidebar-nav-item i { margin-right: 10px; }
+
+    /* Header */
+    #header {
+      height: var(--header-height);
+      background: var(--card-bg);
+      box-shadow: var(--box-shadow);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+
+    /* Cards */
+    .card {
+      border: 1px solid var(--border-color);
+      box-shadow: var(--box-shadow);
+      border-radius: var(--border-radius);
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      border-left: 4px solid var(--primary);
+      transition: transform 0.2s ease-in-out;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-card.border-success { border-color: var(--success); }
+    .stat-card.border-info { border-color: var(--info); }
+    .stat-card.border-warning { border-color: var(--warning); }
+    .stat-card.border-danger { border-color: var(--danger); }
+    .stat-card .card-body { padding: 1.5rem; }
+    .stat-card .stat-icon { font-size: 2rem; opacity: 0.3; }
+
+    /* Tables */
+    .table-responsive {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .schedule-cell { min-width: 150px; vertical-align: top; }
+    .schedule-class {
+      margin-bottom: 6px; padding: 6px;
+      border-radius: 6px; background:#f1f3f8;
+      border: 1px solid #e3e6f0; font-size: 0.85rem;
+    }
+    .time-slot { width: 120px; font-weight: 600; white-space: nowrap; }
+    .conflict {
+      border: 2px solid var(--danger) !important;
+      background-color: #fff0f0 !important;
+    }
+
+    /* Toasts (Notifications) */
+    .toast-container { z-index: 1090; }
+
+    /* ----------------- */
+    /* --- UTILITIES --- */
+    /* ----------------- */
+    .text-primary { color: var(--primary) !important; }
+    .text-success { color: var(--success) !important; }
+    .text-info { color: var(--info) !important; }
+    .text-warning { color: var(--warning) !important; }
+    .text-danger { color: var(--danger) !important; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h3 class="mb-3">Quản lý Trung tâm - Thời khóa biểu</h3>
 
-    <div class="row g-3">
-      <div class="col-md-8">
-        <div class="card mb-3 p-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Danh sách lớp</h5>
-            <div>
-              <button class="btn btn-sm btn-success me-2" data-bs-toggle="modal" data-bs-target="#addClassModal">Thêm lớp</button>
-              <button class="btn btn-sm btn-primary" id="generateScheduleBtn">Xếp lịch cho lớp</button>
-            </div>
-          </div>
-          <div style="overflow:auto;">
-            <table class="table table-striped" id="classesTable">
-              <thead><tr><th>Tên lớp</th><th>Môn</th><th>Giáo viên</th><th>HS</th><th>Lịch học</th><th>Hành động</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card p-3 mb-3">
-          <h5>Thời khóa biểu (Tuần)</h5>
-          <div style="overflow:auto;">
-            <table class="table table-bordered align-middle">
-              <thead>
-                <tr>
-                  <th>Khung giờ</th>
-                  <th>Thứ 2</th><th>Thứ 3</th><th>Thứ 4</th><th>Thứ 5</th><th>Thứ 6</th><th>Thứ 7</th><th>Chủ nhật</th>
-                </tr>
-              </thead>
-              <tbody id="scheduleTableBody"></tbody>
-            </table>
-          </div>
-        </div>
+  <div id="wrapper">
+    <nav id="sidebar">
+      <div class="sidebar-brand">
+        <i class="bi bi-calendar-check"></i>
+        <span>Scheduler</span>
       </div>
+      <a href="#" class="sidebar-nav-item active"><i class="bi bi-speedometer2"></i> Dashboard</a>
+      <a href="#" class="sidebar-nav-item"><i class="bi bi-easel"></i> Lớp học</a>
+      <a href="#" class="sidebar-nav-item"><i class="bi bi-person-video3"></i> Giáo viên</a>
+      <a href="#" class="sidebar-nav-item"><i class="bi bi-people"></i> Học sinh</a>
+      <a href="#" class="sidebar-nav-item"><i class="bi bi-gear"></i> Cài đặt</a>
+    </nav>
 
-      <div class="col-md-4">
-        <div class="card p-3 mb-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Giáo viên</h5>
-            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addTeacherModal">Thêm GV</button>
+    <div id="content-wrapper">
+      <header id="header">
+          <button id="sidebar-toggle" class="btn d-md-none"><i class="bi bi-list"></i></button>
+          <div class="input-group" style="max-width: 400px;">
+              <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm lớp, giáo viên, học sinh...">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
           </div>
-          <div style="max-height:220px; overflow:auto;">
-            <table class="table table-sm" id="teachersTable">
-              <thead><tr><th>Tên</th><th>Email</th><th>Hành động</th></tr></thead>
-              <tbody></tbody>
-            </table>
+          <div class="ms-auto">
+              <span class="d-none d-lg-inline me-2 text-secondary">Admin</span>
+              <i class="bi bi-person-circle fs-3 text-primary"></i>
           </div>
-        </div>
+      </header>
 
-        <div class="card p-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Học sinh</h5>
-            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addStudentModal">Thêm HS</button>
-          </div>
-          <div style="max-height:220px; overflow:auto;">
-            <table class="table table-sm" id="studentsTable">
-              <thead><tr><th>Tên</th><th>Email</th><th>Hành động</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div class="modal fade" id="addTeacherModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Thêm Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-          <div class="modal-body">
-            <div class="mb-2"><label class="form-label">Tên</label><input id="teacherName" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Email</label><input id="teacherEmail" class="form-control" type="email"></div>
-            <div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Môn</label>
-              <select id="teacherSubject" class="form-select">
-                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
-              </select>
-            </div>
-          </div>
-          <div class="modal-footer"><button id="saveTeacherBtn" class="btn btn-primary">Lưu</button></div>
-        </div>
-      </div>
-    </div>
-    <div class="modal fade" id="editTeacherModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Sửa Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-          <div class="modal-body">
-            <input type="hidden" id="editTeacherId">
-            <div class="mb-2"><label class="form-label">Tên</label><input id="editTeacherName" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editTeacherEmail" class="form-control" type="email"></div>
-            <div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Môn</label>
-              <select id="editTeacherSubject" class="form-select">
-                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
-              </select>
-            </div>
-            <div class="text-muted small">Lưu ý: thay đổi email trong Authentication yêu cầu xử lý riêng (không tự động sửa Auth ở đây).</div>
-          </div>
-          <div class="modal-footer"><button id="updateTeacherBtn" class="btn btn-primary">Cập nhật</button></div>
-        </div>
-      </div>
-    </div>
-    <div class="modal fade" id="addStudentModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-          <div class="modal-body">
-            <div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email"></div>
-            <div class="mb-2"><label class="form-label">SĐT</label><input id="studentPhone" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label>
-              <select id="studentClass" class="form-select" multiple></select>
-            </div>
-          </div>
-          <div class="modal-footer"><button id="saveStudentBtn" class="btn btn-primary">Lưu</button></div>
-        </div>
-      </div>
-    </div>
-    <div class="modal fade" id="editStudentModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-          <div class="modal-body">
-            <input type="hidden" id="editStudentId">
-            <div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editStudentEmail" class="form-control" type="email"></div>
-            <div class="mb-2"><label class="form-label">SĐT</label><input id="editStudentPhone" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label>
-              <select id="editStudentClass" class="form-select" multiple></select>
-            </div>
-            <div class="text-muted small">Lưu ý: để thay đổi email trong Authentication cần thao tác riêng.</div>
-          </div>
-          <div class="modal-footer"><button id="updateStudentBtn" class="btn btn-primary">Cập nhật</button></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="addClassModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Thêm Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-          <div class="modal-body">
-            <div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Môn</label>
-              <select id="classSubject" class="form-select">
-                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
-              </select>
-            </div>
-            <div class="mb-2"><label class="form-label">Giáo viên</label>
-              <select id="classTeacher" class="form-select"></select>
-            </div>
-            <hr>
-            <p class="fw-bold">Buổi học 1</p>
-            <div class="mb-2"><label class="form-label">Phòng 1</label><input id="classRoom" class="form-control" placeholder="101..."></div>
-            <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Ngày</label>
-                <select id="classDay" class="form-select">
-                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
-                </select>
-              </div>
-               <div class="col-6"><label class="form-label">Khung giờ</label>
-                <select id="classTime" class="form-select"></select>
-              </div>
-            </div>
-            <hr>
-            <p class="fw-bold">Buổi học 2 (tùy chọn)</p>
-            <div class="mb-2"><label class="form-label">Phòng 2</label><input id="classRoom2" class="form-control" placeholder="102..."></div>
-             <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Ngày 2</label>
-                <select id="classDay2" class="form-select">
-                  <option value="">-- Không chọn --</option>
-                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
-                </select>
-              </div>
-              <div class="col-6"><label class="form-label">Khung giờ 2</label>
-                <select id="classTime2" class="form-select"></select>
+      <main id="main-content">
+        <div class="row">
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-info">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-xs fw-bold text-info text-uppercase mb-1">Lớp học</div>
+                  <div id="stats-classes" class="h5 mb-0 fw-bold">0</div>
+                </div>
+                <div class="stat-icon"><i class="bi bi-easel"></i></div>
               </div>
             </div>
           </div>
-          <div class="modal-footer"><button id="saveClassBtn" class="btn btn-primary">Lưu lớp</button></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="editClassModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Sửa Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-          <div class="modal-body">
-            <input type="hidden" id="editClassId">
-            <div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control"></div>
-            <div class="mb-2"><label class="form-label">Môn</label>
-              <select id="editClassSubject" class="form-select">
-                <option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option>
-              </select>
-            </div>
-            <div class="mb-2"><label class="form-label">Giáo viên</label>
-              <select id="editClassTeacher" class="form-select"></select>
-            </div>
-            <hr>
-            <p class="fw-bold">Buổi học 1</p>
-            <div class="mb-2"><label class="form-label">Phòng 1</label><input id="editClassRoom" class="form-control" placeholder="101..."></div>
-            <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Ngày</label>
-                <select id="editClassDay" class="form-select">
-                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
-                </select>
-              </div>
-              <div class="col-6"><label class="form-label">Khung giờ</label>
-                <select id="editClassTime" class="form-select"></select>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-success">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">Giáo viên</div>
+                  <div id="stats-teachers" class="h5 mb-0 fw-bold">0</div>
+                </div>
+                <div class="stat-icon"><i class="bi bi-person-video3"></i></div>
               </div>
             </div>
-            <hr>
-            <p class="fw-bold">Buổi học 2 (tùy chọn)</p>
-            <div class="mb-2"><label class="form-label">Phòng 2</label><input id="editClassRoom2" class="form-control" placeholder="102..."></div>
-            <div class="mb-2 row">
-              <div class="col-6"><label class="form-label">Ngày 2</label>
-                <select id="editClassDay2" class="form-select">
-                  <option value="">-- Không chọn --</option>
-                  <option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option>
-                </select>
-              </div>
-              <div class="col-6"><label class="form-label">Khung giờ 2</label>
-                <select id="editClassTime2" class="form-select"></select>
-              </div>
-            </div>
-            <div class="text-muted small mt-2">Lưu ý: Thao tác này sẽ tự động cập nhật lại thời khóa biểu cho lớp học.</div>
           </div>
-          <div class="modal-footer"><button id="updateClassBtn" class="btn btn-primary">Cập nhật lớp</button></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="scheduleModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content p-3">
-          <h5>Chọn lớp để xếp lịch</h5>
-          <select id="classToSchedule" class="form-select mb-3"></select>
-          <div class="d-flex justify-content-end">
-            <button class="btn btn-secondary me-2" data-bs-dismiss="modal">Huỷ</button>
-            <button id="doGenerateBtn" class="btn btn-primary">Xếp lịch</button>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-primary">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">Học sinh</div>
+                  <div id="stats-students" class="h5 mb-0 fw-bold">0</div>
+                </div>
+                <div class="stat-icon"><i class="bi bi-people"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-danger">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">Xung đột lịch</div>
+                  <div id="stats-conflicts" class="h5 mb-0 fw-bold">0</div>
+                </div>
+                <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
+        <div class="row">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-easel me-2"></i>Danh sách lớp</h5>
+                <div>
+                  <button class="btn btn-sm btn-success me-2" data-bs-toggle="modal" data-bs-target="#addClassModal"><i class="bi bi-plus-circle me-1"></i>Thêm lớp</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive" style="max-height: 350px;">
+                  <table class="table table-striped table-hover" id="classesTable">
+                    <thead class="table-light"><tr><th>Tên lớp</th><th>Môn</th><th>Giáo viên</th><th>HS</th><th>Lịch học</th><th>Hành động</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-calendar-week me-2"></i>Thời khóa biểu (Tuần)</h5>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-bordered align-middle text-center">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Khung giờ</th>
+                        <th>Thứ 2</th><th>Thứ 3</th><th>Thứ 4</th><th>Thứ 5</th><th>Thứ 6</th><th>Thứ 7</th><th>CN</th>
+                      </tr>
+                    </thead>
+                    <tbody id="scheduleTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-person-video3 me-2"></i>Giáo viên</h5>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addTeacherModal"><i class="bi bi-plus-circle"></i></button>
+              </div>
+              <div class="card-body p-2">
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover" id="teachersTable">
+                    <thead><tr><th>Tên</th><th>Email</th><th>Hành động</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-people me-2"></i>Học sinh</h5>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="bi bi-plus-circle"></i></button>
+              </div>
+              <div class="card-body p-2">
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover" id="studentsTable">
+                    <thead><tr><th>Tên</th><th>Email</th><th>Hành động</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   </div>
 
+  <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+  <div class="modal fade" id="addTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Thêm Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="teacherName" class="form-control"></div><div class="mb-2"><label class="form-label">Email</label><input id="teacherEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="teacherSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div></div><div class="modal-footer"><button id="saveTeacherBtn" class="btn btn-primary">Lưu</button></div></div></div></div>
+  <div class="modal fade" id="editTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editTeacherId"><div class="mb-2"><label class="form-label">Tên</label><input id="editTeacherName" class="form-control"></div><div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editTeacherEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="editTeacherSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="text-muted small">Lưu ý: thay đổi email trong Authentication yêu cầu xử lý riêng.</div></div><div class="modal-footer"><button id="updateTeacherBtn" class="btn btn-primary">Cập nhật</button></div></div></div></div>
+  <div class="modal fade" id="addStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control"></div><div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="studentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label><select id="studentClass" class="form-select" multiple></select></div></div><div class="modal-footer"><button id="saveStudentBtn" class="btn btn-primary">Lưu</button></div></div></div></div>
+  <div class="modal fade" id="editStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editStudentId"><div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control"></div><div class="mb-2"><label class="form-label">Email (lưu vào Firestore)</label><input id="editStudentEmail" class="form-control" type="email"></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editStudentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp (Ctrl/Shift chọn nhiều)</label><select id="editStudentClass" class="form-select" multiple></select></div><div class="text-muted small">Lưu ý: để thay đổi email trong Authentication cần thao tác riêng.</div></div><div class="modal-footer"><button id="updateStudentBtn" class="btn btn-primary">Cập nhật</button></div></div></div></div>
+  <div class="modal fade" id="addClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Thêm Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="classSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="classTeacher" class="form-select"></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom" class="form-control" placeholder="101..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay" class="form-select"><option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime" class="form-select"></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay2" class="form-select"><option value="">-- Không chọn --</option><option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime2" class="form-select"></select></div></div></div></div></div><div class="modal-footer"><button id="saveClassBtn" class="btn btn-primary">Lưu lớp</button></div></div></div></div>
+  <div class="modal fade" id="editClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editClassId"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="editClassSubject" class="form-select"><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="editClassTeacher" class="form-select"></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom" class="form-control" placeholder="101..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay" class="form-select"><option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime" class="form-select"></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay2" class="form-select"><option value="">-- Không chọn --</option><option value="monday">Thứ 2</option><option value="tuesday">Thứ 3</option><option value="wednesday">Thứ 4</option><option value="thursday">Thứ 5</option><option value="friday">Thứ 6</option><option value="saturday">Thứ 7</option><option value="sunday">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime2" class="form-select"></select></div></div></div></div><div class="text-muted small mt-2">Lưu ý: Thao tác này sẽ tự động cập nhật lại thời khóa biểu cho lớp học.</div></div><div class="modal-footer"><button id="updateClassBtn" class="btn btn-primary">Cập nhật lớp</button></div></div></div></div>
+  
+  
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // ---------- Firebase config ----------
+    // ------------------------------------
+    // --- 1. CONFIG & INITIALIZATION ---
+    // ------------------------------------
     const firebaseConfig = {
       apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
       authDomain: "mathhubvn.firebaseapp.com",
@@ -292,192 +332,259 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // ---------- State ----------
+    // Global State
     let currentUser = null;
     let classes = [], teachers = [], students = [], schedule = [];
-
-    const ROOMS = ['101','102','103','104','105','106'];
     const TIME_SLOTS = [
-      { id: 'slot1', name: '07:00-09:00', start: '07:00', end: '09:00' },
-      { id: 'slot2', name: '09:15-11:15', start: '09:15', end: '11:15' },
-      { id: 'slot3', name: '14:00-16:00', start: '14:00', end: '16:00' },
-      { id: 'slot4', name: '16:30-18:30', start: '16:30', end: '18:30' },
-      { id: 'slot5', name: '19:00-21:00', start: '19:00', end: '21:00' }
+      { id: 'slot1', name: '07:00-09:00' }, { id: 'slot2', name: '09:15-11:15' },
+      { id: 'slot3', name: '14:00-16:00' }, { id: 'slot4', name: '16:30-18:30' },
+      { id: 'slot5', name: '19:00-21:00' }
     ];
+    
+    // ------------------------------------
+    // --- 2. UI & HELPER FUNCTIONS ---
+    // ------------------------------------
+    
+    /**
+     * Shows a toast notification.
+     * @param {string} message The message to display.
+     * @param {string} type 'success', 'error', 'warning', or 'info'.
+     */
+    function showToast(message, type = 'info') {
+        const toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) return;
 
-    function logError(e){ console.error(e); alert('Lỗi: ' + (e.message || e)); }
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+        const bgColors = {
+            success: 'bg-success',
+            error: 'bg-danger',
+            warning: 'bg-warning',
+            info: 'bg-info'
+        }
 
-    // ---------- Load realtime data ----------
+        const toastId = 'toast-' + Math.random().toString(36).substr(2, 9);
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center text-white ${bgColors[type] || 'bg-secondary'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi ${icons[type] || 'bi-bell-fill'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>`;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+        
+        // Remove the element from DOM after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+
+    function logError(e) {
+      console.error(e);
+      showToast('Lỗi: ' + (e.message || e), 'error');
+    }
+
+    // --- Data mapping helpers ---
+    function getSubjectName(id){ const map = {math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}; return map[id]||''; }
+    function getTeacherName(id){ if(!id) return 'N/A'; const t = teachers.find(x=>x.id===id); return t? t.name : 'N/A'; }
+    function getDayName(day){ const m={monday:'Thứ 2',tuesday:'Thứ 3',wednesday:'Thứ 4',thursday:'Thứ 5',friday:'Thứ 6',saturday:'Thứ 7',sunday:'CN'}; return m[day]||''; }
+    function getTimeSlotName(id){ const s = TIME_SLOTS.find(x=>x.id===id); return s? s.name : ''; }
+
+
+    // ------------------------------------
+    // --- 3. CORE LOGIC & DATA HANDLING ---
+    // ------------------------------------
+    
+    // --- Load realtime data from Firestore ---
     function loadData(){
       db.collection('classes').onSnapshot(snap => {
-        classes = [];
-        snap.forEach(d=> classes.push({ id:d.id, ...d.data() }));
-        renderClasses(); updateClassDropdowns();
+        classes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        renderClasses(); 
+        updateClassDropdowns();
+        updateStats();
       }, logError);
 
       db.collection('users').where('role','==','teacher').onSnapshot(snap=>{
-        teachers = []; snap.forEach(d=> teachers.push({ id:d.id, ...d.data() }));
-        renderTeachers(); updateTeacherDropdowns();
+        teachers = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        renderTeachers(); 
+        updateTeacherDropdowns();
+        updateStats();
       }, logError);
 
       db.collection('users').where('role','==','student').onSnapshot(snap=>{
-        students = []; snap.forEach(d=> students.push({ id:d.id, ...d.data() }));
+        students = snap.docs.map(d => ({ id:d.id, ...d.data() }));
         renderStudents();
+        updateStats();
       }, logError);
 
       db.collection('schedule').onSnapshot(snap=>{
-        schedule = []; snap.forEach(d=> schedule.push({ id:d.id, ...d.data() }));
+        schedule = snap.docs.map(d => ({ id:d.id, ...d.data() }));
         renderSchedule();
+        updateStats();
       }, logError);
     }
 
-    // ---------- Render functions (include Edit buttons) ----------
+    // --- Conflict detection ---
+    function detectConflicts(){
+      const conflicts = [];
+      for(let i=0; i < schedule.length; i++) {
+        for(let j=i+1; j < schedule.length; j++) {
+          const s1 = schedule[i];
+          const s2 = schedule[j];
+          if(s1.day === s2.day && s1.time === s2.time) {
+            if(s1.teacherId && s1.teacherId === s2.teacherId) conflicts.push({type:'Giáo viên', s1, s2});
+            if(s1.room && s1.room === s2.room) conflicts.push({type:'Phòng', s1, s2});
+            
+            const c1 = classes.find(c => c.id === s1.classId);
+            const c2 = classes.find(c => c.id === s2.classId);
+            if(c1 && c2 && (c1.students || []).some(st => (c2.students || []).includes(st))) {
+              conflicts.push({type:'Học sinh', s1, s2});
+            }
+          }
+        }
+      }
+      return conflicts;
+    }
+
+    // ------------------------------------
+    // --- 4. RENDER & UPDATE FUNCTIONS ---
+    // ------------------------------------
+
+    function updateStats() {
+      const conflictCount = detectConflicts().length;
+      document.getElementById('stats-classes').textContent = classes.length;
+      document.getElementById('stats-teachers').textContent = teachers.length;
+      document.getElementById('stats-students').textContent = students.length;
+      document.getElementById('stats-conflicts').textContent = conflictCount;
+    }
+
+    // --- Render table functions ---
     function renderClasses(){
       const tbody = document.querySelector('#classesTable tbody');
       if(!tbody) return;
-      tbody.innerHTML = '';
-      classes.forEach(c=>{
-        const tr = document.createElement('tr');
+      tbody.innerHTML = classes.map(c => {
         const teacherName = getTeacherName(c.teacherId);
         const studentCount = (c.students||[]).length;
-        
-        let session1Info = `${getDayName(c.day)} ${getTimeSlotName(c.time)} (P: ${c.room || 'Chưa'})`;
-        let session2Info = c.day2 ? `<br>${getDayName(c.day2)} ${getTimeSlotName(c.time2)} (P: ${c.room2 || 'Chưa'})` : '';
-
-        tr.innerHTML = `
-          <td>${c.name}</td>
-          <td>${getSubjectName(c.subject)}</td>
-          <td>${teacherName}</td>
-          <td>${studentCount} hs</td>
-          <td>${session1Info}${session2Info}</td>
-          <td>
-            <button class="btn btn-sm btn-primary edit-class" data-id="${c.id}">Sửa</button>
-            <button class="btn btn-sm btn-danger delete-class" data-id="${c.id}">Xóa</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+        const s1 = `${getDayName(c.day)} ${getTimeSlotName(c.time)} (P:${c.room||'?'})`;
+        const s2 = c.day2 ? `<br>${getDayName(c.day2)} ${getTimeSlotName(c.time2)} (P:${c.room2||'?'})` : '';
+        return `
+          <tr data-search-content="${c.name} ${getSubjectName(c.subject)} ${teacherName}">
+            <td>${c.name}</td>
+            <td>${getSubjectName(c.subject)}</td>
+            <td>${teacherName}</td>
+            <td>${studentCount}</td>
+            <td>${s1}${s2}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary edit-class" data-id="${c.id}"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-outline-danger delete-class" data-id="${c.id}"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>`;
+      }).join('');
     }
+
     function renderTeachers(){
       const tbody = document.querySelector('#teachersTable tbody'); if(!tbody) return;
-      tbody.innerHTML = '';
-      teachers.forEach(t=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${t.name}</td><td>${t.email||''}</td><td>
-          <button class="btn btn-sm btn-primary edit-teacher" data-id="${t.id}">Sửa</button>
-          <button class="btn btn-sm btn-danger delete-teacher" data-id="${t.id}">Xóa</button>
-        </td>`;
-        tbody.appendChild(tr);
-      });
+      tbody.innerHTML = teachers.map(t => `
+        <tr data-search-content="${t.name} ${t.email}">
+          <td>${t.name}</td><td>${t.email||''}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary edit-teacher" data-id="${t.id}"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger delete-teacher" data-id="${t.id}"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join('');
     }
+
     function renderStudents(){
       const tbody = document.querySelector('#studentsTable tbody'); if(!tbody) return;
-      tbody.innerHTML = '';
-      students.forEach(s=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${s.name}</td><td>${s.email||''}</td><td>
-          <button class="btn btn-sm btn-primary edit-student" data-id="${s.id}">Sửa</button>
-          <button class="btn btn-sm btn-danger delete-student" data-id="${s.id}">Xóa</button>
-        </td>`;
-        tbody.appendChild(tr);
-      });
+      tbody.innerHTML = students.map(s => `
+        <tr data-search-content="${s.name} ${s.email}">
+          <td>${s.name}</td><td>${s.email||''}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary edit-student" data-id="${s.id}"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger delete-student" data-id="${s.id}"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join('');
     }
 
     function renderSchedule(){
       const conflicts = detectConflicts();
       const tbody = document.getElementById('scheduleTableBody');
       if(!tbody) return;
-      tbody.innerHTML = '';
       const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-      TIME_SLOTS.forEach(slot=>{
-        const tr = document.createElement('tr');
-        let html = `<td class="time-slot">${slot.name}</td>`;
-        days.forEach(day=>{
-          const entries = schedule.filter(s => s.day===day && s.time===slot.id);
-          let cellClass = "schedule-cell";
-          let tooltip = "";
-          const relatedConf = conflicts.filter(cf => cf.s1.day===day && cf.s1.time===slot.id);
-          if(relatedConf.length>0){ cellClass += " conflict"; tooltip = relatedConf.map(cf=>cf.type+" trùng").join(", "); }
-          
-          html += `<td class=\"${cellClass}\" title=\"${tooltip}\">`;
-          entries.forEach(en=>{
-            const cls = classes.find(c=>c.id===en.classId);
-            const teacher = getTeacherName(en.teacherId|| (cls?cls.teacherId:null));
-            html += `<div class="schedule-class">
-              <div class="fw-bold">${cls?cls.name:'(Lớp đã xóa)'}</div>
-              <div class="small">${getSubjectName(cls?cls.subject:null)} - ${teacher}</div>
-              <div class="small">Phòng: ${en.room||'(Chưa)'}</div>
-            </div>`;
-          });
-          html += `</td>`;
-        });
-        tr.innerHTML = html;
-        tbody.appendChild(tr);
-      });
-    }
-
-    
-    // --- Hàm phát hiện trùng lịch ---
-    function detectConflicts(){
-      const conflicts = [];
-      schedule.forEach((s1,i)=>{
-        schedule.forEach((s2,j)=>{
-          if(i>=j) return;
-          if(s1.day===s2.day && s1.time===s2.time){
-            if(s1.teacherId && s1.teacherId===s2.teacherId) conflicts.push({type:'Giáo viên',s1,s2});
-            if(s1.room && s1.room===s2.room) conflicts.push({type:'Phòng',s1,s2});
-            if(s1.classId && s2.classId){
-              const c1 = classes.find(c=>c.id===s1.classId);
-              const c2 = classes.find(c=>c.id===s2.classId);
-              if(c1 && c2){
-                const common = (c1.students||[]).filter(x=> (c2.students||[]).includes(x));
-                if(common.length>0) conflicts.push({type:'Học sinh',s1,s2});
-              }
+      tbody.innerHTML = TIME_SLOTS.map(slot => `
+        <tr>
+          <td class="time-slot">${slot.name}</td>
+          ${days.map(day => {
+            const entries = schedule.filter(s => s.day === day && s.time === slot.id);
+            const relatedConf = conflicts.filter(cf => (cf.s1.day === day && cf.s1.time === slot.id) || (cf.s2.day === day && cf.s2.time === slot.id));
+            let cellClass = "schedule-cell";
+            let tooltip = "";
+            if(relatedConf.length > 0) {
+              cellClass += " conflict";
+              tooltip = `Xung đột: ${[...new Set(relatedConf.map(cf => cf.type))].join(", ")}`;
             }
-          }
-        });
+            return `
+              <td class="${cellClass}" title="${tooltip}" data-bs-toggle="tooltip">
+                ${entries.map(en => {
+                  const cls = classes.find(c => c.id === en.classId);
+                  const teacher = getTeacherName(en.teacherId || (cls ? cls.teacherId : null));
+                  return `
+                    <div class="schedule-class">
+                      <div class="fw-bold">${cls ? cls.name : '(Lớp đã xóa)'}</div>
+                      <div class="small text-muted">${getSubjectName(cls ? cls.subject : null)} - ${teacher}</div>
+                      <div class="small">Phòng: <strong>${en.room || '?'}</strong></div>
+                    </div>`;
+                }).join('')}
+              </td>`;
+          }).join('')}
+        </tr>`).join('');
+      // Re-initialize tooltips
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
       });
-      return conflicts;
     }
-    
-    // ---------- Helpers ----------
-    function getSubjectName(id){ const map = {math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}; return map[id]||''; }
-    function getTeacherName(id){ if(!id) return 'Chưa'; const t = teachers.find(x=>x.id===id); return t? t.name : 'Chưa'; }
-    function getDayName(day){ const m={monday:'Thứ 2',tuesday:'Thứ 3',wednesday:'Thứ 4',thursday:'Thứ 5',friday:'Thứ 6',saturday:'Thứ 7',sunday:'Chủ nhật'}; return m[day]||''; }
-    function getTimeSlotName(id){ const s = TIME_SLOTS.find(x=>x.id===id); return s? s.name : ''; }
 
-    // ---------- Dropdown updates ----------
+    // --- Update dropdown functions ---
     function updateTeacherDropdowns(){
-      const sel = document.getElementById('classTeacher');
-      const selEdit = document.getElementById('editClassTeacher');
-      if(sel){ sel.innerHTML = '<option value="">-- Chọn giáo viên --</option>'; teachers.forEach(t=> { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name + ' (' + (t.subject?getSubjectName(t.subject):'') + ')'; sel.appendChild(o); }); }
-      if(selEdit){ selEdit.innerHTML = '<option value="">-- Chọn giáo viên --</option>'; teachers.forEach(t=> { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name + ' (' + (t.subject?getSubjectName(t.subject):'') + ')'; selEdit.appendChild(o); }); }
+      const options = teachers.map(t => `<option value="${t.id}">${t.name} (${getSubjectName(t.subject)})</option>`).join('');
+      document.getElementById('classTeacher').innerHTML = `<option value="">-- Chọn --</option>${options}`;
+      document.getElementById('editClassTeacher').innerHTML = `<option value="">-- Chọn --</option>${options}`;
     }
     function updateClassDropdowns(){
-      const studentClassSel = document.getElementById('studentClass');
-      if(studentClassSel){ studentClassSel.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; studentClassSel.appendChild(o); }); }
-      
-      const scheduleSel = document.getElementById('classToSchedule');
-      if(scheduleSel){ scheduleSel.innerHTML = '<option value="">-- Chọn lớp --</option>'; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; scheduleSel.appendChild(o); }); }
-      
-      const editStudentClassSel = document.getElementById('editStudentClass');
-      if(editStudentClassSel){ editStudentClassSel.innerHTML=''; classes.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; editStudentClassSel.appendChild(o); }); }
+      const options = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      document.getElementById('studentClass').innerHTML = options;
+      document.getElementById('editStudentClass').innerHTML = options;
     }
 
-    // ---------- CRUD operations ----------
+    // ------------------------------------
+    // --- 5. CRUD OPERATIONS ---
+    // ------------------------------------
+
     async function addTeacher(){
       const name = document.getElementById('teacherName').value.trim();
       const email = document.getElementById('teacherEmail').value.trim();
       const phone = document.getElementById('teacherPhone').value.trim();
       const subject = document.getElementById('teacherSubject').value;
-      if(!name||!email||!subject) return alert('Vui lòng điền đầy đủ');
+      if(!name||!email||!subject) return showToast('Vui lòng điền đầy đủ', 'warning');
       try{
         const password = Math.random().toString(36).slice(-8);
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const uid = userCredential.user.uid;
-        await userCredential.user.updateProfile({ displayName: name });
-        await db.collection('users').doc(uid).set({ name, email, phone, role: 'teacher', subject, availability: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        alert('Tạo giáo viên thành công. Mật khẩu tạm thời: ' + password);
+        await db.collection('users').doc(uid).set({ name, email, phone, role: 'teacher', subject, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        showToast(`Tạo GV thành công. MK: ${password}`, 'success');
         bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
       } catch(e){ logError(e); }
     }
@@ -487,21 +594,19 @@
       const email = document.getElementById('studentEmail').value.trim();
       const phone = document.getElementById('studentPhone').value.trim();
       const classIds = Array.from(document.getElementById('studentClass').selectedOptions).map(o=>o.value);
-      if(!name||!email) return alert('Vui lòng điền tên và email');
+      if(!name||!email) return showToast('Vui lòng điền tên và email', 'warning');
       try{
         const password = Math.random().toString(36).slice(-8);
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const uid = userCredential.user.uid;
-        await userCredential.user.updateProfile({ displayName: name });
         await db.collection('users').doc(uid).set({ name, email, phone, role: 'student', classes: classIds, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         
         const batch = db.batch();
         classIds.forEach(cid => {
-          const clsRef = db.collection('classes').doc(cid);
-          batch.update(clsRef, { students: firebase.firestore.FieldValue.arrayUnion(uid) });
+          batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(uid) });
         });
         await batch.commit();
-        alert('Tạo học sinh thành công. Mật khẩu tạm thời: ' + password);
+        showToast(`Tạo HS thành công. MK: ${password}`, 'success');
         bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
       } catch(e){ logError(e); }
     }
@@ -510,114 +615,97 @@
       const name = document.getElementById('className').value.trim();
       const subject = document.getElementById('classSubject').value;
       const teacherId = document.getElementById('classTeacher').value;
-      
       const room = document.getElementById('classRoom').value.trim();
       const day = document.getElementById('classDay').value;
       const time = document.getElementById('classTime').value;
-      
       const room2 = document.getElementById('classRoom2').value.trim();
       const day2 = document.getElementById('classDay2').value;
       const time2 = document.getElementById('classTime2').value;
 
-      if(!name || !subject || !teacherId || !day || !time) return alert('Vui lòng điền đầy đủ thông tin lớp và ít nhất Buổi học 1');
+      if(!name || !subject || !teacherId || !day || !time) return showToast('Điền đủ thông tin và ít nhất Buổi học 1', 'warning');
       
       try {
-        const classData = {
-            name, subject, teacherId,
-            room: room || null, day, time,
-            students: [],
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
+        const classData = { name, subject, teacherId, room: room || null, day, time, students: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() };
         if (day2 && time2) {
             classData.day2 = day2;
             classData.time2 = time2;
             classData.room2 = room2 || null;
         }
-
         const classRef = await db.collection('classes').add(classData);
         const batch = db.batch();
-        
         batch.set(db.collection('schedule').doc(), { classId: classRef.id, day, time, room: room || null, teacherId });
-        
         if (day2 && time2) {
             batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: day2, time: time2, room: room2 || null, teacherId });
         }
         await batch.commit();
-
-        alert('Đã tạo lớp và lịch thành công!');
+        showToast('Đã tạo lớp và lịch thành công!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
-      } catch (e) {
-          logError(e);
-      }
+      } catch (e) { logError(e); }
     }
 
+    // --- Edit Handlers ---
+    document.addEventListener('click', (e) => {
+        const editTeacherBtn = e.target.closest('.edit-teacher');
+        if(editTeacherBtn) {
+            const id = editTeacherBtn.dataset.id;
+            const t = teachers.find(x=>x.id===id);
+            if(!t) return showToast('Không tìm thấy giáo viên', 'error');
+            document.getElementById('editTeacherId').value = t.id;
+            document.getElementById('editTeacherName').value = t.name || '';
+            document.getElementById('editTeacherEmail').value = t.email || '';
+            document.getElementById('editTeacherPhone').value = t.phone || '';
+            document.getElementById('editTeacherSubject').value = t.subject || '';
+            new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
+        }
 
-    // ---------- Edit handlers ----------
-    document.addEventListener('click', (e)=>{
-      if(e.target.matches('.edit-teacher')){
-        const id = e.target.dataset.id;
-        const t = teachers.find(x=>x.id===id);
-        if(!t) return alert('Không tìm thấy giáo viên');
-        document.getElementById('editTeacherId').value = t.id;
-        document.getElementById('editTeacherName').value = t.name || '';
-        document.getElementById('editTeacherEmail').value = t.email || '';
-        document.getElementById('editTeacherPhone').value = t.phone || '';
-        document.getElementById('editTeacherSubject').value = t.subject || '';
-        new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
-      }
+        const editStudentBtn = e.target.closest('.edit-student');
+        if(editStudentBtn) {
+            const id = editStudentBtn.dataset.id;
+            const s = students.find(x=>x.id===id);
+            if(!s) return showToast('Không tìm thấy học sinh', 'error');
+            document.getElementById('editStudentId').value = s.id;
+            document.getElementById('editStudentName').value = s.name || '';
+            document.getElementById('editStudentEmail').value = s.email || '';
+            document.getElementById('editStudentPhone').value = s.phone || '';
+            Array.from(document.getElementById('editStudentClass').options).forEach(opt => {
+              opt.selected = (s.classes || []).includes(opt.value);
+            });
+            new bootstrap.Modal(document.getElementById('editStudentModal')).show();
+        }
 
-      if(e.target.matches('.edit-student')){
-        const id = e.target.dataset.id;
-        const s = students.find(x=>x.id===id);
-        if(!s) return alert('Không tìm thấy học sinh');
-        document.getElementById('editStudentId').value = s.id;
-        document.getElementById('editStudentName').value = s.name || '';
-        document.getElementById('editStudentEmail').value = s.email || '';
-        document.getElementById('editStudentPhone').value = s.phone || '';
-        
-        const sel = document.getElementById('editStudentClass');
-        sel.innerHTML = '';
-        classes.forEach(c => {
-          const o = document.createElement('option');
-          o.value = c.id; o.textContent = c.name;
-          if((s.classes||[]).includes(c.id)) o.selected = true;
-          sel.appendChild(o);
-        });
-        new bootstrap.Modal(document.getElementById('editStudentModal')).show();
-      }
-
-      if(e.target.matches('.edit-class')){
-        const id = e.target.dataset.id;
-        const c = classes.find(x=>x.id===id);
-        if(!c) return alert('Không tìm thấy lớp');
-        document.getElementById('editClassId').value = c.id;
-        document.getElementById('editClassName').value = c.name || '';
-        document.getElementById('editClassSubject').value = c.subject || '';
-        document.getElementById('editClassTeacher').value = c.teacherId || '';
-        
-        document.getElementById('editClassRoom').value = c.room || '';
-        document.getElementById('editClassDay').value = c.day || 'monday';
-        document.getElementById('editClassTime').value = c.time || '';
-        
-        document.getElementById('editClassRoom2').value = c.room2 || '';
-        document.getElementById('editClassDay2').value = c.day2 || '';
-        document.getElementById('editClassTime2').value = c.time2 || '';
-
-        new bootstrap.Modal(document.getElementById('editClassModal')).show();
-      }
+        const editClassBtn = e.target.closest('.edit-class');
+        if(editClassBtn) {
+            const id = editClassBtn.dataset.id;
+            const c = classes.find(x=>x.id===id);
+            if(!c) return showToast('Không tìm thấy lớp', 'error');
+            document.getElementById('editClassId').value = c.id;
+            document.getElementById('editClassName').value = c.name || '';
+            document.getElementById('editClassSubject').value = c.subject || '';
+            document.getElementById('editClassTeacher').value = c.teacherId || '';
+            document.getElementById('editClassRoom').value = c.room || '';
+            document.getElementById('editClassDay').value = c.day || 'monday';
+            document.getElementById('editClassTime').value = c.time || '';
+            document.getElementById('editClassRoom2').value = c.room2 || '';
+            document.getElementById('editClassDay2').value = c.day2 || '';
+            document.getElementById('editClassTime2').value = c.time2 || '';
+            new bootstrap.Modal(document.getElementById('editClassModal')).show();
+        }
     });
 
+
+    // --- Update Handlers ---
     document.getElementById('updateTeacherBtn').addEventListener('click', async ()=>{
       const id = document.getElementById('editTeacherId').value;
-      const name = document.getElementById('editTeacherName').value.trim();
-      const email = document.getElementById('editTeacherEmail').value.trim();
-      const phone = document.getElementById('editTeacherPhone').value.trim();
-      const subject = document.getElementById('editTeacherSubject').value;
-      if(!id) return alert('Không có id giáo viên');
+      const data = {
+        name: document.getElementById('editTeacherName').value.trim(),
+        email: document.getElementById('editTeacherEmail').value.trim(),
+        phone: document.getElementById('editTeacherPhone').value.trim(),
+        subject: document.getElementById('editTeacherSubject').value
+      };
+      if(!id) return showToast('Không có id giáo viên', 'error');
       try{
-        await db.collection('users').doc(id).update({ name, email, phone, subject });
-        alert('Cập nhật giáo viên thành công');
+        await db.collection('users').doc(id).update(data);
+        showToast('Cập nhật giáo viên thành công', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editTeacherModal')).hide();
       } catch(e){ logError(e); }
     });
@@ -628,11 +716,10 @@
       const email = document.getElementById('editStudentEmail').value.trim();
       const phone = document.getElementById('editStudentPhone').value.trim();
       const selectedClassIds = Array.from(document.getElementById('editStudentClass').selectedOptions).map(o=>o.value);
-      if(!id) return alert('Không có id học sinh');
+      if(!id) return showToast('Không có id học sinh', 'error');
       try{
         const studentDoc = students.find(s=>s.id===id) || { classes: [] };
         const prev = studentDoc.classes || [];
-
         const toRemove = prev.filter(x=> !selectedClassIds.includes(x));
         const toAdd = selectedClassIds.filter(x=> !prev.includes(x));
 
@@ -641,7 +728,7 @@
         toRemove.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayRemove(id) }));
         toAdd.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(id) }));
         await batch.commit();
-        alert('Cập nhật học sinh thành công');
+        showToast('Cập nhật học sinh thành công', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editStudentModal')).hide();
       } catch(e){ logError(e); }
     });
@@ -651,25 +738,18 @@
       const name = document.getElementById('editClassName').value.trim();
       const subject = document.getElementById('editClassSubject').value;
       const teacherId = document.getElementById('editClassTeacher').value;
-      
       const room = document.getElementById('editClassRoom').value.trim();
       const day = document.getElementById('editClassDay').value;
       const time = document.getElementById('editClassTime').value;
-      
       const room2 = document.getElementById('editClassRoom2').value.trim();
       const day2 = document.getElementById('editClassDay2').value;
       const time2 = document.getElementById('editClassTime2').value;
 
-      if(!id) return alert('Không có id lớp');
-      if(!name || !subject || !teacherId || !day || !time) return alert('Vui lòng điền đầy đủ thông tin lớp và ít nhất Buổi học 1');
+      if(!id) return showToast('Không có id lớp', 'error');
+      if(!name || !subject || !teacherId || !day || !time) return showToast('Điền đủ thông tin và ít nhất Buổi học 1', 'warning');
 
       try{
-        const updateData = {
-            name, subject, teacherId,
-            room: room || null, day, time,
-            day2: day2 || null, time2: time2 || null, room2: room2 || null,
-        };
-        // Xóa các trường của buổi 2 nếu không được chọn, để giữ data sạch
+        const updateData = { name, subject, teacherId, room: room||null, day, time, day2: day2||null, time2: time2||null, room2: room2||null };
         if (!day2 || !time2) {
             updateData.day2 = firebase.firestore.FieldValue.delete();
             updateData.time2 = firebase.firestore.FieldValue.delete();
@@ -677,56 +757,49 @@
         }
 
         const batch = db.batch();
-        // 1. Cập nhật document của lớp
-        const classRef = db.collection('classes').doc(id);
-        batch.update(classRef, updateData);
-
-        // 2. Xóa tất cả lịch cũ của lớp này
-        const oldScheduleSnaps = await db.collection('schedule').where('classId', '==', id).get();
-        oldScheduleSnaps.forEach(doc => batch.delete(doc.ref));
-
-        // 3. Tạo lại lịch cho buổi 1
-        batch.set(db.collection('schedule').doc(), { classId: id, day, time, room: room || null, teacherId });
+        batch.update(db.collection('classes').doc(id), updateData);
         
-        // 4. Tạo lại lịch cho buổi 2 nếu có
+        const oldSchedules = await db.collection('schedule').where('classId', '==', id).get();
+        oldSchedules.forEach(doc => batch.delete(doc.ref));
+        
+        batch.set(db.collection('schedule').doc(), { classId: id, day, time, room: room || null, teacherId });
         if (day2 && time2) {
             batch.set(db.collection('schedule').doc(), { classId: id, day: day2, time: time2, room: room2 || null, teacherId });
         }
-
         await batch.commit();
-        alert('Cập nhật lớp và lịch học thành công!');
+        showToast('Cập nhật lớp và lịch học thành công!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
       } catch(e){ logError(e); }
     });
 
-    // ---------- Delete handlers ----------
+    // --- Delete Handlers ---
     document.addEventListener('click', async (e)=>{
-      if(e.target.matches('.delete-class')){
-        const id = e.target.dataset.id;
-        if(!confirm('Xác nhận xóa lớp? Thao tác này sẽ xóa cả lịch học liên quan.')) return;
+      if(e.target.closest('.delete-class')){
+        const id = e.target.closest('.delete-class').dataset.id;
+        if(!confirm('Xác nhận xóa lớp?')) return;
         try{
           const snaps = await db.collection('schedule').where('classId','==',id).get();
           const batch = db.batch();
           snaps.forEach(d => batch.delete(d.ref));
           batch.delete(db.collection('classes').doc(id));
           await batch.commit();
-          alert('Đã xóa lớp và lịch liên quan');
+          showToast('Đã xóa lớp và lịch liên quan', 'success');
         } catch(err){ logError(err); }
       }
-      if(e.target.matches('.delete-teacher')){
-        const id = e.target.dataset.id;
-        if(!confirm('Xóa giáo viên? Các lớp do giáo viên này dạy sẽ bị bỏ trống giáo viên.')) return;
+      if(e.target.closest('.delete-teacher')){
+        const id = e.target.closest('.delete-teacher').dataset.id;
+        if(!confirm('Xóa giáo viên?')) return;
         try{
           const clsSnap = await db.collection('classes').where('teacherId','==',id).get();
           const batch = db.batch();
           clsSnap.forEach(d => batch.update(d.ref, { teacherId: null }));
           batch.delete(db.collection('users').doc(id));
           await batch.commit();
-          alert('Đã xóa giáo viên và cập nhật lớp');
+          showToast('Đã xóa giáo viên', 'success');
         } catch(err){ logError(err); }
       }
-      if(e.target.matches('.delete-student')){
-        const id = e.target.dataset.id;
+      if(e.target.closest('.delete-student')){
+        const id = e.target.closest('.delete-student').dataset.id;
         if(!confirm('Xóa học sinh?')) return;
         try{
           const clsSnap = await db.collection('classes').where('students','array-contains',id).get();
@@ -734,93 +807,50 @@
           clsSnap.forEach(d => batch.update(d.ref, { students: firebase.firestore.FieldValue.arrayRemove(id) }));
           batch.delete(db.collection('users').doc(id));
           await batch.commit();
-          alert('Đã xóa học sinh');
+          showToast('Đã xóa học sinh', 'success');
         } catch(err){ logError(err); }
       }
     });
 
-    // ---------- Scheduling algorithm ----------
-    async function generateScheduleForClass(classId){
-      const cls = classes.find(c=>c.id===classId);
-      if(!cls) return alert('Lớp không tồn tại');
-      const existing = schedule.filter(s=>s.classId===classId);
-      if(existing.length >= 2) return alert('Lớp đã có tối đa 2 buổi/tuần. Vui lòng sửa trực tiếp.');
-      const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-      for(const day of days){
-        for(const slot of TIME_SLOTS){
-          const teacherConflict = schedule.some(s=> s.day===day && s.time===slot.id && s.teacherId === cls.teacherId);
-          if(teacherConflict) continue;
-          
-          let studentConflict = false;
-          for(const stId of (cls.students || [])){
-              const studentClasses = schedule.filter(s => {
-                  const scheduledClass = classes.find(c => c.id === s.classId);
-                  return scheduledClass && (scheduledClass.students || []).includes(stId);
-              });
-              if(studentClasses.some(s => s.day === day && s.time === slot.id)) {
-                  studentConflict = true;
-                  break;
-              }
-          }
-          if(studentConflict) continue;
-          
-          const roomChoice = ROOMS.find(r => !schedule.some(s=> s.day===day && s.time===slot.id && s.room===r));
-          if(!roomChoice) continue;
-          
-          try{
-            await db.collection('schedule').add({ classId, day, time: slot.id, room: roomChoice, teacherId: cls.teacherId });
-            // Cập nhật lại document của lớp để lưu thông tin lịch
-            const updateField = existing.length === 0 ? { day, time: slot.id, room: roomChoice } : { day2: day, time2: slot.id, room2: roomChoice };
-            await db.collection('classes').doc(classId).update(updateField);
-            
-            alert('Đã xếp lịch cho ' + cls.name + ' — ' + getDayName(day) + ' ' + slot.name + ' phòng ' + roomChoice);
-            return;
-          } catch(e){ logError(e); return; }
-        }
-      }
-      alert('Không tìm được khung giờ phù hợp (có thể do trùng giáo viên/học sinh/phòng)');
-    }
+    // ------------------------------------
+    // --- 6. EVENT LISTENERS & INIT ---
+    // ------------------------------------
 
-    document.getElementById('generateScheduleBtn').addEventListener('click', ()=>{
-      new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('keyup', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('#classesTable tbody tr, #teachersTable tbody tr, #studentsTable tbody tr').forEach(row => {
+            const content = row.dataset.searchContent.toLowerCase();
+            row.style.display = content.includes(searchTerm) ? '' : 'none';
+        });
     });
-    document.getElementById('doGenerateBtn').addEventListener('click', async ()=>{
-      const cid = document.getElementById('classToSchedule').value;
-      if(!cid) return alert('Chọn lớp cần xếp lịch');
-      await generateScheduleForClass(cid);
-      bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+    
+    // Sidebar toggle
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('toggled');
     });
 
-    // ---------- Wire up add/save buttons ----------
+    // Wire up add/save buttons
     document.getElementById('saveTeacherBtn').addEventListener('click', addTeacher);
     document.getElementById('saveStudentBtn').addEventListener('click', addStudent);
     document.getElementById('saveClassBtn').addEventListener('click', addClass);
 
-    // ---------- Init on auth state ----------
-    auth.onAuthStateChanged(user=>{
-        if(user){ currentUser = user; }
+    // Initialize on auth state change
+    auth.onAuthStateChanged(user => {
+        if(user) { currentUser = user; }
+        
         loadData();
         
-        const classTime = document.getElementById('classTime');
-        const classTime2 = document.getElementById('classTime2');
-        const editClassTime = document.getElementById('editClassTime');
-        const editClassTime2 = document.getElementById('editClassTime2');
+        // Populate time slot dropdowns
+        const timeOptions = TIME_SLOTS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        const timeOptionsOptional = `<option value="">-- Chọn --</option>${timeOptions}`;
         
-        [classTime, classTime2, editClassTime, editClassTime2].forEach(selectEl => {
-            if(selectEl){
-                selectEl.innerHTML = '';
-                if (selectEl.id.includes('2')) {
-                    selectEl.innerHTML = '<option value="">-- Chọn khung giờ --</option>';
-                }
-                TIME_SLOTS.forEach(s=>{ 
-                    const o = document.createElement('option'); 
-                    o.value = s.id; 
-                    o.textContent = s.name; 
-                    selectEl.appendChild(o); 
-                });
-            }
-        });
+        document.getElementById('classTime').innerHTML = timeOptions;
+        document.getElementById('classTime2').innerHTML = timeOptionsOptional;
+        document.getElementById('editClassTime').innerHTML = timeOptions;
+        document.getElementById('editClassTime2').innerHTML = timeOptionsOptional;
     });
+
   </script>
 </body>
 </html>
