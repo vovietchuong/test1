@@ -58,12 +58,108 @@
     .text-danger { color: var(--danger) !important; }
     .table-responsive-cards .no-data-row td { text-align: center; color: var(--secondary); font-style: italic; }
     #attendanceModal .student-row .form-check { margin-left: auto; }
+    
+    /* New styles for teacher attendance */
+    .attendance-header { 
+      background-color: #f8f9fa; 
+      border-bottom: 2px solid #dee2e6; 
+      padding: 1rem; 
+      margin-bottom: 1rem; 
+    }
+    .attendance-title { 
+      color: #2c3e50; 
+      font-weight: 700; 
+      margin-bottom: 0.5rem; 
+    }
+    .attendance-subtitle { 
+      color: #6c757d; 
+      font-size: 0.9rem; 
+    }
+    .teacher-attendance-card {
+      border: 1px solid #dee2e6;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .teacher-attendance-card .card-header {
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+    }
+    .attendance-student-row {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .attendance-student-row:last-child {
+      border-bottom: none;
+    }
+    .student-info {
+      flex: 1;
+    }
+    .student-name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .student-phone {
+      font-size: 0.875rem;
+      color: #6c757d;
+    }
+    .attendance-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .attendance-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #dee2e6;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .attendance-btn.active {
+      border-color: var(--success);
+      background-color: rgba(28, 200, 138, 0.1);
+    }
+    .attendance-btn.absent.active {
+      border-color: var(--danger);
+      background-color: rgba(231, 74, 59, 0.1);
+    }
+    .attendance-btn i {
+      font-size: 1.25rem;
+    }
+    .attendance-summary {
+      background-color: #f8f9fa;
+      border-top: 1px solid #dee2e6;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+    
     @media (max-width: 767px) {
         .table-responsive-cards thead { display: none; }
         .table-responsive-cards tr { display: block; margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); }
         .table-responsive-cards td { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); text-align: right; }
         .table-responsive-cards tr td:first-child { border-top: none; }
         .table-responsive-cards td::before { content: attr(data-label); font-weight: 600; margin-right: auto; text-align: left; }
+        
+        /* Mobile styles for attendance */
+        .attendance-student-row {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .attendance-actions {
+          margin-top: 0.5rem;
+          width: 100%;
+          justify-content: flex-end;
+        }
     }
   </style>
 </head>
@@ -94,6 +190,8 @@
       <a class="sidebar-nav-item admin-only" data-target="teachers-page"><i class="bi bi-person-video3"></i> Giáo viên</a>
       <a class="sidebar-nav-item hide-from-student" data-target="students-page"><i class="bi bi-people"></i> Học sinh</a>
       <a class="sidebar-nav-item hide-from-student" data-target="attendance-page"><i class="bi bi-check-circle-fill"></i> Điểm danh</a>
+      <!-- New menu item for teacher attendance -->
+      <a class="sidebar-nav-item teacher-only" data-target="teacher-attendance-page"><i class="bi bi-person-check"></i> Điểm danh theo GV</a>
     </nav>
 
     <div id="content-wrapper">
@@ -128,7 +226,7 @@
         </div>
 
         <div id="students-page" class="page-section">
-            <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0 text-primary fw-bold"><i class="bi bi-people me-2"></i>Danh sách học sinh</h5><button class="btn btn-success admin-only" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="bi bi-plus-circle me-1"></i>Thêm học sinh</button></div><div class="card-body"><div class="table-responsive table-responsive-cards"><table class="table table-hover" id="studentsTable"><thead class="table-light"><tr><th>Tên</th><th>Email</th><th>Lớp đã đăng ký</th><th class="admin-only">Hành động</th></tr></thead><tbody></tbody></table></div></div></div>
+            <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0 text-primary fw-bold"><i class="bi bi-people me-2"></i>Danh sách học sinh</h5><button class="btn btn-success admin-only" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="bi bi-plus-circle me-1"></i>Thêm học sinh</button></div><div class="card-body"><div class="table-responsive table-responsive-cards"><table class="table table-hover" id="studentsTable"><thead class="table-light"><tr><th>Tên</th><th>SĐT Phụ huynh</th><th>Lớp đã đăng ký</th><th class="admin-only">Hành động</th></tr></thead><tbody></tbody></table></div></div></div>
         </div>
 
         <div id="attendance-page" class="page-section">
@@ -144,605 +242,883 @@
                   <div class="table-responsive"><table class="table table-bordered table-hover" id="attendanceHistoryTable"><thead class="table-light"><tr><th>Ngày</th><th>Lớp</th><th>GV</th><th>Có mặt</th><th>Vắng mặt</th></tr></thead><tbody><tr><td colspan="5" class="text-center">Vui lòng chọn bộ lọc để xem dữ liệu.</td></tr></tbody></table></div>
               </div>
           </div>
-      </div>
+        </div>
+        
+        <!-- New Teacher Attendance Page -->
+        <div id="teacher-attendance-page" class="page-section">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-person-check me-2"></i>Điểm danh theo Giáo viên</h5>
+            </div>
+            <div class="card-body">
+              <div class="attendance-header">
+                <h4 class="attendance-title">HỌC THÊM - LUYỆN THI KIẾN NĂNG</h4>
+                <p class="attendance-subtitle mb-2">Liên hệ đăng ký học: Zalo/sđt: Mr Đông 0979.803.568</p>
+                <p class="attendance-subtitle mb-0">Kiên trì học tập - Tài năng toả sáng</p>
+              </div>
+              
+              <div class="mb-4">
+                <h6 class="fw-bold mb-2">DANH SÁCH ĐIỂM DANH HỌC SINH - THEO GIÁO VIÊN</h6>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label for="teacher-attendance-filter" class="form-label">Chọn giáo viên:</label>
+                    <select id="teacher-attendance-filter" class="form-select">
+                      <option value="">-- Chọn giáo viên --</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label for="attendance-date-filter" class="form-label">Ngày điểm danh:</label>
+                    <input type="date" id="attendance-date-filter" class="form-control" value="">
+                  </div>
+                  <div class="col-md-3">
+                    <label for="attendance-class-filter-teacher" class="form-label">Lọc theo lớp:</label>
+                    <select id="attendance-class-filter-teacher" class="form-select">
+                      <option value="">Tất cả lớp</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="teacher-attendance-content">
+                <div class="text-center p-4 text-muted">
+                  <i class="bi bi-person-check fs-1"></i>
+                  <p class="mt-2">Vui lòng chọn giáo viên để xem danh sách điểm danh</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
       </main>
     </div>
   </div>
 
   <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
+  <!-- Existing modals -->
   <div class="modal fade" id="addTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addTeacherForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Giáo viên</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="teacherName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="teacherEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="teacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="teacherSubject" class="form-select" required><option selected disabled value="">Chọn môn...</option><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div></div><div class="modal-footer"><button type="submit" id="saveTeacherBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Lưu</span></button></div></form></div></div></div>
   <div class="modal fade" id="editTeacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="editTeacherForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Giáo viên</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editTeacherId"><div class="mb-2"><label class="form-label">Tên</label><input id="editTeacherName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="editTeacherEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editTeacherPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Môn</label><select id="editTeacherSubject" class="form-select" required><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div></div><div class="modal-footer"><button type="submit" id="updateTeacherBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
-  <div class="modal fade" id="addStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addStudentForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="studentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp</label><select id="studentClass" class="form-select" multiple size="5"></select></div></div><div class="modal-footer"><button type="submit" id="saveStudentBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Lưu</span></button></div></form></div></div></div>
-  <div class="modal fade" id="editStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="editStudentForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editStudentId"><div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="editStudentEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT</label><input id="editStudentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp</label><select id="editStudentClass" class="form-select" multiple size="5"></select></div></div><div class="modal-footer"><button type="submit" id="updateStudentBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
+  <div class="modal fade" id="addStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="addStudentForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Học sinh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><label class="form-label">Tên</label><input id="studentName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="studentEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT Phụ huynh</label><input id="studentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp</label><select id="studentClass" class="form-select" multiple size="5"></select></div></div><div class="modal-footer"><button type="submit" id="saveStudentBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Lưu</span></button></div></form></div></div></div>
+  <div class="modal fade" id="editStudentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="editStudentForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Học sinh</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editStudentId"><div class="mb-2"><label class="form-label">Tên</label><input id="editStudentName" class="form-control" required></div><div class="mb-2"><label class="form-label">Email</label><input id="editStudentEmail" class="form-control" type="email" required></div><div class="mb-2"><label class="form-label">SĐT Phụ huynh</label><input id="editStudentPhone" class="form-control"></div><div class="mb-2"><label class="form-label">Chọn lớp</label><select id="editStudentClass" class="form-select" multiple size="5"></select></div></div><div class="modal-footer"><button type="submit" id="updateStudentBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
   <div class="modal fade" id="addClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><form id="addClassForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Thêm Lớp</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="className" class="form-control" required></div><div class="mb-2"><label class="form-label">Môn</label><select id="classSubject" class="form-select" required><option selected disabled value="">Chọn...</option><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="classTeacher" class="form-select" required></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom" class="form-control" placeholder="101..." required></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay" class="form-select" required><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime" class="form-select" required></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="classRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="classDay2" class="form-select"><option value="">-- Không chọn --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="classTime2" class="form-select"></select></div></div></div></div></div><div class="modal-footer"><button type="submit" id="saveClassBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Lưu lớp</span></button></div></form></div></div></div>
   <div class="modal fade" id="editClassModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><form id="editClassForm" class="needs-validation" novalidate><div class="modal-header"><h5 class="modal-title">Sửa Lớp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="editClassId"><div class="row"><div class="col-md-6"><div class="mb-2"><label class="form-label">Tên lớp</label><input id="editClassName" class="form-control" required></div><div class="mb-2"><label class="form-label">Môn</label><select id="editClassSubject" class="form-select" required><option value="math">Toán</option><option value="physics">Vật lý</option><option value="chemistry">Hóa</option><option value="literature">Ngữ văn</option><option value="english">Tiếng Anh</option><option value="history">Lịch sử</option><option value="geography">Địa lý</option></select></div><div class="mb-2"><label class="form-label">Giáo viên</label><select id="editClassTeacher" class="form-select" required></select></div></div><div class="col-md-6"><p class="fw-bold border-bottom pb-1">Buổi học 1</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom" class="form-control" placeholder="101..." required></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay" class="form-select" required><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime" class="form-select" required></select></div></div><hr><p class="fw-bold border-bottom pb-1">Buổi học 2 (tùy chọn)</p><div class="mb-2"><label class="form-label">Phòng</label><input id="editClassRoom2" class="form-control" placeholder="102..."></div><div class="mb-2 row"><div class="col-6"><label class="form-label">Ngày</label><select id="editClassDay2" class="form-select"><option value="">-- Không chọn --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select></div><div class="col-6"><label class="form-label">Khung giờ</label><select id="editClassTime2" class="form-select"></select></div></div></div></div></div><div class="modal-footer"><button type="submit" id="updateClassBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Cập nhật</span></button></div></form></div></div></div>
-  <div class="modal fade" id="deleteConfirmModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="deleteConfirmModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-danger" id="confirmDeleteBtn">Xóa</button></div></div></div></div>
+  <div class="modal fade" id="attendanceModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Điểm danh lớp <span id="attendanceClassName"></span></h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><p class="mb-1"><strong>Giáo viên:</strong> <span id="attendanceTeacherName"></span></p><p class="mb-0"><strong>Ngày:</strong> <span id="attendanceDate"></span></p></div><div class="table-responsive"><table class="table table-striped" id="attendanceTable"><thead><tr><th>Học sinh</th><th>SĐT Phụ huynh</th><th>Trạng thái</th></tr></thead><tbody></tbody></table></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button><button type="button" id="saveAttendanceBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Lưu điểm danh</span></button></div></div></div></div>
 
-  <div class="modal fade" id="attendanceModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form id="attendanceForm"><div class="modal-header"><h5 class="modal-title">Điểm danh lớp <span id="attendanceClassName" class="fw-bold text-primary"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p class="mb-3">Ngày: <strong id="attendanceDate"></strong> - Giờ: <strong id="attendanceTime"></strong></p><div id="attendanceStudentList" class="list-group"></div></div><div class="modal-footer"><button type="submit" id="saveAttendanceBtn" class="btn btn-primary"><span class="spinner-border spinner-border-sm d-none"></span><span class="button-text">Lưu điểm danh</span></button></div></form></div></div></div>
-
-  <div class="modal fade" id="attendanceHistoryModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Lịch sử điểm danh: <span id="historyClassName" class="fw-bold text-primary"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="attendanceHistoryContent"></div></div></div></div>
-  
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script>
-    // ------------------------------------
-    // --- 1. CONFIG & INITIALIZATION ---
-    // ------------------------------------
-    const firebaseConfig = {
-      apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
-      authDomain: "mathhubvn.firebaseapp.com",
-      projectId: "mathhubvn",
-      storageBucket: "mathhubvn.appspot.com",
-      messagingSenderId: "1001364433767",
-      appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
-      measurementId: "G-2YNQZ48JVK"
-    };
+    // Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+  authDomain: "mathhubvn.firebaseapp.com",
+  projectId: "mathhubvn",
+  storageBucket: "mathhubvn.firebasestorage.app",
+  messagingSenderId: "1001364433767",
+  appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+  measurementId: "G-2YNQZ48JVK"
+};
+
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    let currentUserProfile = null;
-    let classes = [], teachers = [], students = [], schedule = [];
-    let calendar = null;
-    let allModals = {};
-    let unsubscribeListeners = []; 
-
-    const TIME_SLOTS = [
-      { id: 'slot1', start: '07:00', end: '09:00', name: '07:00-09:00' }, 
-      { id: 'slot2', start: '09:15', end: '11:15', name: '09:15-11:15' },
-      { id: 'slot3', start: '14:00', end: '16:00', name: '14:00-16:00' }, 
-      { id: 'slot4', start: '16:30', end: '18:30', name: '16:30-18:30' },
-      { id: 'slot5', start: '19:00', end: '21:00', name: '19:00-21:00' }
-    ];
-    const DAY_MAP = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0 };
-    const REVERSE_DAY_MAP = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday' };
-    
-    // ------------------------------------
-    // --- 2. UI & HELPER FUNCTIONS ---
-    // ------------------------------------
-    const showToast = (message, type = 'info') => {
-        const toastContainer = document.querySelector('.toast-container');
-        const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
-        const bgColors = { success: 'bg-success', error: 'bg-danger', info: 'bg-info' };
-        const toastId = 'toast-' + Date.now();
-        const toastHTML = `<div id="${toastId}" class="toast align-items-center text-white ${bgColors[type]} border-0" role="alert"><div class="d-flex"><div class="toast-body"><i class="bi ${icons[type]} me-2"></i>${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
-        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-        const toast = new bootstrap.Toast(document.getElementById(toastId), { delay: 5000 });
-        toast.show();
-        document.getElementById(toastId).addEventListener('hidden.bs.toast', e => e.target.remove());
-    };
-    const logError = (e, context) => { console.error(context, e); showToast(`${context}: ${e.message || e}`, 'error'); };
-    const setButtonLoadingState = (button, isLoading) => {
-        if (!button) return;
-        button.disabled = isLoading;
-        button.querySelector('.button-text')?.classList.toggle('d-none', isLoading);
-        button.querySelector('.spinner-border')?.classList.toggle('d-none', !isLoading);
-    };
-    const showDeleteConfirmModal = (title, body, onConfirm) => {
-        document.getElementById('deleteConfirmModalLabel').textContent = title;
-        document.getElementById('deleteConfirmModalBody').innerHTML = body;
-        const confirmBtn = document.getElementById('confirmDeleteBtn');
-        const newBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
-        newBtn.addEventListener('click', () => { onConfirm(); allModals.deleteConfirm.hide(); }, { once: true });
-        allModals.deleteConfirm.show();
+    // Application state
+    const appState = {
+      currentUser: null,
+      userRole: null,
+      teachers: [],
+      students: [],
+      classes: [],
+      attendance: [],
+      currentCalendarView: 'timeGridWeek'
     };
 
-    const getSubjectName = id => ({math:'Toán',physics:'Vật lý',chemistry:'Hóa',literature:'Ngữ văn',english:'Tiếng Anh',history:'Lịch sử',geography:'Địa lý'}[id]||'');
-    const getTeacherName = id => teachers.find(x=>x.id===id)?.name || 'N/A';
-    const getClassName = id => classes.find(x=>x.id===id)?.name || 'N/A';
-    const getStudentName = id => students.find(x=>x.id===id)?.name || 'N/A';
-    const getDayName = key => ({monday:'T2',tuesday:'T3',wednesday:'T4',thursday:'T5',friday:'T6',saturday:'T7',sunday:'CN'}[key]||'');
-    const getTimeSlotName = id => TIME_SLOTS.find(x=>x.id===id)?.name || '';
-    const toYMD = date => date.toISOString().split('T')[0];
-
-    // ------------------------------------
-    // --- 3. CORE LOGIC & DATA HANDLING ---
-    // ------------------------------------
-    const detachAllListeners = () => { unsubscribeListeners.forEach(unsub => unsub()); unsubscribeListeners = []; };
-
-    async function loadAllData() {
-        detachAllListeners();
-
-        // Build queries based on role
-        let classesQuery = db.collection('classes');
-        let scheduleQuery = db.collection('schedule');
-
-        if (currentUserProfile.role === 'teacher') {
-            classesQuery = classesQuery.where('teacherId', '==', currentUserProfile.uid);
-            scheduleQuery = scheduleQuery.where('teacherId', '==', currentUserProfile.uid);
-        } else if (currentUserProfile.role === 'student') {
-            classesQuery = classesQuery.where('students', 'array-contains', currentUserProfile.uid);
-            // Firestore 'in' queries cannot be empty
-            scheduleQuery = scheduleQuery.where('classId', 'in', currentUserProfile.classes && currentUserProfile.classes.length > 0 ? currentUserProfile.classes : ['dummy_id']);
-        }
-        
-        // Always fetch all teachers and students for name mapping
-        const teachersQuery = db.collection('users').where('role', '==', 'teacher');
-        const studentsQuery = db.collection('users').where('role', '==', 'student');
-
-        // Use Promise.all for initial data fetch to ensure everything is loaded before rendering
-        try {
-            const [classSnap, scheduleSnap, teacherSnap, studentSnap] = await Promise.all([
-                classesQuery.get(),
-                scheduleQuery.get(),
-                teachersQuery.get(),
-                studentsQuery.get()
-            ]);
-
-            // Assign data to global state
-            classes = classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            schedule = scheduleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            teachers = teacherSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            students = studentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            // Initial UI render with fetched data
-            updateUI();
-
-            // Now, attach real-time listeners for updates
-            attachRealtimeListeners(classesQuery, scheduleQuery, teachersQuery, studentsQuery);
-
-        } catch (error) {
-            logError(error, "Lỗi tải dữ liệu ban đầu");
-        }
-    }
-
-    function attachRealtimeListeners(classesQuery, scheduleQuery, teachersQuery, studentsQuery) {
-        const unsubClasses = classesQuery.onSnapshot(snap => {
-            classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            updateUI();
-        }, e => logError(e, 'Lỗi cập nhật lớp học'));
-
-        const unsubSchedule = scheduleQuery.onSnapshot(snap => {
-            schedule = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            updateUI();
-        }, e => logError(e, 'Lỗi cập nhật lịch học'));
-
-        const unsubTeachers = teachersQuery.onSnapshot(snap => {
-            teachers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            updateUI();
-        }, e => logError(e, 'Lỗi cập nhật giáo viên'));
-
-        const unsubStudents = studentsQuery.onSnapshot(snap => {
-            students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            updateUI();
-        }, e => logError(e, 'Lỗi cập nhật học sinh'));
-
-        unsubscribeListeners.push(unsubClasses, unsubSchedule, unsubTeachers, unsubStudents);
-    }
-    
-    const updateUI = () => {
-        if (!currentUserProfile) return;
-        renderClasses(); renderTeachers(); renderStudents();
-        updateClassDropdowns(); updateTeacherDropdowns(); updateTeacherFilterDropdown();
-        updateStats(); renderConflicts();
-        updateAttendanceFilterDropdowns();
-        if(calendar) calendar.refetchEvents();
-    };
-    
-    const detectConflicts = () => {
-        const conflicts = []; const scheduleMap = new Map();
-        schedule.forEach(s => { const key = `${s.day}-${s.time}`; if (!scheduleMap.has(key)) scheduleMap.set(key, []); scheduleMap.get(key).push(s); });
-        for(const entries of scheduleMap.values()){
-            if(entries.length < 2) continue;
-            for(let i=0; i<entries.length; i++){ for(let j=i+1; j<entries.length; j++){
-                const s1 = entries[i], s2 = entries[j];
-                if(s1.teacherId && s1.teacherId === s2.teacherId) conflicts.push({type:'teacher', s1, s2});
-                if(s1.room && s1.room === s2.room) conflicts.push({type:'room', s1, s2});
-                const c1 = classes.find(c => c.id === s1.classId), c2 = classes.find(c => c.id === s2.classId);
-                if(c1?.students && c2?.students) {
-                    c1.students.filter(stId => c2.students.includes(stId)).forEach(studentId => conflicts.push({ type: 'student', studentId, s1, s2 }));
-                }
-            }}
-        }
-        return conflicts;
+    // DOM elements
+    const elements = {
+      loadingContainer: document.getElementById('loading-container'),
+      loginContainer: document.getElementById('login-container'),
+      wrapper: document.getElementById('wrapper'),
+      sidebar: document.getElementById('sidebar'),
+      sidebarToggle: document.getElementById('sidebar-toggle'),
+      userDisplayName: document.getElementById('userDisplayName'),
+      logoutBtn: document.getElementById('logoutBtn'),
+      loginForm: document.getElementById('loginForm'),
+      loginEmail: document.getElementById('loginEmail'),
+      loginPassword: document.getElementById('loginPassword'),
+      loginBtn: document.getElementById('loginBtn'),
+      loginError: document.getElementById('loginError'),
+      pageSections: document.querySelectorAll('.page-section'),
+      sidebarNavItems: document.querySelectorAll('.sidebar-nav-item'),
+      searchInput: document.getElementById('searchInput'),
+      clearSearchBtn: document.getElementById('clearSearchBtn'),
+      calendarViewButtons: document.querySelectorAll('#calendar-view-buttons button'),
+      teacherFilterSelect: document.getElementById('teacher-filter-select'),
+      calendar: document.getElementById('calendar'),
+      statsClasses: document.getElementById('stats-classes'),
+      statsTeachers: document.getElementById('stats-teachers'),
+      statsStudents: document.getElementById('stats-students'),
+      statsConflicts: document.getElementById('stats-conflicts'),
+      conflictCard: document.getElementById('conflict-card'),
+      conflictDetailsList: document.getElementById('conflict-details-list'),
+      classesTable: document.getElementById('classesTable'),
+      teachersTable: document.getElementById('teachersTable'),
+      studentsTable: document.getElementById('studentsTable'),
+      attendanceHistoryTable: document.getElementById('attendanceHistoryTable'),
+      attendanceClassFilter: document.getElementById('attendance-class-filter'),
+      attendanceStudentFilter: document.getElementById('attendance-student-filter'),
+      attendanceStartDate: document.getElementById('attendance-start-date'),
+      attendanceEndDate: document.getElementById('attendance-end-date'),
+      teacherAttendanceFilter: document.getElementById('teacher-attendance-filter'),
+      attendanceDateFilter: document.getElementById('attendance-date-filter'),
+      attendanceClassFilterTeacher: document.getElementById('attendance-class-filter-teacher'),
+      teacherAttendanceContent: document.getElementById('teacher-attendance-content')
     };
 
-    // ------------------------------------
-    // --- 4. RENDER & UPDATE FUNCTIONS ---
-    // ------------------------------------
-    const updateStats = () => {
-        document.getElementById('stats-classes').textContent = classes.length;
-        document.getElementById('stats-teachers').textContent = teachers.length;
-        if(currentUserProfile.role === 'teacher') {
-            const studentIdsInMyClasses = new Set(classes.flatMap(c => c.students || []));
-            document.getElementById('stats-students').textContent = studentIdsInMyClasses.size;
-        } else { document.getElementById('stats-students').textContent = students.length; }
-        document.getElementById('stats-conflicts').textContent = detectConflicts().length;
-    };
-    
-    const renderConflicts = () => {
-        const conflictList = detectConflicts();
-        const container = document.getElementById('conflict-card');
-        const listElement = document.getElementById('conflict-details-list');
-        container.style.display = conflictList.length === 0 ? 'none' : 'block';
-        if (conflictList.length > 0) {
-            listElement.innerHTML = conflictList.map(c => {
-                const timeInfo = `<strong>${getDayName(c.s1.day)} ${getTimeSlotName(c.s1.time)}</strong>`;
-                const class1Name = getClassName(c.s1.classId), class2Name = getClassName(c.s2.classId);
-                if (c.type === 'teacher') return `<li class="list-group-item"><i class="bi bi-person-video3 text-danger me-2"></i><strong>GV Trùng:</strong> ${getTeacherName(c.s1.teacherId)} dạy '${class1Name}' và '${class2Name}' cùng lúc (${timeInfo}).</li>`;
-                if (c.type === 'room') return `<li class="list-group-item"><i class="bi bi-door-open text-danger me-2"></i><strong>Phòng Trùng:</strong> Phòng ${c.s1.room} được dùng bởi '${class1Name}' và '${class2Name}' cùng lúc (${timeInfo}).</li>`;
-                if (c.type === 'student') return `<li class="list-group-item"><i class="bi bi-person text-danger me-2"></i><strong>HS Trùng:</strong> HS ${getStudentName(c.studentId)} bị trùng lịch giữa '${class1Name}' và '${class2Name}' (${timeInfo}).</li>`;
-                return '';
-            }).join('');
-        }
-    };
-
-    const renderTable = (tableId, data, renderRowCallback) => {
-        const tbody = document.querySelector(`#${tableId} tbody`); if(!tbody) return;
-        if (data.length === 0) {
-            tbody.innerHTML = `<tr class="no-data-row"><td colspan="${tbody.previousElementSibling.rows[0].cells.length}">Chưa có dữ liệu</td></tr>`;
-        } else { tbody.innerHTML = data.map(renderRowCallback).join(''); }
-    };
-
-    const renderClasses = () => {
-        renderTable('classesTable', classes, c => {
-            const teacherName = getTeacherName(c.teacherId);
-            const s1 = `${getDayName(c.day)} ${getTimeSlotName(c.time)} (P:${c.room||'?'})`;
-            const s2 = c.day2 ? `<br>${getDayName(c.day2)} ${getTimeSlotName(c.time2)} (P:${c.room2||'?'})` : '';
-            return `<tr data-search-content="${c.name} ${getSubjectName(c.subject)} ${teacherName}">
-                <td data-label="Tên lớp">${c.name}</td> <td data-label="Môn">${getSubjectName(c.subject)}</td>
-                <td data-label="Giáo viên">${teacherName}</td> <td data-label="HS">${(c.students||[]).length}</td>
-                <td data-label="Lịch học">${s1}${s2}</td>
-                <td data-label="Hành động">
-                    <button class="btn btn-sm btn-outline-info view-attendance" data-id="${c.id}" data-name="${c.name}" title="Xem điểm danh"><i class="bi bi-eye"></i></button>
-                    <button class="btn btn-sm btn-outline-primary edit-class admin-only" data-id="${c.id}"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-outline-danger delete-class admin-only" data-id="${c.id}" data-name="${c.name}"><i class="bi bi-trash"></i></button>
-                </td></tr>`;
-        });
-        setupUIVisibility(currentUserProfile.role);
-    };
-    const renderTeachers = () => { renderTable('teachersTable', currentUserProfile.role === 'admin' ? teachers : [], t => `<tr data-search-content="${t.name} ${t.email}"><td data-label="Tên">${t.name}</td><td data-label="Email">${t.email||''}</td><td data-label="Môn">${getSubjectName(t.subject)}</td><td data-label="Hành động" class="admin-only"><button class="btn btn-sm btn-outline-primary edit-teacher" data-id="${t.id}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-teacher" data-id="${t.id}" data-name="${t.name}"><i class="bi bi-trash"></i></button></td></tr>`); setupUIVisibility(currentUserProfile.role); };
-    const renderStudents = () => {
-        let data = students;
-        if (currentUserProfile.role === 'teacher') { const studentIds = new Set(classes.flatMap(c => c.students || [])); data = students.filter(s => studentIds.has(s.id)); } 
-        else if (currentUserProfile.role === 'student') { data = []; }
-        renderTable('studentsTable', data, s => `<tr data-search-content="${s.name} ${s.email}"><td data-label="Tên">${s.name}</td><td data-label="Email">${s.email||''}</td><td data-label="Lớp">${(s.classes || []).map(getClassName).join(', ')||'Chưa ĐK'}</td><td data-label="Hành động" class="admin-only"><button class="btn btn-sm btn-outline-primary edit-student" data-id="${s.id}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-student" data-id="${s.id}" data-name="${s.name}"><i class="bi bi-trash"></i></button></td></tr>`);
-        setupUIVisibility(currentUserProfile.role);
-    };
-    
-    const initializeCalendar = () => {
-        const calendarEl = document.getElementById('calendar'); if (!calendarEl || calendar) return;
-        const canEdit = currentUserProfile.role === 'admin';
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            locale: 'vi', firstDay: 1, headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
-            initialView: 'timeGridWeek', slotMinTime: '07:00:00', slotMaxTime: '22:00:00',
-            allDaySlot: false, editable: canEdit, eventDisplay: 'block',
-            events: (info, success) => {
-                let filteredSchedule = schedule;
-                if (canEdit) { const teacherId = document.getElementById('teacher-filter-select').value; if (teacherId !== 'all') { filteredSchedule = schedule.filter(s => s.teacherId === teacherId); } }
-                const conflicts = detectConflicts(); const conflictIds = new Set(conflicts.flatMap(c => [c.s1.id, c.s2.id]));
-                success(filteredSchedule.map(s => {
-                    const cls = classes.find(c => c.id === s.classId); const timeSlot = TIME_SLOTS.find(ts => ts.id === s.time);
-                    if (!cls || !timeSlot) return null;
-                    const dayNumber = DAY_MAP[s.day]; if (dayNumber === undefined) return null;
-                    return {
-                        id: s.id, title: `${cls.name} (P: ${s.room || '?'})`,
-                        daysOfWeek: [dayNumber], startTime: timeSlot.start, endTime: timeSlot.end,
-                        backgroundColor: s.teacherId ? stringToColor(s.teacherId) : '#4e73df',
-                        extendedProps: { classId: cls.id, teacherId: cls.teacherId, timeSlotId: timeSlot.id, originalDay: s.day, originalTime: s.time, description: `GV: ${getTeacherName(cls.teacherId)}` },
-                        className: conflictIds.has(s.id) ? 'conflict-event' : '',
-                    };
-                }).filter(Boolean));
-            },
-            eventClick: info => {
-                const props = info.event.extendedProps;
-                const canTakeAttendance = currentUserProfile.role === 'admin' || (currentUserProfile.role === 'teacher' && currentUserProfile.uid === props.teacherId);
-                const eventStart = info.event.start;
-                const now = new Date();
-                now.setHours(0,0,0,0);
-                eventStart.setHours(0,0,0,0);
-
-                if (eventStart > now) {
-                    showToast('Không thể điểm danh cho buổi học trong tương lai.', 'info');
-                    return;
-                }
-
-                if (canTakeAttendance) {
-                    openAttendanceModal(props.classId, toYMD(info.event.start), props.timeSlotId);
-                } else {
-                    showToast('Chỉ giáo viên phụ trách hoặc Admin mới có thể điểm danh.', 'warning');
-                }
-            },
-            eventDrop: async info => {
-              if(!canEdit) return;
-              const { id, extendedProps } = info.event; const newDay = REVERSE_DAY_MAP[info.event.start.getDay()];
-              const newTime = TIME_SLOTS.reduce((prev, curr) => Math.abs(new Date(`1970/01/01 ${curr.start}`) - info.event.start) < Math.abs(new Date(`1970/01/01 ${prev.start}`) - info.event.start) ? curr : prev).id;
-              if (!newDay || !newTime) { showToast('Vị trí không hợp lệ', 'error'); info.revert(); return; }
-              try {
-                  const classDoc = await db.collection('classes').doc(extendedProps.classId).get(); if (!classDoc.exists) throw new Error("Không tìm thấy lớp!");
-                  const classData = classDoc.data(); const batch = db.batch();
-                  batch.update(db.collection('schedule').doc(id), { day: newDay, time: newTime });
-                  if (classData.day === extendedProps.originalDay && classData.time === extendedProps.originalTime) { batch.update(classDoc.ref, { day: newDay, time: newTime }); }
-                  else if (classData.day2 === extendedProps.originalDay && classData.time2 === extendedProps.originalTime) { batch.update(classDoc.ref, { day2: newDay, time2: newTime }); }
-                  else { throw new Error("Không thể xác định buổi học."); }
-                  await batch.commit(); showToast('Cập nhật lịch thành công!', 'success');
-              } catch (e) { logError(e, 'Lỗi cập nhật lịch'); info.revert(); }
-            },
-            eventDidMount: info => { new bootstrap.Tooltip(info.el, { title: info.event.extendedProps.description, placement: 'top', trigger: 'hover', container: 'body' }); }
-        });
-        calendar.render();
-    };
-    
-    const setupUIVisibility = role => {
-        const isAdmin = role === 'admin', isTeacher = role === 'teacher', isStudent = role === 'student';
-        document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('d-none', !isAdmin));
-        document.querySelectorAll('.teacher-only').forEach(el => el.classList.toggle('d-none', !isTeacher));
-        document.querySelectorAll('.student-only').forEach(el => el.classList.toggle('d-none', !isStudent));
-        document.querySelectorAll('.hide-from-student').forEach(el => el.classList.toggle('d-none', isStudent));
-    };
-
-    const updateTeacherDropdowns = () => { const options = teachers.map(t => `<option value="${t.id}">${t.name} (${getSubjectName(t.subject)})</option>`).join(''); document.getElementById('classTeacher').innerHTML = `<option value="" selected disabled>-- Chọn --</option>${options}`; document.getElementById('editClassTeacher').innerHTML = `<option value="" selected disabled>-- Chọn --</option>${options}`; };
-    const updateTeacherFilterDropdown = () => { const select = document.getElementById('teacher-filter-select'); if (!select) return; const val = select.value; select.innerHTML = '<option value="all">Tất cả giáo viên</option>' + teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join(''); select.value = val; };
-    const updateClassDropdowns = () => { const options = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); document.getElementById('studentClass').innerHTML = options; document.getElementById('editStudentClass').innerHTML = options; };
-    const updateAttendanceFilterDropdowns = () => {
-        const classFilter = document.getElementById('attendance-class-filter');
-        const studentFilter = document.getElementById('attendance-student-filter');
-        classFilter.innerHTML = '<option value="">Tất cả lớp</option>' + classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        studentFilter.innerHTML = '<option value="">Tất cả học sinh</option>' + students.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    };
-
-    // ------------------------------------
-    // --- 5. ATTENDANCE FUNCTIONS ---
-    // ------------------------------------
-    async function openAttendanceModal(classId, dateStr, timeSlotId) {
-        const cls = classes.find(c => c.id === classId);
-        if (!cls || !cls.students || cls.students.length === 0) {
-            return showToast('Lớp này chưa có học sinh nào.', 'info');
-        }
-        
-        const form = document.getElementById('attendanceForm');
-        form.dataset.classId = classId;
-        form.dataset.date = dateStr;
-        form.dataset.timeSlotId = timeSlotId;
-        
-        document.getElementById('attendanceClassName').textContent = cls.name;
-        document.getElementById('attendanceDate').textContent = dateStr;
-        document.getElementById('attendanceTime').textContent = getTimeSlotName(timeSlotId);
-
-        const studentListEl = document.getElementById('attendanceStudentList');
-        studentListEl.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Đang tải...</div>';
-        allModals.attendance.show();
-
-        const attendanceId = `${dateStr}_${classId}_${timeSlotId}`;
-        const attendanceDoc = await db.collection('attendance').doc(attendanceId).get();
-        const existingAttendees = attendanceDoc.exists ? attendanceDoc.data().attendees || [] : [];
-
-        const studentDetails = students.filter(s => cls.students.includes(s.id));
-        
-        studentListEl.innerHTML = studentDetails.map(student => {
-            const isPresent = attendanceDoc.exists ? existingAttendees.includes(student.id) : true;
-            return `<div class="list-group-item d-flex align-items-center student-row" data-student-id="${student.id}">
-                ${student.name}
-                <div class="form-check form-check-inline ms-auto">
-                    <input class="form-check-input" type="radio" name="status_${student.id}" id="present_${student.id}" value="present" ${isPresent ? 'checked' : ''}>
-                    <label class="form-check-label" for="present_${student.id}">Có mặt</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="status_${student.id}" id="absent_${student.id}" value="absent" ${!isPresent ? 'checked' : ''}>
-                    <label class="form-check-label" for="absent_${student.id}">Vắng</label>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    async function handleAttendanceFormSubmit(e) {
-        e.preventDefault();
-        const form = e.target;
-        const { classId, date, timeSlotId } = form.dataset;
-        const button = document.getElementById('saveAttendanceBtn');
-        setButtonLoadingState(button, true);
-
-        const attendees = [], absentees = [];
-        form.querySelectorAll('.student-row').forEach(row => {
-            const studentId = row.dataset.studentId;
-            const status = form.querySelector(`input[name="status_${studentId}"]:checked`).value;
-            if (status === 'present') attendees.push(studentId);
-            else absentees.push(studentId);
-        });
-        
-        try {
-            const attendanceId = `${date}_${classId}_${timeSlotId}`;
-            const cls = classes.find(c => c.id === classId);
-            await db.collection('attendance').doc(attendanceId).set({
-                classId, date, timeSlotId, attendees, absentees,
-                className: cls.name, teacherId: cls.teacherId,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            showToast('Lưu điểm danh thành công!', 'success');
-            allModals.attendance.hide();
-        } catch (err) {
-            logError(err, 'Lỗi lưu điểm danh');
-        } finally {
-            setButtonLoadingState(button, false);
-        }
-    }
-
-    async function openAttendanceHistoryModal(classId) {
-        const cls = classes.find(c => c.id === classId);
-        document.getElementById('historyClassName').textContent = cls.name;
-        const contentEl = document.getElementById('attendanceHistoryContent');
-        contentEl.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
-        allModals.attendanceHistory.show();
-
-        const snapshot = await db.collection('attendance').where('classId', '==', classId).orderBy('date', 'desc').get();
-        if (snapshot.empty) {
-            contentEl.innerHTML = '<p class="text-center p-3">Chưa có dữ liệu điểm danh cho lớp này.</p>';
-            return;
-        }
-
-        const recordsByDate = snapshot.docs.reduce((acc, doc) => {
-            const data = doc.data();
-            (acc[data.date] = acc[data.date] || []).push(data);
-            return acc;
-        }, {});
-
-        contentEl.innerHTML = Object.entries(recordsByDate).map(([date, records]) => {
-            const record = records[0];
-            const presentCount = record.attendees.length;
-            const absentCount = record.absentees.length;
-            const total = presentCount + absentCount;
-            const absentNames = record.absentees.map(getStudentName).join(', ') || 'Không có';
-            return `<div class="border rounded p-3 mb-2">
-                <div class="d-flex justify-content-between">
-                    <h6 class="mb-1">${new Date(date).toLocaleDateString('vi-VN')} - ${getTimeSlotName(record.timeSlotId)}</h6>
-                    <span class="badge ${absentCount > 0 ? 'bg-warning' : 'bg-success'}">Vắng: ${absentCount}/${total}</span>
-                </div>
-                <small class="text-muted">Học sinh vắng mặt: ${absentNames}</small>
-            </div>`;
-        }).join('');
-    }
-
-    async function filterAttendanceHistory() {
-        const classId = document.getElementById('attendance-class-filter').value;
-        const studentId = document.getElementById('attendance-student-filter').value;
-        const startDate = document.getElementById('attendance-start-date').value;
-        const endDate = document.getElementById('attendance-end-date').value;
-        
-        const tbody = document.querySelector('#attendanceHistoryTable tbody');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm"></div> Đang tìm kiếm...</td></tr>';
-        
-        let query = db.collection('attendance');
-        if (classId) query = query.where('classId', '==', classId);
-        if (startDate) query = query.where('date', '>=', startDate);
-        if (endDate) query = query.where('date', '<=', endDate);
-        if (!startDate && !endDate && !classId && !studentId) {
-             tbody.innerHTML = '<tr><td colspan="5" class="text-center">Vui lòng chọn ít nhất một bộ lọc (Lớp, Học sinh, hoặc Ngày).</td></tr>';
-             return;
-        }
-
-        try {
-            const snapshot = await query.orderBy('date', 'desc').get();
-            let records = snapshot.docs.map(doc => doc.data());
-            if (studentId) {
-                records = records.filter(r => r.attendees.includes(studentId) || r.absentees.includes(studentId));
-            }
-            if (records.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center">Không tìm thấy kết quả nào.</td></tr>';
-            } else {
-                tbody.innerHTML = records.map(r => {
-                    return `<tr>
-                        <td>${new Date(r.date).toLocaleDateString('vi-VN')}</td>
-                        <td>${r.className}</td>
-                        <td>${getTeacherName(r.teacherId)}</td>
-                        <td>${r.attendees.length} ${studentId && r.attendees.includes(studentId)?'✅':''}</td>
-                        <td>${r.absentees.length} ${studentId && r.absentees.includes(studentId)?'❌':''}</td>
-                    </tr>`;
-                }).join('');
-            }
-        } catch(e) { logError(e, "Lỗi lọc điểm danh"); tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Có lỗi xảy ra. Hãy thử lại.</td></tr>'; }
-    }
-
-
-
-/**
- * Chuyển đổi một chuỗi bất kỳ thành một mã màu HSL.
- * Giúp tạo ra màu sắc nhất quán và độc nhất cho mỗi chuỗi đầu vào.
- * @param {string} str Chuỗi cần chuyển đổi (ví dụ: tên giáo viên).
- * @returns {string} Mã màu dạng HSL (ví dụ: 'hsl(120, 70%, 50%)').
- */
-function stringToColor(str) {
-    if (!str) return '#858796'; // Trả về màu mặc định nếu không có chuỗi
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        hash = hash & hash; // Đảm bảo là số nguyên 32bit
-    }
-    const h = Math.abs(hash % 360); // Giá trị Hue từ 0 đến 359
-    return `hsl(${h}, 70%, 50%)`;
-}
-
-    // ------------------------------------
-    // --- CRUD OPERATIONS (for Admin) ---
-    // ------------------------------------
-    async function handleFormSubmit(form, button, action) {
-        form.classList.add('was-validated'); if (!form.checkValidity()) return;
-        setButtonLoadingState(button, true);
-        try { await action(); } catch (e) { logError(e, 'Thao tác thất bại'); } 
-        finally { setButtonLoadingState(button, false); form.classList.remove('was-validated'); }
-    }
-    async function addTeacher() { await db.collection('users').add({ name: document.getElementById('teacherName').value, email: document.getElementById('teacherEmail').value, phone: document.getElementById('teacherPhone').value, role: 'teacher', subject: document.getElementById('teacherSubject').value, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); showToast(`Tạo GV thành công.`, 'success'); allModals.addTeacher.hide(); }
-    async function addStudent() { const classIds = Array.from(document.getElementById('studentClass').selectedOptions).map(o=>o.value); const studentRef = await db.collection('users').add({ name: document.getElementById('studentName').value, email: document.getElementById('studentEmail').value, phone: document.getElementById('studentPhone').value, role: 'student', classes: classIds, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); const batch = db.batch(); classIds.forEach(cid => batch.update(db.collection('classes').doc(cid), { students: firebase.firestore.FieldValue.arrayUnion(studentRef.id) })); await batch.commit(); showToast(`Tạo HS thành công.`, 'success'); allModals.addStudent.hide(); }
-    async function addClass() { const name = document.getElementById('className').value, subject = document.getElementById('classSubject').value, teacherId = document.getElementById('classTeacher').value, room = document.getElementById('classRoom').value, day = REVERSE_DAY_MAP[document.getElementById('classDay').value], time = document.getElementById('classTime').value, room2 = document.getElementById('classRoom2').value, day2 = REVERSE_DAY_MAP[document.getElementById('classDay2').value], time2 = document.getElementById('classTime2').value; const classData = { name, subject, teacherId, room: room || null, day, time, students: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() }; if (day2 && time2) { Object.assign(classData, {day2, time2, room2: room2 || null}); } const classRef = await db.collection('classes').add(classData); const batch = db.batch(); batch.set(db.collection('schedule').doc(), { classId: classRef.id, day, time, room: room || null, teacherId }); if (day2 && time2) { batch.set(db.collection('schedule').doc(), { classId: classRef.id, day: day2, time: time2, room: room2 || null, teacherId }); } await batch.commit(); showToast('Tạo lớp thành công!', 'success'); allModals.addClass.hide(); }
-    
-    // ------------------------------------
-    // --- EVENT LISTENERS & INIT ---
-    // ------------------------------------
-    document.addEventListener('DOMContentLoaded', () => {
-        ['deleteConfirm', 'addTeacher', 'editTeacher', 'addStudent', 'editStudent', 'addClass', 'editClass', 'attendance', 'attendanceHistory'].forEach(id => {
-            allModals[id] = new bootstrap.Modal(document.getElementById(`${id}Modal`));
-        });
-
-        document.getElementById('sidebar').addEventListener('click', e => {
-            const link = e.target.closest('.sidebar-nav-item'); if (!link) return;
-            e.preventDefault(); const targetId = link.dataset.target;
-            document.querySelectorAll('.sidebar-nav-item').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            document.querySelectorAll('.page-section').forEach(p => p.classList.toggle('active', p.id === targetId));
-        });
-
-        const searchInput = document.getElementById('searchInput');
-        searchInput.addEventListener('keyup', e => {
-            const term = e.target.value.toLowerCase();
-            document.querySelectorAll('#classesTable tbody tr, #teachersTable tbody tr, #studentsTable tbody tr').forEach(row => {
-                if(row.classList.contains('no-data-row')) return;
-                row.style.display = (row.dataset.searchContent || '').toLowerCase().includes(term) ? '' : 'none';
-            });
-        });
-        document.getElementById('clearSearchBtn').addEventListener('click', () => { searchInput.value = ''; searchInput.dispatchEvent(new Event('keyup')); });
-        
-        document.getElementById('addTeacherForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, addTeacher); });
-        document.getElementById('addStudentForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, addStudent); });
-        document.getElementById('addClassForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, e.submitter, addClass); });
-        
-        document.getElementById('main-content').addEventListener('click', async e => {
-            const viewAttendanceBtn = e.target.closest('.view-attendance'); 
-            if (viewAttendanceBtn) { openAttendanceHistoryModal(viewAttendanceBtn.dataset.id); return; }
-            if (currentUserProfile?.role !== 'admin') return;
-            const editClassBtn = e.target.closest('.edit-class'); if(editClassBtn) { const c = classes.find(x=>x.id===editClassBtn.dataset.id); if(c){document.getElementById('editClassId').value=c.id;document.getElementById('editClassName').value=c.name||'';document.getElementById('editClassSubject').value=c.subject||'';document.getElementById('editClassTeacher').value=c.teacherId||'';document.getElementById('editClassRoom').value=c.room||'';document.getElementById('editClassDay').value=c.day?(DAY_MAP[c.day]??1):1;document.getElementById('editClassTime').value=c.time||'';document.getElementById('editClassRoom2').value=c.room2||'';document.getElementById('editClassDay2').value=c.day2?(DAY_MAP[c.day2]??''):'';document.getElementById('editClassTime2').value=c.time2||'';allModals.editClass.show();} return;}
-            const editTeacherBtn = e.target.closest('.edit-teacher'); if(editTeacherBtn) { const t=teachers.find(x=>x.id===editTeacherBtn.dataset.id); if(t){document.getElementById('editTeacherId').value=t.id;document.getElementById('editTeacherName').value=t.name||'';document.getElementById('editTeacherEmail').value=t.email||'';document.getElementById('editTeacherPhone').value=t.phone||'';document.getElementById('editTeacherSubject').value=t.subject||'';allModals.editTeacher.show();} return;}
-            const editStudentBtn = e.target.closest('.edit-student'); if(editStudentBtn) { const s=students.find(x=>x.id===editStudentBtn.dataset.id); if(s){document.getElementById('editStudentId').value=s.id;document.getElementById('editStudentName').value=s.name||'';document.getElementById('editStudentEmail').value=s.email||'';document.getElementById('editStudentPhone').value=s.phone||'';Array.from(document.getElementById('editStudentClass').options).forEach(opt=>opt.selected=(s.classes||[]).includes(opt.value));allModals.editStudent.show();} return;}
-            const deleteClassBtn = e.target.closest('.delete-class'); if(deleteClassBtn) { showDeleteConfirmModal('Xóa lớp', `Xóa lớp "<strong>${deleteClassBtn.dataset.name}</strong>"? Lịch học liên quan cũng sẽ bị xóa.`, async () => { try { const id = deleteClassBtn.dataset.id; const snaps = await db.collection('schedule').where('classId','==',id).get(); const batch = db.batch(); snaps.forEach(d => batch.delete(d.ref)); batch.delete(db.collection('classes').doc(id)); await batch.commit(); showToast('Xóa lớp thành công', 'success'); } catch(err){ logError(err, 'Lỗi xóa lớp'); } }); return; }
-            const deleteTeacherBtn = e.target.closest('.delete-teacher'); if(deleteTeacherBtn) { showDeleteConfirmModal('Xóa giáo viên', `Xóa "<strong>${deleteTeacherBtn.dataset.name}</strong>"? Lớp của GV này sẽ không bị xóa.`, async () => { try { const id = deleteTeacherBtn.dataset.id; const snaps = await db.collection('classes').where('teacherId','==',id).get(); const batch = db.batch(); snaps.forEach(d => batch.update(d.ref, { teacherId: null })); batch.delete(db.collection('users').doc(id)); await batch.commit(); showToast('Xóa giáo viên thành công', 'success'); } catch(err){ logError(err, 'Lỗi xóa giáo viên'); } }); return; }
-            const deleteStudentBtn = e.target.closest('.delete-student'); if(deleteStudentBtn) { showDeleteConfirmModal('Xóa học sinh', `Xóa "<strong>${deleteStudentBtn.dataset.name}</strong>"? HS sẽ được xóa khỏi các lớp đã đăng ký.`, async () => { try { const id = deleteStudentBtn.dataset.id; const snaps = await db.collection('classes').where('students','array-contains',id).get(); const batch = db.batch(); snaps.forEach(d => batch.update(d.ref, { students: firebase.firestore.FieldValue.arrayRemove(id) })); batch.delete(db.collection('users').doc(id)); await batch.commit(); showToast('Xóa học sinh thành công', 'success'); } catch(err){ logError(err, 'Lỗi xóa học sinh'); } }); }
-        });
-        
-        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('toggled'));
-        document.getElementById('calendar-view-buttons').addEventListener('click', e => { const btn = e.target.closest('button'); if(!btn || btn.classList.contains('active')) return; calendar.changeView(btn.dataset.view); document.querySelectorAll('#calendar-view-buttons button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); });
-        document.getElementById('teacher-filter-select').addEventListener('change', () => calendar?.refetchEvents());
-        document.querySelectorAll('.modal').forEach(m => m.addEventListener('hidden.bs.modal', () => { const f = m.querySelector('form'); if(f) { f.reset(); f.classList.remove('was-validated'); } }));
-        
-        document.getElementById('attendanceForm').addEventListener('submit', handleAttendanceFormSubmit);
-        ['attendance-class-filter', 'attendance-student-filter', 'attendance-start-date', 'attendance-end-date'].forEach(id => {
-            document.getElementById(id).addEventListener('change', filterAttendanceHistory);
-        });
-        
-        document.getElementById('loginForm').addEventListener('submit', async e => { e.preventDefault(); const email = document.getElementById('loginEmail').value, pass = document.getElementById('loginPassword').value, btn = document.getElementById('loginBtn'), err = document.getElementById('loginError'); err.classList.add('d-none'); setButtonLoadingState(btn, true); try { await auth.signInWithEmailAndPassword(email, pass); } catch (error) { err.textContent = 'Email hoặc mật khẩu không đúng.'; err.classList.remove('d-none'); } finally { setButtonLoadingState(btn, false); } });
-        document.getElementById('logoutBtn').addEventListener('click', () => auth.signOut());
-        auth.onAuthStateChanged(async user => {
-            const loading = document.getElementById('loading-container'), login = document.getElementById('login-container'), wrapper = document.getElementById('wrapper');
-            if(user) {
-                try {
-                    const userDoc = await db.collection('users').doc(user.uid).get();
-                    if (!userDoc.exists || !userDoc.data().role) throw new Error('Không tìm thấy thông tin hoặc vai trò người dùng.');
-                    currentUserProfile = { uid: user.uid, ...userDoc.data() };
-                    document.getElementById('userDisplayName').textContent = currentUserProfile.name || currentUserProfile.email;
-                    wrapper.classList.remove('d-none'); login.classList.add('d-none'); loading.classList.add('d-none');
-                    setupUIVisibility(currentUserProfile.role);
-                    initializeCalendar(); 
-                    await loadAllData(); // Use the new robust data loading function
-                    const timeOpts = TIME_SLOTS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-                    ['classTime', 'editClassTime'].forEach(id => document.getElementById(id).innerHTML = timeOpts);
-                    ['classTime2', 'editClassTime2'].forEach(id => document.getElementById(id).innerHTML = `<option value="">-- Chọn --</option>${timeOpts}`);
-                } catch (e) { logError(e, 'Lỗi xác thực'); auth.signOut(); }
-            } else { currentUserProfile = null; detachAllListeners(); wrapper.classList.add('d-none'); loading.classList.add('d-none'); login.classList.remove('d-none'); }
-        });
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', function() {
+      initApp();
+      setupEventListeners();
+      setupCalendar();
+      setupTimeSlots();
     });
+
+    function initApp() {
+      // Check authentication state
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          // User is signed in
+          appState.currentUser = user;
+          checkUserRole(user.uid);
+        } else {
+          // User is signed out
+          showLogin();
+        }
+      });
+    }
+
+    function showLogin() {
+      elements.loadingContainer.classList.add('d-none');
+      elements.loginContainer.classList.remove('d-none');
+      elements.wrapper.classList.add('d-none');
+    }
+
+    function showApp() {
+      elements.loadingContainer.classList.add('d-none');
+      elements.loginContainer.classList.add('d-none');
+      elements.wrapper.classList.remove('d-none');
+      loadInitialData();
+    }
+
+    function checkUserRole(uid) {
+      // In a real app, you would check the user's role from Firestore
+      // For demo purposes, we'll assume admin for now
+      appState.userRole = 'admin';
+      showApp();
+    }
+
+    function setupEventListeners() {
+      // Login form
+      elements.loginForm.addEventListener('submit', handleLogin);
+      
+      // Logout button
+      elements.logoutBtn.addEventListener('click', handleLogout);
+      
+      // Sidebar toggle
+      elements.sidebarToggle.addEventListener('click', toggleSidebar);
+      
+      // Sidebar navigation
+      elements.sidebarNavItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const target = item.getAttribute('data-target');
+          showPage(target);
+          
+          // Update active state
+          elements.sidebarNavItems.forEach(navItem => navItem.classList.remove('active'));
+          item.classList.add('active');
+        });
+      });
+      
+      // Search functionality
+      elements.searchInput.addEventListener('input', handleSearch);
+      elements.clearSearchBtn.addEventListener('click', clearSearch);
+      
+      // Calendar view buttons
+      elements.calendarViewButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const view = button.getAttribute('data-view');
+          changeCalendarView(view);
+          
+          // Update active state
+          elements.calendarViewButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+        });
+      });
+      
+      // Teacher filter for calendar
+      elements.teacherFilterSelect.addEventListener('change', refreshCalendar);
+      
+      // Attendance filters
+      elements.attendanceClassFilter.addEventListener('change', updateAttendanceStudentFilter);
+      elements.attendanceStudentFilter.addEventListener('change', loadAttendanceHistory);
+      elements.attendanceStartDate.addEventListener('change', loadAttendanceHistory);
+      elements.attendanceEndDate.addEventListener('change', loadAttendanceHistory);
+      
+      // Teacher attendance filters
+      elements.teacherAttendanceFilter.addEventListener('change', loadTeacherAttendance);
+      elements.attendanceDateFilter.addEventListener('change', loadTeacherAttendance);
+      elements.attendanceClassFilterTeacher.addEventListener('change', loadTeacherAttendance);
+      
+      // Set today's date as default for attendance date filter
+      const today = new Date().toISOString().split('T')[0];
+      elements.attendanceDateFilter.value = today;
+    }
+
+    function setupCalendar() {
+      elements.calendar = new FullCalendar.Calendar(elements.calendar, {
+        initialView: 'timeGridWeek',
+        headerToolbar: false,
+        allDaySlot: false,
+        slotMinTime: '07:00:00',
+        slotMaxTime: '22:00:00',
+        slotDuration: '01:00:00',
+        height: 'auto',
+        events: [],
+        eventClick: function(info) {
+          showAttendanceModal(info.event);
+        },
+        eventDidMount: function(info) {
+          if (info.event.extendedProps.conflict) {
+            info.el.classList.add('conflict-event');
+          }
+        }
+      });
+      
+      elements.calendar.render();
+    }
+
+    function setupTimeSlots() {
+      const timeSlots = [
+        '07:00-09:00', '09:00-11:00', '13:00-15:00', '15:00-17:00', '17:00-19:00', '19:00-21:00'
+      ];
+      
+      const timeSelects = [
+        'classTime', 'classTime2', 'editClassTime', 'editClassTime2'
+      ];
+      
+      timeSelects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+          select.innerHTML = '<option value="">-- Chọn giờ --</option>';
+          timeSlots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot;
+            option.textContent = slot;
+            select.appendChild(option);
+          });
+        }
+      });
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      
+      const email = elements.loginEmail.value;
+      const password = elements.loginPassword.value;
+      
+      // Show loading state
+      const spinner = elements.loginBtn.querySelector('.spinner-border');
+      const buttonText = elements.loginBtn.querySelector('.button-text');
+      spinner.classList.remove('d-none');
+      buttonText.textContent = 'Đang đăng nhập...';
+      
+      // Clear previous error
+      elements.loginError.classList.add('d-none');
+      
+      // Sign in with Firebase Auth
+      auth.signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          // Login successful
+          appState.currentUser = userCredential.user;
+          checkUserRole(userCredential.user.uid);
+        })
+        .catch((error) => {
+          // Login failed
+          elements.loginError.textContent = error.message;
+          elements.loginError.classList.remove('d-none');
+          
+          // Reset button state
+          spinner.classList.add('d-none');
+          buttonText.textContent = 'Đăng nhập';
+        });
+    }
+
+    function handleLogout() {
+      auth.signOut().then(() => {
+        showLogin();
+      });
+    }
+
+    function toggleSidebar() {
+      elements.sidebar.classList.toggle('toggled');
+    }
+
+    function showPage(pageId) {
+      elements.pageSections.forEach(section => {
+        section.classList.remove('active');
+      });
+      
+      const targetPage = document.getElementById(pageId);
+      if (targetPage) {
+        targetPage.classList.add('active');
+        
+        // Load data for specific pages
+        if (pageId === 'classes-page') {
+          loadClassesTable();
+        } else if (pageId === 'teachers-page') {
+          loadTeachersTable();
+        } else if (pageId === 'students-page') {
+          loadStudentsTable();
+        } else if (pageId === 'attendance-page') {
+          loadAttendanceFilters();
+        } else if (pageId === 'teacher-attendance-page') {
+          loadTeacherAttendanceFilters();
+        }
+      }
+    }
+
+    function handleSearch() {
+      const searchTerm = elements.searchInput.value.toLowerCase();
+      
+      // Filter tables based on search term
+      filterTable('classesTable', searchTerm);
+      filterTable('teachersTable', searchTerm);
+      filterTable('studentsTable', searchTerm);
+    }
+
+    function clearSearch() {
+      elements.searchInput.value = '';
+      handleSearch();
+    }
+
+    function filterTable(tableId, searchTerm) {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      
+      const rows = table.querySelectorAll('tbody tr');
+      
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    function changeCalendarView(view) {
+      elements.calendar.changeView(view);
+      appState.currentCalendarView = view;
+    }
+
+    function refreshCalendar() {
+      // In a real app, you would fetch events from Firestore
+      // For demo, we'll generate some sample events
+      const events = generateSampleEvents();
+      elements.calendar.removeAllEvents();
+      elements.calendar.addEventSource(events);
+    }
+
+    function generateSampleEvents() {
+      // Sample events for demo
+      const events = [];
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Start from Monday
+      
+      // Add some sample classes
+      for (let i = 0; i < 5; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(startOfWeek.getDate() + i);
+        
+        events.push({
+          title: 'Toán 10 - Lớp A1',
+          start: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 7, 0),
+          end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0),
+          extendedProps: {
+            classId: 'class1',
+            teacherId: 'teacher1',
+            conflict: i === 2 // Mark Wednesday as having a conflict for demo
+          }
+        });
+        
+        events.push({
+          title: 'Vật lý 11 - Lớp B2',
+          start: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0),
+          end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 11, 0),
+          extendedProps: {
+            classId: 'class2',
+            teacherId: 'teacher2'
+          }
+        });
+      }
+      
+      return events;
+    }
+
+    function showAttendanceModal(event) {
+      // In a real app, you would fetch class and student data from Firestore
+      // For demo, we'll use sample data
+      const classId = event.extendedProps.classId;
+      const classData = {
+        name: event.title,
+        teacher: 'Nguyễn Văn A'
+      };
+      
+      // Set modal content
+      document.getElementById('attendanceClassName').textContent = classData.name;
+      document.getElementById('attendanceTeacherName').textContent = classData.teacher;
+      document.getElementById('attendanceDate').textContent = event.start.toLocaleDateString('vi-VN');
+      
+      // Generate sample student list
+      const studentList = document.getElementById('attendanceTable').querySelector('tbody');
+      studentList.innerHTML = '';
+      
+      for (let i = 1; i <= 5; i++) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>Học sinh ${i}</td>
+          <td>098765432${i}</td>
+          <td>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="attendance${i}" id="present${i}" value="present" checked>
+              <label class="form-check-label" for="present${i}">Có mặt</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="attendance${i}" id="absent${i}" value="absent">
+              <label class="form-check-label" for="absent${i}">Vắng mặt</label>
+            </div>
+          </td>
+        `;
+        studentList.appendChild(row);
+      }
+      
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('attendanceModal'));
+      modal.show();
+    }
+
+    function loadInitialData() {
+      // In a real app, you would fetch data from Firestore
+      // For demo, we'll use sample data
+      
+      // Update stats
+      elements.statsClasses.textContent = '12';
+      elements.statsTeachers.textContent = '8';
+      elements.statsStudents.textContent = '150';
+      elements.statsConflicts.textContent = '2';
+      
+      // Load teacher filter
+      loadTeacherFilter();
+      
+      // Refresh calendar
+      refreshCalendar();
+      
+      // Load tables
+      loadClassesTable();
+      loadTeachersTable();
+      loadStudentsTable();
+      
+      // Show conflicts if any
+      showConflicts();
+    }
+
+    function loadTeacherFilter() {
+      // In a real app, you would fetch teachers from Firestore
+      const teachers = [
+        { id: 'all', name: 'Tất cả giáo viên' },
+        { id: 'teacher1', name: 'Nguyễn Văn A' },
+        { id: 'teacher2', name: 'Trần Thị B' },
+        { id: 'teacher3', name: 'Lê Văn C' }
+      ];
+      
+      elements.teacherFilterSelect.innerHTML = '';
+      teachers.forEach(teacher => {
+        const option = document.createElement('option');
+        option.value = teacher.id;
+        option.textContent = teacher.name;
+        elements.teacherFilterSelect.appendChild(option);
+      });
+    }
+
+    function showConflicts() {
+      // In a real app, you would detect actual conflicts
+      // For demo, we'll show sample conflicts
+      const conflicts = [
+        'Lớp Toán 10A và Lớp Vật lý 11B cùng phòng 101 vào Thứ 4, 09:00-11:00',
+        'Giáo viên Nguyễn Văn A dạy 2 lớp cùng lúc vào Thứ 6, 15:00-17:00'
+      ];
+      
+      if (conflicts.length > 0) {
+        elements.conflictCard.style.display = 'block';
+        elements.conflictDetailsList.innerHTML = '';
+        
+        conflicts.forEach(conflict => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.textContent = conflict;
+          elements.conflictDetailsList.appendChild(li);
+        });
+      } else {
+        elements.conflictCard.style.display = 'none';
+      }
+    }
+
+    function loadClassesTable() {
+      // In a real app, you would fetch classes from Firestore
+      // For demo, we'll use sample data
+      const classes = [
+        { id: 1, name: 'Toán 10A', subject: 'Toán', teacher: 'Nguyễn Văn A', students: 25, schedule: 'Thứ 2, 7:00-9:00' },
+        { id: 2, name: 'Vật lý 11B', subject: 'Vật lý', teacher: 'Trần Thị B', students: 20, schedule: 'Thứ 3, 9:00-11:00' },
+        { id: 3, name: 'Hóa 12C', subject: 'Hóa', teacher: 'Lê Văn C', students: 18, schedule: 'Thứ 4, 13:00-15:00' }
+      ];
+      
+      const tbody = elements.classesTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      
+      classes.forEach(cls => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td data-label="Tên lớp">${cls.name}</td>
+          <td data-label="Môn">${cls.subject}</td>
+          <td data-label="Giáo viên">${cls.teacher}</td>
+          <td data-label="HS">${cls.students}</td>
+          <td data-label="Lịch học">${cls.schedule}</td>
+          <td data-label="Hành động">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editClass(${cls.id})"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger admin-only" onclick="deleteClass(${cls.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function loadTeachersTable() {
+      // In a real app, you would fetch teachers from Firestore
+      // For demo, we'll use sample data
+      const teachers = [
+        { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@example.com', subject: 'Toán', phone: '0987654321' },
+        { id: 2, name: 'Trần Thị B', email: 'tranthib@example.com', subject: 'Vật lý', phone: '0987654322' },
+        { id: 3, name: 'Lê Văn C', email: 'levanc@example.com', subject: 'Hóa', phone: '0987654323' }
+      ];
+      
+      const tbody = elements.teachersTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      
+      teachers.forEach(teacher => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td data-label="Tên">${teacher.name}</td>
+          <td data-label="Email">${teacher.email}</td>
+          <td data-label="Môn Dạy">${teacher.subject}</td>
+          <td data-label="Hành động" class="admin-only">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editTeacher(${teacher.id})"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteTeacher(${teacher.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function loadStudentsTable() {
+      // In a real app, you would fetch students from Firestore
+      // For demo, we'll use sample data
+      const students = [
+        { id: 1, name: 'Phạm Văn D', phone: '0987654331', classes: 'Toán 10A, Vật lý 11B' },
+        { id: 2, name: 'Hoàng Thị E', phone: '0987654332', classes: 'Toán 10A, Hóa 12C' },
+        { id: 3, name: 'Vũ Văn F', phone: '0987654333', classes: 'Vật lý 11B' }
+      ];
+      
+      const tbody = elements.studentsTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      
+      students.forEach(student => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td data-label="Tên">${student.name}</td>
+          <td data-label="SĐT Phụ huynh">${student.phone}</td>
+          <td data-label="Lớp đã đăng ký">${student.classes}</td>
+          <td data-label="Hành động" class="admin-only">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editStudent(${student.id})"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${student.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function loadAttendanceFilters() {
+      // In a real app, you would fetch classes and students from Firestore
+      // For demo, we'll use sample data
+      const classes = [
+        { id: 'all', name: 'Tất cả lớp' },
+        { id: 'class1', name: 'Toán 10A' },
+        { id: 'class2', name: 'Vật lý 11B' },
+        { id: 'class3', name: 'Hóa 12C' }
+      ];
+      
+      elements.attendanceClassFilter.innerHTML = '';
+      classes.forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls.id;
+        option.textContent = cls.name;
+        elements.attendanceClassFilter.appendChild(option);
+      });
+      
+      updateAttendanceStudentFilter();
+    }
+
+    function updateAttendanceStudentFilter() {
+      // In a real app, you would fetch students based on selected class
+      // For demo, we'll use sample data
+      const students = [
+        { id: 'all', name: 'Tất cả học sinh' },
+        { id: 'student1', name: 'Phạm Văn D' },
+        { id: 'student2', name: 'Hoàng Thị E' },
+        { id: 'student3', name: 'Vũ Văn F' }
+      ];
+      
+      elements.attendanceStudentFilter.innerHTML = '';
+      students.forEach(student => {
+        const option = document.createElement('option');
+        option.value = student.id;
+        option.textContent = student.name;
+        elements.attendanceStudentFilter.appendChild(option);
+      });
+    }
+
+    function loadAttendanceHistory() {
+      // In a real app, you would fetch attendance data from Firestore
+      // For demo, we'll use sample data
+      const attendanceData = [
+        { date: '2024-01-15', className: 'Toán 10A', teacher: 'Nguyễn Văn A', present: 22, absent: 3 },
+        { date: '2024-01-16', className: 'Vật lý 11B', teacher: 'Trần Thị B', present: 18, absent: 2 },
+        { date: '2024-01-17', className: 'Hóa 12C', teacher: 'Lê Văn C', present: 16, absent: 2 }
+      ];
+      
+      const tbody = elements.attendanceHistoryTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      
+      if (attendanceData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Không có dữ liệu điểm danh phù hợp.</td></tr>';
+        return;
+      }
+      
+      attendanceData.forEach(record => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${record.date}</td>
+          <td>${record.className}</td>
+          <td>${record.teacher}</td>
+          <td>${record.present}</td>
+          <td>${record.absent}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function loadTeacherAttendanceFilters() {
+      // In a real app, you would fetch teachers and classes from Firestore
+      // For demo, we'll use sample data
+      const teachers = [
+        { id: 'teacher1', name: 'Nguyễn Văn A' },
+        { id: 'teacher2', name: 'Trần Thị B' },
+        { id: 'teacher3', name: 'Lê Văn C' }
+      ];
+      
+      elements.teacherAttendanceFilter.innerHTML = '<option value="">-- Chọn giáo viên --</option>';
+      teachers.forEach(teacher => {
+        const option = document.createElement('option');
+        option.value = teacher.id;
+        option.textContent = teacher.name;
+        elements.teacherAttendanceFilter.appendChild(option);
+      });
+      
+      const classes = [
+        { id: '', name: 'Tất cả lớp' },
+        { id: 'class1', name: 'Toán 10A' },
+        { id: 'class2', name: 'Vật lý 11B' },
+        { id: 'class3', name: 'Hóa 12C' }
+      ];
+      
+      elements.attendanceClassFilterTeacher.innerHTML = '';
+      classes.forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls.id;
+        option.textContent = cls.name;
+        elements.attendanceClassFilterTeacher.appendChild(option);
+      });
+    }
+
+    function loadTeacherAttendance() {
+      const teacherId = elements.teacherAttendanceFilter.value;
+      const date = elements.attendanceDateFilter.value;
+      const classId = elements.attendanceClassFilterTeacher.value;
+      
+      if (!teacherId) {
+        elements.teacherAttendanceContent.innerHTML = `
+          <div class="text-center p-4 text-muted">
+            <i class="bi bi-person-check fs-1"></i>
+            <p class="mt-2">Vui lòng chọn giáo viên để xem danh sách điểm danh</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // In a real app, you would fetch data from Firestore based on filters
+      // For demo, we'll use sample data
+      const teacherName = elements.teacherAttendanceFilter.options[elements.teacherAttendanceFilter.selectedIndex].text;
+      const classes = [
+        {
+          id: 'class1',
+          name: 'Toán 10A',
+          students: [
+            { id: 'student1', name: 'Phạm Văn D', phone: '0987654331', status: 'present' },
+            { id: 'student2', name: 'Hoàng Thị E', phone: '0987654332', status: 'present' },
+            { id: 'student3', name: 'Vũ Văn F', phone: '0987654333', status: 'absent' }
+          ]
+        },
+        {
+          id: 'class2',
+          name: 'Vật lý 11B',
+          students: [
+            { id: 'student4', name: 'Nguyễn Thị G', phone: '0987654334', status: 'present' },
+            { id: 'student5', name: 'Trần Văn H', phone: '0987654335', status: 'present' }
+          ]
+        }
+      ];
+      
+      let filteredClasses = classes;
+      if (classId) {
+        filteredClasses = classes.filter(cls => cls.id === classId);
+      }
+      
+      let html = `
+        <div class="mb-4">
+          <h6 class="fw-bold mb-2">Giáo viên: ${teacherName}</h6>
+          <p class="mb-0">Ngày điểm danh: ${date}</p>
+        </div>
+      `;
+      
+      filteredClasses.forEach(cls => {
+        html += `
+          <div class="teacher-attendance-card">
+            <div class="card-header">${cls.name}</div>
+            <div class="card-body p-0">
+        `;
+        
+        cls.students.forEach(student => {
+          html += `
+            <div class="attendance-student-row">
+              <div class="student-info">
+                <div class="student-name">${student.name}</div>
+                <div class="student-phone">${student.phone}</div>
+              </div>
+              <div class="attendance-actions">
+                <div class="attendance-btn ${student.status === 'present' ? 'active' : ''}" data-student="${student.id}" data-status="present">
+                  <i class="bi bi-check-lg text-success"></i>
+                </div>
+                <div class="attendance-btn absent ${student.status === 'absent' ? 'active' : ''}" data-student="${student.id}" data-status="absent">
+                  <i class="bi bi-x-lg text-danger"></i>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        
+        html += `
+            </div>
+            <div class="attendance-summary">
+              <span>Tổng: ${cls.students.length} học sinh</span>
+              <span>Có mặt: ${cls.students.filter(s => s.status === 'present').length}</span>
+              <span>Vắng: ${cls.students.filter(s => s.status === 'absent').length}</span>
+            </div>
+          </div>
+        `;
+      });
+      
+      elements.teacherAttendanceContent.innerHTML = html;
+      
+      // Add event listeners to attendance buttons
+      document.querySelectorAll('.attendance-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const studentId = this.getAttribute('data-student');
+          const status = this.getAttribute('data-status');
+          
+          // Update UI
+          const parentRow = this.closest('.attendance-student-row');
+          parentRow.querySelectorAll('.attendance-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          
+          // In a real app, you would save the attendance to Firestore
+          console.log(`Marked student ${studentId} as ${status}`);
+          
+          // Update summary
+          updateAttendanceSummary(parentRow.closest('.teacher-attendance-card'));
+        });
+      });
+    }
+
+    function updateAttendanceSummary(card) {
+      const studentRows = card.querySelectorAll('.attendance-student-row');
+      const total = studentRows.length;
+      const present = Array.from(studentRows).filter(row => 
+        row.querySelector('.attendance-btn[data-status="present"]').classList.contains('active')
+      ).length;
+      const absent = total - present;
+      
+      const summary = card.querySelector('.attendance-summary');
+      summary.innerHTML = `
+        <span>Tổng: ${total} học sinh</span>
+        <span>Có mặt: ${present}</span>
+        <span>Vắng: ${absent}</span>
+      `;
+    }
+
+    // Placeholder functions for edit/delete operations
+    function editTeacher(id) {
+      alert(`Edit teacher with ID: ${id}`);
+    }
+
+    function deleteTeacher(id) {
+      if (confirm('Bạn có chắc chắn muốn xóa giáo viên này?')) {
+        alert(`Delete teacher with ID: ${id}`);
+      }
+    }
+
+    function editStudent(id) {
+      alert(`Edit student with ID: ${id}`);
+    }
+
+    function deleteStudent(id) {
+      if (confirm('Bạn có chắc chắn muốn xóa học sinh này?')) {
+        alert(`Delete student with ID: ${id}`);
+      }
+    }
+
+    function editClass(id) {
+      alert(`Edit class with ID: ${id}`);
+    }
+
+    function deleteClass(id) {
+      if (confirm('Bạn có chắc chắn muốn xóa lớp học này?')) {
+        alert(`Delete class with ID: ${id}`);
+      }
+    }
   </script>
 </body>
 </html>
