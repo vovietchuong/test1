@@ -961,6 +961,9 @@
                         <button class="btn-info" id="syncDataBtn">
                             <i class="fas fa-sync-alt"></i> Đồng bộ dữ liệu
                         </button>
+                        <button class="btn-primary" id="loadFromFirebaseBtn">
+                            <i class="fas fa-download"></i> Tải từ Firebase
+                        </button>
                     </div>
                     <div class="sync-status">
                         <div class="sync-indicator" id="syncIndicatorSettings"></div>
@@ -1310,17 +1313,17 @@
             
             try {
                 // Lưu dữ liệu lên Firebase
-                await db.collection('system').doc('attendanceData').set({
+                await db.collection('attendanceSystem').doc('attendanceData').set({
                     data: attendanceData,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                await db.collection('system').doc('sessionData').set({
+                await db.collection('attendanceSystem').doc('sessionData').set({
                     data: sessionData,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                await db.collection('system').doc('classData').set({
+                await db.collection('attendanceSystem').doc('classData').set({
                     data: classData,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -1345,25 +1348,31 @@
             
             try {
                 // Tải dữ liệu từ Firebase
-                const attendanceDoc = await db.collection('system').doc('attendanceData').get();
-                const sessionDoc = await db.collection('system').doc('sessionData').get();
-                const classDoc = await db.collection('system').doc('classData').get();
+                const attendanceDoc = await db.collection('attendanceSystem').doc('attendanceData').get();
+                const sessionDoc = await db.collection('attendanceSystem').doc('sessionData').get();
+                const classDoc = await db.collection('attendanceSystem').doc('classData').get();
                 
                 if (attendanceDoc.exists) {
-                    attendanceData = attendanceDoc.data().data || {};
+                    const firebaseAttendanceData = attendanceDoc.data().data || {};
+                    // Merge dữ liệu từ Firebase với dữ liệu hiện tại
+                    Object.keys(firebaseAttendanceData).forEach(classId => {
+                        attendanceData[classId] = { ...attendanceData[classId], ...firebaseAttendanceData[classId] };
+                    });
                 }
                 
                 if (sessionDoc.exists) {
-                    sessionData = sessionDoc.data().data || {};
+                    const firebaseSessionData = sessionDoc.data().data || {};
+                    // Merge dữ liệu từ Firebase với dữ liệu hiện tại
+                    Object.keys(firebaseSessionData).forEach(classId => {
+                        sessionData[classId] = firebaseSessionData[classId];
+                    });
                 }
                 
                 if (classDoc.exists) {
-                    // Cập nhật classData với dữ liệu từ Firebase
                     const firebaseClassData = classDoc.data().data || {};
+                    // Cập nhật classData với dữ liệu từ Firebase
                     Object.keys(firebaseClassData).forEach(classId => {
-                        if (classData[classId]) {
-                            classData[classId] = firebaseClassData[classId];
-                        }
+                        classData[classId] = firebaseClassData[classId];
                     });
                 }
                 
@@ -2420,10 +2429,22 @@
             initializeData();
             
             // Theo dõi trạng thái kết nối Firebase
-            firebase.firestore().enablePersistence()
+            db.enablePersistence()
                 .then(() => {
                     // Firebase đã sẵn sàng
                     updateConnectionStatus(true);
+                    
+                    // Thử kết nối để kiểm tra
+                    db.collection('attendanceSystem').doc('test').get()
+                        .then(() => {
+                            updateConnectionStatus(true);
+                            showToast('Kết nối Firebase thành công', 'success');
+                        })
+                        .catch((error) => {
+                            console.error('Lỗi kết nối Firebase:', error);
+                            updateConnectionStatus(false);
+                            showToast('Không thể kết nối Firebase', 'error');
+                        });
                 })
                 .catch((err) => {
                     console.error('Lỗi khởi tạo Firebase:', err);
@@ -2506,6 +2527,10 @@
             
             document.getElementById('syncDataBtn').addEventListener('click', function() {
                 syncToFirebase();
+            });
+            
+            document.getElementById('loadFromFirebaseBtn').addEventListener('click', function() {
+                loadFromFirebase();
             });
             
             document.getElementById('saveSettingsBtn').addEventListener('click', function() {
