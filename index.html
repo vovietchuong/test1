@@ -552,6 +552,41 @@
             margin-bottom: 20px;
         }
         
+        /* Firebase Sync Status */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .sync-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #6c757d;
+        }
+        
+        .sync-indicator.syncing {
+            background-color: var(--warning-color);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .sync-indicator.synced {
+            background-color: var(--success-color);
+        }
+        
+        .sync-indicator.error {
+            background-color: var(--danger-color);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
         /* Responsive */
         @media (max-width: 992px) {
             .sidebar {
@@ -751,6 +786,10 @@
                     <div id="recentStats">
                         <!-- Thống kê sẽ được thêm bằng JavaScript -->
                     </div>
+                    <div class="sync-status">
+                        <div class="sync-indicator" id="syncIndicator"></div>
+                        <span id="syncStatusText">Đang kết nối...</span>
+                    </div>
                 </div>
             </div>
 
@@ -919,6 +958,13 @@
                         <button class="btn-danger" id="resetDataBtn">
                             <i class="fas fa-trash"></i> Đặt lại dữ liệu
                         </button>
+                        <button class="btn-info" id="syncDataBtn">
+                            <i class="fas fa-sync-alt"></i> Đồng bộ dữ liệu
+                        </button>
+                    </div>
+                    <div class="sync-status">
+                        <div class="sync-indicator" id="syncIndicatorSettings"></div>
+                        <span id="syncStatusTextSettings">Đang kết nối...</span>
                     </div>
                 </div>
             </div>
@@ -976,7 +1022,28 @@
     <!-- Toast notifications -->
     <div id="toastContainer"></div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
     <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPcaScN-HrCcxiUz_J1QrrREF9sxCfvD8",
+            authDomain: "mathhubvn.firebaseapp.com",
+            projectId: "mathhubvn",
+            storageBucket: "mathhubvn.firebasestorage.app",
+            messagingSenderId: "1001364433767",
+            appId: "1:1001364433767:web:ae1547dc7d1524a6319dc2",
+            measurementId: "G-2YNQZ48JVK"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
         // Dữ liệu lớp học đầy đủ
         const classData = {
             lop6: [
@@ -1177,6 +1244,8 @@
         let currentEditingStudent = null;
         let currentEditingSession = null;
         let currentClass = 'lop6';
+        let isOnline = false;
+        let syncInProgress = false;
         
         // Hiển thị thông báo
         function showToast(message, type = 'info') {
@@ -1200,7 +1269,117 @@
             }, 3000);
         }
         
-        // Khởi tạo dữ liệu từ localStorage hoặc tạo mới
+        // Cập nhật trạng thái kết nối
+        function updateConnectionStatus(connected) {
+            isOnline = connected;
+            const indicator = document.getElementById('syncIndicator');
+            const indicatorSettings = document.getElementById('syncIndicatorSettings');
+            const statusText = document.getElementById('syncStatusText');
+            const statusTextSettings = document.getElementById('syncStatusTextSettings');
+            
+            if (connected) {
+                indicator.className = 'sync-indicator synced';
+                indicatorSettings.className = 'sync-indicator synced';
+                statusText.textContent = 'Đã kết nối Firebase';
+                statusTextSettings.textContent = 'Đã kết nối Firebase';
+            } else {
+                indicator.className = 'sync-indicator error';
+                indicatorSettings.className = 'sync-indicator error';
+                statusText.textContent = 'Mất kết nối Firebase';
+                statusTextSettings.textContent = 'Mất kết nối Firebase';
+            }
+        }
+        
+        // Đồng bộ dữ liệu lên Firebase
+        async function syncToFirebase() {
+            if (!isOnline) {
+                showToast('Không thể đồng bộ: Mất kết nối Firebase', 'error');
+                return;
+            }
+            
+            if (syncInProgress) {
+                showToast('Đang đồng bộ dữ liệu...', 'info');
+                return;
+            }
+            
+            syncInProgress = true;
+            const indicator = document.getElementById('syncIndicator');
+            const indicatorSettings = document.getElementById('syncIndicatorSettings');
+            indicator.className = 'sync-indicator syncing';
+            indicatorSettings.className = 'sync-indicator syncing';
+            
+            try {
+                // Lưu dữ liệu lên Firebase
+                await db.collection('system').doc('attendanceData').set({
+                    data: attendanceData,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                await db.collection('system').doc('sessionData').set({
+                    data: sessionData,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                await db.collection('system').doc('classData').set({
+                    data: classData,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showToast('Đã đồng bộ dữ liệu lên Firebase', 'success');
+            } catch (error) {
+                console.error('Lỗi đồng bộ Firebase:', error);
+                showToast('Lỗi đồng bộ dữ liệu: ' + error.message, 'error');
+            } finally {
+                syncInProgress = false;
+                indicator.className = 'sync-indicator synced';
+                indicatorSettings.className = 'sync-indicator synced';
+            }
+        }
+        
+        // Tải dữ liệu từ Firebase
+        async function loadFromFirebase() {
+            if (!isOnline) {
+                showToast('Không thể tải dữ liệu: Mất kết nối Firebase', 'error');
+                return;
+            }
+            
+            try {
+                // Tải dữ liệu từ Firebase
+                const attendanceDoc = await db.collection('system').doc('attendanceData').get();
+                const sessionDoc = await db.collection('system').doc('sessionData').get();
+                const classDoc = await db.collection('system').doc('classData').get();
+                
+                if (attendanceDoc.exists) {
+                    attendanceData = attendanceDoc.data().data || {};
+                }
+                
+                if (sessionDoc.exists) {
+                    sessionData = sessionDoc.data().data || {};
+                }
+                
+                if (classDoc.exists) {
+                    // Cập nhật classData với dữ liệu từ Firebase
+                    const firebaseClassData = classDoc.data().data || {};
+                    Object.keys(firebaseClassData).forEach(classId => {
+                        if (classData[classId]) {
+                            classData[classId] = firebaseClassData[classId];
+                        }
+                    });
+                }
+                
+                showToast('Đã tải dữ liệu từ Firebase', 'success');
+                saveAllData();
+                updateDashboard();
+                displayClass(currentClass);
+                displayStudentList(currentClass);
+                displaySessionList(currentClass);
+            } catch (error) {
+                console.error('Lỗi tải dữ liệu Firebase:', error);
+                showToast('Lỗi tải dữ liệu: ' + error.message, 'error');
+            }
+        }
+        
+        // Khởi tạo dữ liệu từ localStorage hoặc Firebase
         function initializeData() {
             const savedAttendanceData = localStorage.getItem('attendanceData');
             const savedSessionData = localStorage.getItem('sessionData');
@@ -1444,6 +1623,11 @@
             saveAllData();
             updateDashboard();
             showToast('Đã cập nhật điểm danh', 'success');
+            
+            // Đồng bộ lên Firebase nếu đang online
+            if (isOnline) {
+                syncToFirebase();
+            }
         }
         
         // Đánh dấu tất cả có mặt
@@ -1472,6 +1656,11 @@
             displayClass(classId);
             updateDashboard();
             showToast('Đã đánh dấu tất cả học sinh có mặt', 'success');
+            
+            // Đồng bộ lên Firebase nếu đang online
+            if (isOnline) {
+                syncToFirebase();
+            }
         }
         
         // Đánh dấu tất cả vắng mặt
@@ -1500,6 +1689,11 @@
             displayClass(classId);
             updateDashboard();
             showToast('Đã đánh dấu tất cả học sinh vắng mặt', 'success');
+            
+            // Đồng bộ lên Firebase nếu đang online
+            if (isOnline) {
+                syncToFirebase();
+            }
         }
         
         // Xuất dữ liệu CSV với UTF-8 BOM để đảm bảo hiển thị đúng tiếng Việt
@@ -1682,6 +1876,11 @@
                 }
                 updateDashboard();
                 showToast('Đã xóa học sinh thành công', 'success');
+                
+                // Đồng bộ lên Firebase nếu đang online
+                if (isOnline) {
+                    syncToFirebase();
+                }
             }
         }
         
@@ -1734,6 +1933,11 @@
             }
             updateDashboard();
             closeModal('studentModal');
+            
+            // Đồng bộ lên Firebase nếu đang online
+            if (isOnline) {
+                syncToFirebase();
+            }
         }
         
         // Hiển thị modal quản lý buổi học
@@ -1821,6 +2025,11 @@
                     displayClass(classId);
                 }
                 showToast('Đã xóa buổi học thành công', 'success');
+                
+                // Đồng bộ lên Firebase nếu đang online
+                if (isOnline) {
+                    syncToFirebase();
+                }
             }
         }
         
@@ -1877,6 +2086,11 @@
                 displayClass(classId);
             }
             closeModal('sessionModal');
+            
+            // Đồng bộ lên Firebase nếu đang online
+            if (isOnline) {
+                syncToFirebase();
+            }
         }
         
         // Thêm buổi học từ ngày
@@ -1921,6 +2135,11 @@
             displayClass(classId);
             document.getElementById('sessionDate').value = '';
             showToast('Đã thêm buổi học mới', 'success');
+            
+            // Đồng bộ lên Firebase nếu đang online
+            if (isOnline) {
+                syncToFirebase();
+            }
         }
         
         // Tạo báo cáo
@@ -2200,6 +2419,17 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeData();
             
+            // Theo dõi trạng thái kết nối Firebase
+            firebase.firestore().enablePersistence()
+                .then(() => {
+                    // Firebase đã sẵn sàng
+                    updateConnectionStatus(true);
+                })
+                .catch((err) => {
+                    console.error('Lỗi khởi tạo Firebase:', err);
+                    updateConnectionStatus(false);
+                });
+            
             // Xử lý sự kiện chuyển tab
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', function() {
@@ -2237,6 +2467,11 @@
             document.getElementById('saveBtn').addEventListener('click', function() {
                 saveAllData();
                 showToast('Đã lưu điểm danh!', 'success');
+                
+                // Đồng bộ lên Firebase nếu đang online
+                if (isOnline) {
+                    syncToFirebase();
+                }
             });
             
             document.getElementById('markAllPresent').addEventListener('click', function() {
@@ -2268,6 +2503,10 @@
             document.getElementById('backupDataBtn').addEventListener('click', backupData);
             
             document.getElementById('resetDataBtn').addEventListener('click', resetData);
+            
+            document.getElementById('syncDataBtn').addEventListener('click', function() {
+                syncToFirebase();
+            });
             
             document.getElementById('saveSettingsBtn').addEventListener('click', function() {
                 showToast('Đã lưu cài đặt', 'success');
