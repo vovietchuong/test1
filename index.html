@@ -1,2036 +1,644 @@
+<?php
+/**
+ * TRANG DÀNH CHO HỌC SINH - TƯƠNG THÍCH PHP 5.6
+ * CHỨC NĂNG: XEM DANH SÁCH ĐỀ THEO CHỦ ĐỀ, LÀM BÀI VÀ XEM KẾT QUẢ
+ */
+ob_start();
+@ini_set('upload_max_filesize', '100M');
+@ini_set('post_max_size', '100M');
+@ini_set('max_execution_time', '600');
+@ini_set('memory_limit', '512M');
+error_reporting(0); 
+
+$dataFile = __DIR__ . DIRECTORY_SEPARATOR . 'exams_data.json';
+$historyFile = __DIR__ . DIRECTORY_SEPARATOR . 'history_data.json';
+
+if (!file_exists($dataFile)) { @file_put_contents($dataFile, json_encode(array())); }
+if (!file_exists($historyFile)) { @file_put_contents($historyFile, json_encode(array())); }
+
+// API XỬ LÝ
+if (isset($_GET['action'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $action = $_GET['action'];
+
+    if ($action === 'list') {
+        $content = @file_get_contents($dataFile);
+        $data = json_decode($content, true);
+        if (!is_array($data)) $data = array();
+        $visible = array();
+        foreach ($data as $e) {
+            if (!isset($e['visible']) || $e['visible'] === true) {
+                $visible[] = $e;
+            }
+        }
+        echo json_encode($visible);
+        exit;
+    }
+
+    if ($action === 'submit_attempt' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $attempt = json_decode(file_get_contents('php://input'), true);
+        if ($attempt) {
+            $history = json_decode(@file_get_contents($historyFile), true);
+            if (!is_array($history)) $history = array();
+            $history[] = $attempt;
+            file_put_contents($historyFile, json_encode($history));
+            echo json_encode(array('success' => true));
+        }
+        exit;
+    }
+    echo json_encode(array('error' => 'Invalid action'));
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MathMaster Pro - Hệ Thống Bài Tập Toán Thông Minh</title>
-    <!-- MathJax với cấu hình nâng cao -->
-    <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                processEscapes: true,
-                packages: {
-                    '[+]': ['ams', 'boldsymbol', 'physics', 'color']
-                }
-            },
-            loader: {load: ['[tex]/ams', '[tex]/boldsymbol', '[tex]/physics', '[tex]/color']},
-            svg: {
-                fontCache: 'global',
-                scale: 1.2
-            },
-            startup: {
-                typeset: true,
-                pageReady: () => {
-                    return MathJax.startup.defaultPageReady().then(() => {
-                        console.log('MathJax ready');
-                    });
-                }
-            }
-        };
-    </script>
-    <script id="MathJax-script" async 
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
-    </script>
-    <!-- Chart.js cho biểu đồ thống kê -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Font Awesome cho icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Hệ thống Ôn tập Toán 12 - Thầy Chiến</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
     <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
-            --success-color: #4cc9f0;
-            --warning-color: #f72585;
-            --dark-color: #1a1a2e;
-            --light-color: #f8f9fa;
-            --border-radius: 12px;
-            --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            --transition: all 0.3s ease;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-        }
-        
-        /* Loading screen */
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--dark-color);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-        
-        .spinner {
-            width: 70px;
-            height: 70px;
-            border: 5px solid rgba(255, 255, 255, 0.1);
-            border-top-color: var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            display: none;
-        }
-        
-        /* Header nâng cao */
-        .main-header {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px 40px;
-            margin-bottom: 30px;
-            box-shadow: var(--box-shadow);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        
-        .header-left h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
-        }
-        
-        .tagline {
-            color: #666;
-            font-size: 1.1rem;
-        }
-        
-        .header-right {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--light-color);
-            padding: 10px 20px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .user-profile:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .avatar {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(45deg, var(--primary-color), var(--success-color));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-        
-        /* Dashboard grid */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-        
-        @media (max-width: 1200px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* Sidebar với thông tin bài thi */
-        .exam-sidebar {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--box-shadow);
-            height: fit-content;
-            position: sticky;
-            top: 20px;
-        }
-        
-        .sidebar-section {
-            margin-bottom: 25px;
-        }
-        
-        .sidebar-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: var(--primary-color);
-            font-size: 1.2rem;
-        }
-        
-        .progress-ring {
-            width: 120px;
-            height: 120px;
-            margin: 20px auto;
-        }
-        
-        .progress-circle-bg {
-            fill: none;
-            stroke: #eee;
-            stroke-width: 8;
-        }
-        
-        .progress-circle {
-            fill: none;
-            stroke: var(--primary-color);
-            stroke-width: 8;
-            stroke-linecap: round;
-            transform: rotate(-90deg);
-            transform-origin: 50% 50%;
-            transition: stroke-dashoffset 0.5s ease;
-        }
-        
-        .progress-text {
-            text-align: center;
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
-        .question-navigator {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .nav-btn {
-            width: 40px;
-            height: 40px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition);
-            font-weight: bold;
-        }
-        
-        .nav-btn:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
-        }
-        
-        .nav-btn.answered {
-            background: var(--success-color);
-            color: white;
-            border-color: var(--success-color);
-        }
-        
-        .nav-btn.current {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        
-        /* Tab hệ thống câu hỏi */
-        .question-tabs {
-            background: white;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--box-shadow);
-        }
-        
-        .tab-header {
-            display: flex;
-            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-            padding: 0;
-        }
-        
-        .tab-btn {
-            flex: 1;
-            padding: 18px;
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-        
-        .tab-btn.active {
-            color: white;
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .tab-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 50%;
-            height: 3px;
-            background: white;
-            border-radius: 3px 3px 0 0;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 30px;
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Câu hỏi nâng cao */
-        .question-card {
-            background: var(--light-color);
-            border-radius: var(--border-radius);
-            padding: 25px;
-            margin-bottom: 25px;
-            border-left: 5px solid var(--primary-color);
-            transition: var(--transition);
-        }
-        
-        .question-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        
-        .question-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-        
-        .question-meta {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .question-type {
-            background: var(--primary-color);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-        
-        .question-difficulty {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .difficulty-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .difficulty-dot.easy { background: #4ade80; }
-        .difficulty-dot.medium { background: #fbbf24; }
-        .difficulty-dot.hard { background: #f87171; }
-        
-        .question-timer {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--warning-color);
-            font-weight: 600;
-        }
-        
-        .question-text {
-            font-size: 1.2rem;
-            margin-bottom: 25px;
-            line-height: 1.8;
-        }
-        
-        /* Multiple choice nâng cao */
-        .choices-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        
-        .choice-item {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 18px;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .choice-item:hover {
-            border-color: var(--primary-color);
-            transform: translateX(5px);
-        }
-        
-        .choice-item.selected {
-            border-color: var(--primary-color);
-            background: rgba(67, 97, 238, 0.05);
-        }
-        
-        .choice-label {
-            width: 40px;
-            height: 40px;
-            background: #e2e8f0;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            transition: var(--transition);
-        }
-        
-        .choice-item.selected .choice-label {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .choice-text {
-            flex: 1;
-            font-size: 1.1rem;
-        }
-        
-        /* True/False nâng cao */
-        .true-false-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        
-        .tf-item {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            border: 2px solid #e2e8f0;
-            transition: var(--transition);
-        }
-        
-        .tf-item:hover {
-            border-color: var(--primary-color);
-        }
-        
-        .tf-statement {
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-        }
-        
-        .tf-options {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .tf-btn {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            background: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            text-align: center;
-        }
-        
-        .tf-btn.true.selected {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-        }
-        
-        .tf-btn.false.selected {
-            background: #ef4444;
-            color: white;
-            border-color: #ef4444;
-        }
-        
-        /* Short answer nâng cao */
-        .short-answer-input {
-            width: 100%;
-            padding: 18px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            transition: var(--transition);
-            font-family: 'Courier New', monospace;
-        }
-        
-        .short-answer-input:focus {
-            border-color: var(--primary-color);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-        
-        /* Essay nâng cao */
-        .essay-editor {
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .editor-toolbar {
-            background: #f8fafc;
-            padding: 15px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .editor-btn {
-            padding: 8px 15px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .editor-btn:hover {
-            background: #f1f5f9;
-            border-color: var(--primary-color);
-        }
-        
-        .editor-area {
-            width: 100%;
-            min-height: 200px;
-            padding: 20px;
-            border: none;
-            font-size: 1.1rem;
-            line-height: 1.8;
-            resize: vertical;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .editor-area:focus {
-            outline: none;
-        }
-        
-        /* Math tools */
-        .math-tools {
-            background: #f8fafc;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .math-tools-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: var(--primary-color);
-        }
-        
-        .math-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .math-btn {
-            padding: 10px 15px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: 'Cambria Math', serif;
-        }
-        
-        .math-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        
-        /* Action buttons nâng cao */
-        .action-panel {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            margin-top: 30px;
-            box-shadow: var(--box-shadow);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        
-        .action-btn {
-            padding: 16px 40px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
-        }
-        
-        .btn-secondary {
-            background: white;
-            color: var(--primary-color);
-            border: 2px solid var(--primary-color);
-        }
-        
-        .btn-secondary:hover {
-            background: var(--primary-color);
-            color: white;
-            transform: translateY(-3px);
-        }
-        
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #dc2626;
-            transform: translateY(-3px);
-        }
-        
-        /* Modal kết quả */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: var(--border-radius);
-            width: 100%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: modalSlide 0.3s ease;
-        }
-        
-        @keyframes modalSlide {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        .modal-header {
-            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 25px;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-body {
-            padding: 30px;
-        }
-        
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .result-card {
-            background: #f8fafc;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            transition: var(--transition);
-        }
-        
-        .result-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        .result-value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        .result-value.score {
-            color: var(--primary-color);
-        }
-        
-        .result-value.time {
-            color: var(--success-color);
-        }
-        
-        .result-value.accuracy {
-            color: #10b981;
-        }
-        
-        /* Chart container */
-        .chart-container {
-            height: 300px;
-            margin: 30px 0;
-        }
-        
-        /* Toast notification */
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            z-index: 1001;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        }
-        
-        .toast.show {
-            transform: translateX(0);
-        }
-        
-        .toast-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-        }
-        
-        .toast-icon.success {
-            background: #10b981;
-        }
-        
-        .toast-icon.warning {
-            background: #f59e0b;
-        }
-        
-        .toast-icon.error {
-            background: #ef4444;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .main-header {
-                flex-direction: column;
-                text-align: center;
-                padding: 20px;
-            }
-            
-            .header-right {
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .tab-header {
-                flex-direction: column;
-            }
-            
-            .question-navigator {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            
-            .action-panel {
-                flex-direction: column;
-            }
-            
-            .action-btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow: hidden; background-color: #f8fafc; color: #1e293b; font-size: 14px; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .exam-view-container { background-color: #525659; height: 100%; width: 100%; display: flex; justify-content: center; overflow-y: auto; }
+        .docx-paper { background: white; width: 100%; padding: 25px; box-shadow: 0 0 30px rgba(0,0,0,0.15); min-height: 100%; box-sizing: border-box; }
+        .docx-paper img, .docx-paper table { max-width: 100% !important; height: auto !important; }
+        
+        .bubble-btn { transition: all 0.1s ease-in-out; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; width: 30px; height: 30px; border-radius: 9999px; border-width: 2px; }
+        .bubble-btn:active { transform: scale(0.9); }
+        .bubble-selected { background-color: #0f172a !important; color: #ffffff !important; border-color: #0f172a !important; }
+        
+        /* Ẩn thanh cuộn của tab bar trên mobile nhưng vẫn vuốt được */
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
-    <!-- Loading screen -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="spinner"></div>
-        <h2 style="color: white; margin-bottom: 10px;">MathMaster Pro</h2>
-        <p style="color: rgba(255, 255, 255, 0.8);">Đang tải hệ thống...</p>
-    </div>
-    
-    <!-- Main container -->
-    <div class="container" id="mainContainer">
-        <!-- Header -->
-        <header class="main-header">
-            <div class="header-left">
-                <h1><i class="fas fa-calculator"></i> MathMaster Pro</h1>
-                <p class="tagline">Hệ thống bài tập toán thông minh - Nâng cao kỹ năng tư duy</p>
-            </div>
-            <div class="header-right">
-                <div class="user-profile" onclick="toggleUserMenu()">
-                    <div class="avatar" id="userAvatar">HS</div>
-                    <div>
-                        <div id="userName">Học Sinh</div>
-                        <div style="font-size: 0.9rem; color: #666;" id="userClass">Lớp: Chưa chọn</div>
-                    </div>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-                <div class="user-profile" onclick="showSettings()">
-                    <i class="fas fa-cog"></i>
-                    <span>Cài đặt</span>
-                </div>
-            </div>
-        </header>
-        
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
-            <!-- Main content -->
-            <main>
-                <!-- Tab system -->
-                <div class="question-tabs">
-                    <div class="tab-header">
-                        <button class="tab-btn active" data-tab="multiple-choice">
-                            <i class="far fa-dot-circle"></i> Trắc nghiệm
-                        </button>
-                        <button class="tab-btn" data-tab="true-false">
-                            <i class="fas fa-check-double"></i> Đúng/Sai
-                        </button>
-                        <button class="tab-btn" data-tab="short-answer">
-                            <i class="fas fa-pen"></i> Trả lời ngắn
-                        </button>
-                        <button class="tab-btn" data-tab="essay">
-                            <i class="fas fa-file-alt"></i> Tự luận
-                        </button>
-                    </div>
-                    
-                    <!-- Multiple Choice Tab -->
-                    <div class="tab-content active" id="multiple-choice">
-                        <!-- Câu hỏi 1 -->
-                        <div class="question-card" data-question="1">
-                            <div class="question-header">
-                                <div class="question-meta">
-                                    <span class="question-type">Trắc nghiệm</span>
-                                    <span class="question-difficulty">
-                                        <span class="difficulty-dot easy"></span>
-                                        Dễ
-                                    </span>
-                                    <span class="question-timer">
-                                        <i class="far fa-clock"></i> 2 phút
-                                    </span>
-                                </div>
-                                <div class="question-points">
-                                    <i class="fas fa-star"></i> 2 điểm
-                                </div>
-                            </div>
-                            
-                            <div class="question-text">
-                                <p><strong>Câu 1:</strong> Nghiệm của phương trình $x^2 - 5x + 6 = 0$ là:</p>
-                                <div class="math-hint" style="background: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 10px;">
-                                    <i class="fas fa-lightbulb"></i> <strong>Gợi ý:</strong> Phân tích đa thức thành nhân tử hoặc sử dụng công thức nghiệm
-                                </div>
-                            </div>
-                            
-                            <div class="choices-grid">
-                                <div class="choice-item" data-choice="A">
-                                    <div class="choice-label">A</div>
-                                    <div class="choice-text">$x = 2$ hoặc $x = 3$</div>
-                                </div>
-                                <div class="choice-item" data-choice="B">
-                                    <div class="choice-label">B</div>
-                                    <div class="choice-text">$x = -2$ hoặc $x = -3$</div>
-                                </div>
-                                <div class="choice-item" data-choice="C">
-                                    <div class="choice-label">C</div>
-                                    <div class="choice-text">$x = 1$ hoặc $x = 6$</div>
-                                </div>
-                                <div class="choice-item" data-choice="D">
-                                    <div class="choice-label">D</div>
-                                    <div class="choice-text">$x = \pm\sqrt{6}$</div>
-                                </div>
-                            </div>
-                            
-                            <div class="math-tools">
-                                <div class="math-tools-title">
-                                    <i class="fas fa-square-root-alt"></i>
-                                    <span>Công thức toán học tham khảo</span>
-                                </div>
-                                <div class="math-buttons">
-                                    <button class="math-btn" onclick="insertMath('x^2')">x²</button>
-                                    <button class="math-btn" onclick="insertMath('\\sqrt{x}')">√x</button>
-                                    <button class="math-btn" onclick="insertMath('\\frac{a}{b}')">a/b</button>
-                                    <button class="math-btn" onclick="insertMath('\\pm')">±</button>
-                                    <button class="math-btn" onclick="insertMath('\\Delta = b^2 - 4ac')">Δ</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Câu hỏi 2 -->
-                        <div class="question-card" data-question="2">
-                            <div class="question-header">
-                                <div class="question-meta">
-                                    <span class="question-type">Trắc nghiệm</span>
-                                    <span class="question-difficulty">
-                                        <span class="difficulty-dot medium"></span>
-                                        Trung bình
-                                    </span>
-                                    <span class="question-timer">
-                                        <i class="far fa-clock"></i> 3 phút
-                                    </span>
-                                </div>
-                                <div class="question-points">
-                                    <i class="fas fa-star"></i> 3 điểm
-                                </div>
-                            </div>
-                            
-                            <div class="question-text">
-                                <p><strong>Câu 2:</strong> Đạo hàm của hàm số $f(x) = e^{2x} \cdot \sin(3x)$ là:</p>
-                            </div>
-                            
-                            <div class="choices-grid">
-                                <div class="choice-item" data-choice="A">
-                                    <div class="choice-label">A</div>
-                                    <div class="choice-text">$f'(x) = 2e^{2x}\sin(3x) + 3e^{2x}\cos(3x)$</div>
-                                </div>
-                                <div class="choice-item" data-choice="B">
-                                    <div class="choice-label">B</div>
-                                    <div class="choice-text">$f'(x) = e^{2x}(2\sin(3x) + 3\cos(3x))$</div>
-                                </div>
-                                <div class="choice-item" data-choice="C">
-                                    <div class="choice-label">C</div>
-                                    <div class="choice-text">$f'(x) = 6e^{2x}\cos(3x)$</div>
-                                </div>
-                                <div class="choice-item" data-choice="D">
-                                    <div class="choice-label">D</div>
-                                    <div class="choice-text">$f'(x) = 2e^{2x}\sin(3x) - 3e^{2x}\cos(3x)$</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- True/False Tab -->
-                    <div class="tab-content" id="true-false">
-                        <div class="question-card" data-question="3">
-                            <div class="question-header">
-                                <div class="question-meta">
-                                    <span class="question-type">Đúng/Sai</span>
-                                    <span class="question-difficulty">
-                                        <span class="difficulty-dot medium"></span>
-                                        Trung bình
-                                    </span>
-                                    <span class="question-timer">
-                                        <i class="far fa-clock"></i> 4 phút
-                                    </span>
-                                </div>
-                                <div class="question-points">
-                                    <i class="fas fa-star"></i> 4 điểm
-                                </div>
-                            </div>
-                            
-                            <div class="question-text">
-                                <p><strong>Câu 3:</strong> Xác định tính đúng/sai của các mệnh đề sau về hàm số $y = \ln(x^2 + 1)$:</p>
-                            </div>
-                            
-                            <div class="true-false-container">
-                                <!-- Mệnh đề 1 -->
-                                <div class="tf-item" data-statement="1">
-                                    <div class="tf-statement">
-                                        <strong>a)</strong> Tập xác định: $D = \mathbb{R}$
-                                    </div>
-                                    <div class="tf-options">
-                                        <button class="tf-btn true" data-value="true">Đúng</button>
-                                        <button class="tf-btn false" data-value="false">Sai</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Mệnh đề 2 -->
-                                <div class="tf-item" data-statement="2">
-                                    <div class="tf-statement">
-                                        <strong>b)</strong> Hàm số đồng biến trên $(0, +\infty)$
-                                    </div>
-                                    <div class="tf-options">
-                                        <button class="tf-btn true" data-value="true">Đúng</button>
-                                        <button class="tf-btn false" data-value="false">Sai</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Mệnh đề 3 -->
-                                <div class="tf-item" data-statement="3">
-                                    <div class="tf-statement">
-                                        <strong>c)</strong> $\lim_{x \to \infty} y = +\infty$
-                                    </div>
-                                    <div class="tf-options">
-                                        <button class="tf-btn true" data-value="true">Đúng</button>
-                                        <button class="tf-btn false" data-value="false">Sai</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Mệnh đề 4 -->
-                                <div class="tf-item" data-statement="4">
-                                    <div class="tf-statement">
-                                        <strong>d)</strong> Đạo hàm: $y' = \frac{2x}{x^2 + 1}$
-                                    </div>
-                                    <div class="tf-options">
-                                        <button class="tf-btn true" data-value="true">Đúng</button>
-                                        <button class="tf-btn false" data-value="false">Sai</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Short Answer Tab -->
-                    <div class="tab-content" id="short-answer">
-                        <div class="question-card" data-question="4">
-                            <div class="question-header">
-                                <div class="question-meta">
-                                    <span class="question-type">Trả lời ngắn</span>
-                                    <span class="question-difficulty">
-                                        <span class="difficulty-dot easy"></span>
-                                        Dễ
-                                    </span>
-                                    <span class="question-timer">
-                                        <i class="far fa-clock"></i> 2 phút
-                                    </span>
-                                </div>
-                                <div class="question-points">
-                                    <i class="fas fa-star"></i> 2 điểm
-                                </div>
-                            </div>
-                            
-                            <div class="question-text">
-                                <p><strong>Câu 4:</strong> Tính giới hạn: $$\lim_{x \to 0} \frac{\sin(5x)}{3x}$$</p>
-                            </div>
-                            
-                            <input type="text" class="short-answer-input" id="shortAnswer4" 
-                                   placeholder="Nhập kết quả (có thể dùng phân số: 5/3, số thập phân, hoặc công thức toán)">
-                            
-                            <div class="math-tools">
-                                <div class="math-tools-title">
-                                    <i class="fas fa-calculator"></i>
-                                    <span>Máy tính nhanh</span>
-                                </div>
-                                <div class="math-buttons">
-                                    <button class="math-btn" onclick="appendToAnswer('5/3')">5/3</button>
-                                    <button class="math-btn" onclick="appendToAnswer('\\frac{5}{3}')">$\frac{5}{3}$</button>
-                                    <button class="math-btn" onclick="appendToAnswer('\\infty')">∞</button>
-                                    <button class="math-btn" onclick="appendToAnswer('\\pi')">π</button>
-                                    <button class="math-btn" onclick="clearAnswer()">Xóa</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="question-card" data-question="5">
-                            <div class="question-header">
-                                <div class="question-meta">
-                                    <span class="question-type">Trả lời ngắn</span>
-                                    <span class="question-difficulty">
-                                        <span class="difficulty-dot hard"></span>
-                                        Khó
-                                    </span>
-                                    <span class="question-timer">
-                                        <i class="far fa-clock"></i> 5 phút
-                                    </span>
-                                </div>
-                                <div class="question-points">
-                                    <i class="fas fa-star"></i> 3 điểm
-                                </div>
-                            </div>
-                            
-                            <div class="question-text">
-                                <p><strong>Câu 5:</strong> Tính tích phân: $$\int_{0}^{1} (3x^2 + 2x - 1) dx$$</p>
-                            </div>
-                            
-                            <input type="text" class="short-answer-input" id="shortAnswer5" 
-                                   placeholder="Nhập kết quả (ví dụ: 2, -1.5, 3/2, ...)">
-                        </div>
-                    </div>
-                    
-                    <!-- Essay Tab -->
-                    <div class="tab-content" id="essay">
-                        <div class="question-card" data-question="6">
-                            <div class="question-header">
-                                <div class="question-meta">
-                                    <span class="question-type">Tự luận</span>
-                                    <span class="question-difficulty">
-                                        <span class="difficulty-dot hard"></span>
-                                        Khó
-                                    </span>
-                                    <span class="question-timer">
-                                        <i class="far fa-clock"></i> 15 phút
-                                    </span>
-                                </div>
-                                <div class="question-points">
-                                    <i class="fas fa-star"></i> 6 điểm
-                                </div>
-                            </div>
-                            
-                            <div class="question-text">
-                                <p><strong>Câu 6:</strong> Cho hàm số $y = \frac{x^2 + x + 1}{x - 1}$ có đồ thị (C).</p>
-                                <ol style="margin-left: 20px; margin-top: 15px;">
-                                    <li>Khảo sát sự biến thiên và vẽ đồ thị hàm số.</li>
-                                    <li>Viết phương trình tiếp tuyến của (C) tại điểm có hoành độ $x = 2$.</li>
-                                    <li>Tìm các điểm trên (C) có tọa độ nguyên.</li>
-                                </ol>
-                            </div>
-                            
-                            <div class="essay-editor">
-                                <div class="editor-toolbar">
-                                    <button class="editor-btn" onclick="formatText('bold')">
-                                        <i class="fas fa-bold"></i>
-                                    </button>
-                                    <button class="editor-btn" onclick="formatText('italic')">
-                                        <i class="fas fa-italic"></i>
-                                    </button>
-                                    <button class="editor-btn" onclick="insertMathEditor('\\frac{a}{b}')">
-                                        <i class="fas fa-divide"></i> Phân số
-                                    </button>
-                                    <button class="editor-btn" onclick="insertMathEditor('\\sqrt{x}')">
-                                        <i class="fas fa-square-root-alt"></i> Căn thức
-                                    </button>
-                                    <button class="editor-btn" onclick="insertMathEditor('\\int_{a}^{b} f(x)dx')">
-                                        <i class="fas fa-integral"></i> Tích phân
-                                    </button>
-                                    <button class="editor-btn" onclick="insertMathEditor('\\lim_{x \\to a} f(x)')">
-                                        <i class="fas fa-infinity"></i> Giới hạn
-                                    </button>
-                                </div>
-                                <textarea class="editor-area" id="essayAnswer6" 
-                                          placeholder="Trình bày lời giải chi tiết... (Có thể sử dụng công thức toán bằng cách viết trong cặp dấu $ $ hoặc $$ $$)"></textarea>
-                            </div>
-                            
-                            <div class="math-tools">
-                                <div class="math-tools-title">
-                                    <i class="fas fa-edit"></i>
-                                    <span>Gợi ý trình bày bài giải</span>
-                                </div>
-                                <p style="color: #666; margin-top: 10px;">
-                                    <strong>Lưu ý:</strong> Sử dụng công thức toán bằng cách đặt trong cặp dấu $ $ (nội tuyến) hoặc $$ $$ (hiển thị riêng dòng). 
-                                    Ví dụ: $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Action Panel -->
-                <div class="action-panel">
-                    <div>
-                        <button class="action-btn btn-secondary" onclick="saveProgress()">
-                            <i class="far fa-save"></i> Lưu tiến độ
-                        </button>
-                        <button class="action-btn btn-secondary" onclick="clearAllAnswers()">
-                            <i class="fas fa-eraser"></i> Xóa hết câu trả lời
-                        </button>
-                    </div>
-                    <div>
-                        <button class="action-btn btn-danger" onclick="resetExam()">
-                            <i class="fas fa-redo"></i> Làm lại từ đầu
-                        </button>
-                        <button class="action-btn btn-primary" onclick="submitExam()">
-                            <i class="fas fa-paper-plane"></i> Nộp bài thi
-                        </button>
-                    </div>
-                </div>
-            </main>
-            
-            <!-- Sidebar -->
-            <aside class="exam-sidebar">
-                <!-- Student Info -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>Thông tin thí sinh</span>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <input type="text" id="studentNameInput" class="short-answer-input" 
-                               placeholder="Họ và tên" style="margin-bottom: 10px;">
-                        <select id="studentClassSelect" class="short-answer-input">
-                            <option value="">Chọn lớp</option>
-                            <option value="10">Lớp 10</option>
-                            <option value="11">Lớp 11</option>
-                            <option value="12">Lớp 12</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Timer -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">
-                        <i class="fas fa-clock"></i>
-                        <span>Thời gian làm bài</span>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="progress-ring">
-                            <svg width="120" height="120" viewBox="0 0 120 120">
-                                <circle class="progress-circle-bg" cx="60" cy="60" r="54"/>
-                                <circle class="progress-circle" cx="60" cy="60" r="54" 
-                                        id="progressCircle"/>
-                            </svg>
-                            <div class="progress-text" id="timerDisplay">45:00</div>
-                        </div>
-                        <p style="color: #666; margin-top: 10px;">Thời gian còn lại</p>
-                    </div>
-                </div>
-                
-                <!-- Progress -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Tiến độ làm bài</span>
-                    </div>
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div class="progress-text" id="progressText">0/6</div>
-                        <p style="color: #666;">câu đã trả lời</p>
-                    </div>
-                    
-                    <div class="question-navigator" id="questionNav">
-                        <!-- Được tạo bằng JavaScript -->
-                    </div>
-                </div>
-                
-                <!-- Exam Info -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">
-                        <i class="fas fa-info-circle"></i>
-                        <span>Thông tin bài thi</span>
-                    </div>
-                    <div style="color: #666;">
-                        <p><i class="far fa-file-alt"></i> <strong>Tổng số câu:</strong> 6</p>
-                        <p><i class="fas fa-star"></i> <strong>Tổng điểm:</strong> 20</p>
-                        <p><i class="far fa-clock"></i> <strong>Thời gian:</strong> 45 phút</p>
-                        <p><i class="fas fa-graduation-cap"></i> <strong>Độ khó:</strong> Đa dạng</p>
-                    </div>
-                </div>
-            </aside>
-        </div>
-    </div>
-    
-    <!-- Result Modal -->
-    <div class="modal" id="resultModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 style="margin: 0;"><i class="fas fa-chart-bar"></i> Kết Quả Bài Thi</h2>
-                <button onclick="closeModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="result-grid">
-                    <div class="result-card">
-                        <div class="result-value score" id="finalScore">0</div>
-                        <p>Điểm số</p>
-                    </div>
-                    <div class="result-card">
-                        <div class="result-value time" id="timeSpent">0:00</div>
-                        <p>Thời gian làm</p>
-                    </div>
-                    <div class="result-card">
-                        <div class="result-value accuracy" id="accuracyRate">0%</div>
-                        <p>Độ chính xác</p>
-                    </div>
-                    <div class="result-card">
-                        <div class="result-value" id="questionsAnswered">0/6</div>
-                        <p>Câu đã làm</p>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <canvas id="resultChart"></canvas>
-                </div>
-                
-                <div style="text-align: center; margin-top: 30px;">
-                    <button class="action-btn btn-primary" onclick="reviewExam()">
-                        <i class="fas fa-search"></i> Xem lại bài làm
-                    </button>
-                    <button class="action-btn btn-secondary" onclick="closeModal()">
-                        <i class="fas fa-times"></i> Đóng
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Toast Notification -->
-    <div class="toast" id="toast">
-        <div class="toast-icon success" id="toastIcon">
-            <i class="fas fa-check"></i>
-        </div>
-        <div>
-            <div id="toastTitle">Thành công!</div>
-            <div id="toastMessage" style="font-size: 0.9rem; color: #666;">Đã lưu tiến độ</div>
-        </div>
-    </div>
+    <div id="root"></div>
 
     <script>
-        // ========== KHỞI TẠO ==========
-        document.addEventListener('DOMContentLoaded', function() {
-            // Giả lập loading
-            setTimeout(() => {
-                document.getElementById('loadingScreen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loadingScreen').style.display = 'none';
-                    document.getElementById('mainContainer').style.display = 'block';
-                    initApp();
-                }, 500);
-            }, 1500);
-        });
-        
-        function initApp() {
-            // Khởi tạo các biến toàn cục
-            window.examData = {
-                studentName: '',
-                studentClass: '',
-                startTime: Date.now(),
-                answers: {},
-                progress: 0,
-                totalQuestions: 6
-            };
-            
-            // Khởi tạo timer
-            initTimer();
-            
-            // Khởi tạo navigation
-            initNavigation();
-            
-            // Khởi tạo event listeners
-            initEventListeners();
-            
-            // Khởi tạo MathJax
-            if (window.MathJax) {
-                MathJax.typesetPromise();
-            }
-            
-            // Load saved progress
-            loadProgress();
-            
-            // Hiển thị toast chào mừng
-            showToast('Chào mừng đến với MathMaster Pro!', 'Hãy bắt đầu làm bài thi nào!', 'success');
-        }
-        
-        // ========== TIMER ==========
-        let examTimer;
-        let timeLeft = 45 * 60; // 45 phút
-        const progressCircle = document.getElementById('progressCircle');
-        const circumference = 2 * Math.PI * 54;
-        
-        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-        progressCircle.style.strokeDashoffset = circumference;
-        
-        function initTimer() {
-            const timerDisplay = document.getElementById('timerDisplay');
-            
-            examTimer = setInterval(() => {
-                if (timeLeft <= 0) {
-                    clearInterval(examTimer);
-                    submitExam();
-                    return;
-                }
-                
-                timeLeft--;
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                // Update progress circle
-                const totalTime = 45 * 60;
-                const offset = circumference - (timeLeft / totalTime) * circumference;
-                progressCircle.style.strokeDashoffset = offset;
-            }, 1000);
-        }
-        
-        // ========== NAVIGATION ==========
-        function initNavigation() {
-            const navContainer = document.getElementById('questionNav');
-            navContainer.innerHTML = '';
-            
-            for (let i = 1; i <= examData.totalQuestions; i++) {
-                const btn = document.createElement('button');
-                btn.className = 'nav-btn';
-                btn.textContent = i;
-                btn.dataset.question = i;
-                btn.onclick = () => navigateToQuestion(i);
-                
-                if (i === 1) btn.classList.add('current');
-                
-                navContainer.appendChild(btn);
-            }
-        }
-        
-        function navigateToQuestion(questionNum) {
-            // Cập nhật nút hiện tại
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('current');
-                if (parseInt(btn.dataset.question) === questionNum) {
-                    btn.classList.add('current');
-                }
-            });
-            
-            // Hiển thị tab tương ứng
-            let tabId = '';
-            if (questionNum <= 2) tabId = 'multiple-choice';
-            else if (questionNum === 3) tabId = 'true-false';
-            else if (questionNum <= 5) tabId = 'short-answer';
-            else tabId = 'essay';
-            
-            // Chuyển tab
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
-            document.getElementById(tabId).classList.add('active');
-            
-            // Scroll đến câu hỏi
-            const questionCard = document.querySelector(`.question-card[data-question="${questionNum}"]`);
-            if (questionCard) {
-                questionCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                // Highlight câu hỏi
-                questionCard.style.boxShadow = '0 0 0 3px rgba(67, 97, 238, 0.3)';
-                setTimeout(() => {
-                    questionCard.style.boxShadow = '';
-                }, 1500);
-            }
-        }
-        
-        // ========== EVENT LISTENERS ==========
-        function initEventListeners() {
-            // Tab switching
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tabId = btn.dataset.tab;
-                    
-                    // Update active tab
-                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    btn.classList.add('active');
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-            
-            // Multiple choice selection
-            document.querySelectorAll('.choice-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const questionNum = item.closest('.question-card').dataset.question;
-                    const choice = item.dataset.choice;
-                    
-                    // Clear other selections in same question
-                    item.parentElement.querySelectorAll('.choice-item').forEach(i => {
-                        i.classList.remove('selected');
+        // TRUYỀN DỮ LIỆU TỪ SERVER SANG CLIENT
+        window.__PHP_PATH = <?php echo json_encode($_SERVER['PHP_SELF']); ?>;
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+        const CATEGORIES = {
+            'all': 'Tất cả đề',
+            'chinh_thuc': 'Đề thi chính thức',
+            'thi_thu': 'Đề thi thử chọn lọc',
+            'truong_sgd': 'Đề các trường & SGD',
+            'khac': 'Chủ đề khác'
+        };
+
+        // LỚP BẢO VỆ ICON: Đảm bảo React không bị sập khi bộ lọc thay đổi danh sách
+        const Icon = ({ name, size = 16, className = "" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (iconRef.current && window.lucide) {
+                    iconRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
+                    window.lucide.createIcons({
+                        root: iconRef.current,
+                        attrs: { width: size, height: size }
                     });
-                    
-                    // Select this item
-                    item.classList.add('selected');
-                    
-                    // Save answer
-                    examData.answers[`q${questionNum}`] = choice;
-                    updateProgress();
-                    updateNavigation(questionNum, true);
-                });
-            });
+                }
+            }, [name, size]);
+            return <span ref={iconRef} className={className} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}></span>;
+        };
+
+        const Timer = ({ initialMinutes, onTimeUp }) => {
+            const [seconds, setSeconds] = useState((initialMinutes || 0) * 60);
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    setSeconds(s => { if (s <= 1) { clearInterval(timer); onTimeUp(); return 0; } return s - 1; });
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [onTimeUp]);
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return (
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono text-[18px] font-bold text-white shadow-sm ${seconds < 300 ? 'bg-rose-500 animate-pulse' : 'bg-slate-800'}`}>
+                    <Icon name="clock" size={18} /> {m}:{s.toString().padStart(2, '0')}
+                </div>
+            );
+        };
+
+        const ExamDisplay = ({ type, path }) => {
+            const [html, setHtml] = useState(''); const [pdfPages, setPdfPages] = useState([]); const [loading, setLoading] = useState(true);
+            const containerRef = useRef(null);
+
+            useEffect(() => {
+                setLoading(true); setPdfPages([]);
+                if (type === 'docx') {
+                    fetch(path).then(r => r.arrayBuffer()).then(b => mammoth.convertToHtml({ arrayBuffer: b })).then(res => { setHtml(res.value); setLoading(false); }).catch(() => setLoading(false));
+                } else if (type === 'pdf') {
+                    const loadingTask = window.pdfjsLib.getDocument(path);
+                    loadingTask.promise.then(async (pdf) => {
+                        const pagesArray = [];
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i); const viewport = page.getViewport({ scale: 1.5 }); 
+                            const canvas = document.createElement('canvas'); const context = canvas.getContext('2d'); canvas.height = viewport.height; canvas.width = viewport.width;
+                            await page.render({ canvasContext: context, viewport: viewport }).promise; pagesArray.push(canvas.toDataURL('image/webp', 0.8));
+                        }
+                        setPdfPages(pagesArray); setLoading(false);
+                    }).catch(err => { console.error("PDF Render Error:", err); setLoading(false); });
+                }
+            }, [path, type]);
+
+            return (
+                <div className="exam-view-container custom-scrollbar bg-slate-700" ref={containerRef}>
+                    {loading && <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-800 text-white font-bold text-[14px] uppercase italic">Đang tải tài liệu... ({type ? type.toUpperCase() : ''})</div>}
+                    <div className="w-full flex flex-col items-center gap-4 py-4">
+                        {type === 'docx' ? (<div className="docx-paper animate-in fade-in duration-300" dangerouslySetInnerHTML={{ __html: html }} />) : (
+                            pdfPages.map((pageData, index) => (<div key={index} className="shadow-2xl bg-white leading-[0] max-w-full"><img src={pageData} alt={`Page ${index + 1}`} className="max-w-full h-auto border-b border-slate-200" loading="lazy" /></div>))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const calculateAttemptScore = (userAns, correctAns, config) => {
+            const details = { p1: {}, p2: {}, p3: {} }; const uAns = userAns || { p1: {}, p2: {}, p3: {} }; const cAns = correctAns || { p1: {}, p2: {}, p3: {} }; const conf = config || { p1: 0, p2: 0, p3: 0 };
+            let p1c = 0; for (let i = 1; i <= conf.p1; i++) { const isCorrect = uAns.p1 && uAns.p1[i] && cAns.p1 && uAns.p1[i] === cAns.p1[i]; if (isCorrect) p1c++; details.p1[i] = isCorrect; }
+            let p2p = 0; for (let i = 1; i <= conf.p2; i++) {
+                let subCorrectCount = 0; const uSub = (uAns.p2 && uAns.p2[i]) ? uAns.p2[i] : {}; const cSub = (cAns.p2 && cAns.p2[i]) ? cAns.p2[i] : {}; const subDetails = {};
+                ['a', 'b', 'c', 'd'].forEach(s => { const isC = uSub[s] !== undefined && cSub[s] !== undefined && uSub[s] === cSub[s]; if (isC) subCorrectCount++; subDetails[s] = isC; });
+                if (subCorrectCount === 1) p2p += 0.1; else if (subCorrectCount === 2) p2p += 0.25; else if (subCorrectCount === 3) p2p += 0.5; else if (subCorrectCount === 4) p2p += 1.0; details.p2[i] = subDetails;
+            }
+            let p3c = 0; for (let i = 1; i <= conf.p3; i++) {
+                const uA = (uAns.p3 && uAns.p3[i] ? uAns.p3[i] : '').toString().trim().replace(',','.').toLowerCase(); const cA = (cAns.p3 && cAns.p3[i] ? cAns.p3[i] : '').toString().trim().replace(',','.').toLowerCase();
+                const isCorrect = uA !== '' && cA !== '' && parseFloat(uA) === parseFloat(cA); if (isCorrect) p3c++; details.p3[i] = isCorrect;
+            }
+            const total = ((p1c * 0.25) + p2p + (p3c * 0.5)).toFixed(2); return { total, p1c, p2p: p2p.toFixed(2), p3c, details };
+        };
+
+        const getFeedback = (score) => {
+            const s = parseFloat(score);
+            if (s >= 9.0) return { text: "Kết quả xuất sắc! Bạn đã nắm vững kiến thức.", color: "text-emerald-600", bg: "bg-emerald-50", icon: "award" };
+            if (s >= 8.0) return { text: "Kết quả rất tốt! Hãy tiếp tục phát huy.", color: "text-blue-600", bg: "bg-blue-50", icon: "thumbs-up" };
+            if (s >= 5.0) return { text: "Kết quả trung bình. Cần nỗ lực hơn nữa.", color: "text-amber-600", bg: "bg-amber-50", icon: "trending-up" };
+            return { text: "Cần nỗ lực thêm để cải thiện kết quả!", color: "text-rose-600", bg: "bg-rose-50", icon: "edit-3" };
+        };
+
+        const ResultDetailView = ({ attempt, exam, onBack, onChooseOther }) => {
+            const scoreData = useMemo(() => calculateAttemptScore(attempt.userAnswers, exam.correctAnswers, exam.config), [attempt, exam]);
+            const feedback = useMemo(() => getFeedback(attempt.score), [attempt.score]);
+
+            return (
+                <div className="h-screen flex flex-col bg-slate-50 overflow-hidden animate-in fade-in duration-500">
+                    <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0 z-20">
+                         <div className="flex items-center gap-4 text-left">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${feedback.bg} ${feedback.color}`}><Icon name={feedback.icon} size={24} /></div>
+                            <div>
+                                <h2 className="text-[18px] font-extrabold uppercase text-slate-800 leading-tight">{attempt.name}</h2>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">{attempt.class} • {attempt.school}</p>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-8">
+                            <div className="text-center px-8 py-2 bg-blue-600 rounded-xl shadow-md">
+                                <p className="text-[10px] font-bold uppercase text-white/70 mb-0.5 tracking-tighter text-center">ĐIỂM TỔNG</p>
+                                <p className="text-[48px] font-black text-white leading-none tabular-nums text-center">{attempt.score}</p>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <button onClick={onChooseOther} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-[14px] uppercase hover:bg-black transition-all flex items-center justify-center gap-2"><Icon name="layout-list" size={14} /> ĐỀ KHÁC</button>
+                                <button onClick={onBack} className="bg-white text-slate-500 border border-slate-200 px-5 py-2.5 rounded-xl font-bold text-[14px] uppercase hover:bg-slate-50 transition-all flex items-center justify-center gap-2"><Icon name="home" size={14} /> TRANG CHỦ</button>
+                            </div>
+                         </div>
+                    </header>
+
+                    <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                        <div className="max-w-6xl mx-auto space-y-6 pb-12 text-left">
+                            <div className={`p-5 rounded-2xl border border-white shadow-sm flex items-center justify-between gap-6 ${feedback.bg}`}>
+                                <p className="text-slate-700 text-[16px] font-semibold">{feedback.text}</p>
+                                <div className="flex gap-2">
+                                    {[{l:'PHẦN I', v:scoreData.p1c, c:'text-blue-600'}, {l:'PHẦN II', v:scoreData.p2p, c:'text-purple-600'}, {l:'PHẦN III', v:scoreData.p3c, c:'text-orange-600'}].map(item => (
+                                        <div key={item.l} className="bg-white px-4 py-2 rounded-xl text-center border border-slate-100 min-w-[80px] shadow-sm"><p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">{item.l}</p><p className={`text-[16px] font-black ${item.c} leading-none`}>{item.v}</p></div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-6">
+                                <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                    <h3 className="text-[16px] font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2 italic border-b pb-2"><Icon name="list-checks" size={18} className="text-blue-500" /> PHẦN I (TRẮC NGHIỆM)</h3>
+                                    <div className="grid grid-cols-2 gap-x-12 gap-y-2">
+                                        {Array.from({length: exam.config.p1}, (_, i) => i + 1).map(n => (
+                                            <div key={n} className={`flex items-center justify-between px-4 py-2 rounded-xl border transition-all ${scoreData.details.p1[n] ? 'border-emerald-50 bg-emerald-50 text-emerald-700' : 'border-rose-50 bg-rose-50 text-rose-700'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-[14px] font-bold opacity-30">Câu {n}:</span>
+                                                    <span className="font-extrabold text-[14px] uppercase">{attempt.userAnswers.p1[n] || '—'}</span>
+                                                </div>
+                                                {!scoreData.details.p1[n] && <span className="text-[14px] font-bold text-blue-600 uppercase italic">Đ/Á: {exam.correctAnswers.p1[n]}</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                                {exam.config.p2 > 0 && (
+                                    <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                        <h3 className="text-[16px] font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2 italic border-b pb-2"><Icon name="check-square" size={18} className="text-purple-500" /> PHẦN II (ĐÚNG / SAI)</h3>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {Array.from({length: exam.config.p2}, (_, i) => i + 1).map(n => (
+                                                <div key={n} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                                    <p className="text-[14px] font-bold text-slate-400 mb-2 uppercase italic leading-none">Câu hỏi {n}</p>
+                                                    <div className="space-y-1.5">
+                                                        {['a','b','c','d'].map(s => {
+                                                            const uVal = attempt.userAnswers.p2?.[n]?.[s];
+                                                            const cVal = exam.correctAnswers.p2?.[n]?.[s];
+                                                            const isCorrect = (uVal === cVal);
+                                                            return (
+                                                                <div key={s} className={`flex items-center justify-between p-2 rounded-lg border text-[14px] transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-rose-700'}`}>
+                                                                    <span className="font-bold uppercase italic">{s}) {uVal === true ? 'ĐÚNG' : (uVal === false ? 'SAI' : '—')}</span>
+                                                                    {!isCorrect && <span className="font-bold text-blue-600 uppercase">Đ/A: {cVal ? 'Đ' : 'S'}</span>}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                                {exam.config.p3 > 0 && (
+                                    <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                        <h3 className="text-[16px] font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2 italic border-b pb-2"><Icon name="edit-3" size={18} className="text-orange-500" /> PHẦN III (TRẢ LỜI NGẮN)</h3>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {Array.from({length: exam.config.p3}, (_, i) => i + 1).map(n => {
+                                                const isCorrect = scoreData.details.p3[n];
+                                                return (
+                                                    <div key={n} className={`p-4 rounded-xl border flex flex-col gap-1 ${isCorrect ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-rose-700'}`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="text-[10px] font-bold opacity-40 uppercase italic leading-none">Câu {n}</span>
+                                                            {!isCorrect && <span className="text-[10px] font-bold text-blue-500 italic leading-none">Đ/A: {exam.correctAnswers.p3[n]}</span>}
+                                                        </div>
+                                                        <span className="text-[16px] font-bold font-mono truncate leading-tight">{attempt.userAnswers.p3[n] || '—'}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </section>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                    <footer className="bg-white border-t border-slate-200 py-3 text-center shrink-0"><p className="text-slate-400 font-bold uppercase tracking-[0.4em] text-[10px] italic">Trang luyện thi của thầy Nguyễn Duy Chiến</p></footer>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [view, setView] = useState('landing');
+            const [exams, setExams] = useState([]);
+            const [currentExam, setCurrentExam] = useState(null);
+            const [studentInfo, setStudentInfo] = useState({ name: '', class: '', school: '' });
+            const [userAnswers, setUserAnswers] = useState({ p1: {}, p2: {}, p3: {} });
+            const [startTime, setStartTime] = useState(null);
+            const [showSubmitModal, setShowSubmitModal] = useState(false);
             
-            // True/False selection
-            document.querySelectorAll('.tf-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const tfItem = this.closest('.tf-item');
-                    const statementNum = tfItem.dataset.statement;
-                    const value = this.dataset.value;
-                    
-                    // Clear other buttons in same statement
-                    tfItem.querySelectorAll('.tf-btn').forEach(b => {
-                        b.classList.remove('selected');
+            // THÊM STATE LƯU TRỮ SỐ LẦN CHUYỂN TAB
+            const [tabSwitchCount, setTabSwitchCount] = useState(0);
+            
+            const [activeCategory, setActiveCategory] = useState('all');
+
+            const getApiUrl = useCallback((action) => {
+                const basePath = window.__PHP_PATH || 'index.php';
+                return basePath + "?action=" + action + "&t=" + Date.now();
+            }, []);
+
+            useEffect(() => {
+                const loadExams = async () => {
+                    try {
+                        const response = await fetch(getApiUrl('list'));
+                        if (!response.ok) throw new Error("Server Error");
+                        const data = await response.json();
+                        setExams(Array.isArray(data) ? data : []);
+                    } catch (e) { console.error("Error fetching exams:", e); }
+                };
+                loadExams();
+            }, [getApiUrl]);
+
+            // THÊM LISTENER THEO DÕI VIỆC CHUYỂN TAB KHI ĐANG THI
+            useEffect(() => {
+                const handleVisibilityChange = () => {
+                    if (document.hidden && view === 'quiz') {
+                        setTabSwitchCount(prev => prev + 1);
+                        alert("⚠️ CẢNH BÁO: Bạn vừa chuyển tab hoặc rời khỏi cửa sổ làm bài. Hệ thống đã ghi nhận hành vi này để báo cáo cho giáo viên!");
+                    }
+                };
+                document.addEventListener("visibilitychange", handleVisibilityChange);
+                return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+            }, [view]);
+
+            const stats = useMemo(() => {
+                if (!currentExam) return { done: 0, total: 0 };
+                const p1Done = Object.keys(userAnswers.p1).length;
+                const p2Done = Object.keys(userAnswers.p2).length;
+                const p3Done = Object.keys(userAnswers.p3).filter(k => userAnswers.p3[k].trim() !== '').length;
+                const total = (currentExam.config.p1 || 0) + (currentExam.config.p2 || 0) + (currentExam.config.p3 || 0);
+                return { done: p1Done + p2Done + p3Done, total };
+            }, [userAnswers, currentExam]);
+
+            const handleSubmit = async () => {
+                const finishTime = Date.now();
+                const payload = {
+                    examId: currentExam.id,
+                    name: studentInfo.name,
+                    class: studentInfo.class,
+                    school: studentInfo.school,
+                    score: resultsData.total,
+                    userAnswers: JSON.parse(JSON.stringify(userAnswers)), 
+                    startTime: startTime,
+                    endTime: finishTime,
+                    tabSwitches: tabSwitchCount // Gửi kèm số lần chuyển tab về Backend
+                };
+                try { 
+                    await fetch(getApiUrl('submit_attempt'), { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload) 
                     });
-                    
-                    // Select this button
-                    this.classList.add('selected');
-                    
-                    // Save answer
-                    examData.answers[`q3_${statementNum}`] = value;
-                    updateProgress();
-                    updateNavigation(3, true);
+                } catch (e) {}
+                setShowSubmitModal(false);
+                setView('result');
+            };
+
+            const formatTimeSpent = (ms) => {
+                const s = Math.floor(ms / 1000);
+                const mm = Math.floor(s / 60);
+                const ss = s % 60;
+                return `${mm} phút ${ss} giây`;
+            };
+
+            const resultsData = useMemo(() => {
+                if (!currentExam) return { total: "0.00" };
+                return calculateAttemptScore(userAnswers, currentExam.correctAnswers, currentExam.config);
+            }, [currentExam, userAnswers]);
+
+            const filteredExams = useMemo(() => {
+                return exams.filter(e => {
+                    if (activeCategory === 'all') return true;
+                    const cat = e.category || 'khac';
+                    return cat === activeCategory;
                 });
-            });
+            }, [exams, activeCategory]);
+
+            if (view === 'student_form') return (
+                <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 text-center">
+                    <div className="bg-white max-w-sm w-full rounded-2xl shadow-xl p-10 border border-slate-100 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-600"></div>
+                        <button onClick={() => setView('student_list')} className="text-slate-400 mb-8 flex items-center gap-2 font-bold text-[10px] uppercase hover:text-slate-600 mx-auto transition-colors"><Icon name="chevron-left" /> Quay lại</button>
+                        <h2 className="text-[18px] font-black text-slate-800 uppercase mb-8 tracking-tight italic">Thông tin thí sinh</h2>
+                        <div className="space-y-4">
+                            <input type="text" placeholder="Họ và tên thí sinh" value={studentInfo.name} onChange={e => setStudentInfo({...studentInfo, name: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-[14px] text-center shadow-inner" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <input type="text" placeholder="Lớp" value={studentInfo.class} onChange={e => setStudentInfo({...studentInfo, class: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-[14px] text-center shadow-inner" />
+                                <input type="text" placeholder="Trường" value={studentInfo.school} onChange={e => setStudentInfo({...studentInfo, school: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-[14px] text-center shadow-inner" />
+                            </div>
+                        </div>
+                        <button onClick={() => { if(studentInfo.name) { setStartTime(Date.now()); setTabSwitchCount(0); setView('quiz'); } }} disabled={!studentInfo.name} className={`w-full mt-10 py-4 rounded-xl font-bold text-[16px] shadow-lg transition-all ${studentInfo.name ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400'}`}>BẮT ĐẦU</button>
+                    </div>
+                </div>
+            );
             
-            // Short answer input
-            document.querySelectorAll('.short-answer-input').forEach(input => {
-                input.addEventListener('input', function() {
-                    const questionNum = this.closest('.question-card').dataset.question;
-                    examData.answers[`q${questionNum}`] = this.value.trim();
-                    updateProgress();
-                    updateNavigation(questionNum, this.value.trim() !== '');
-                });
-            });
-            
-            // Essay input
-            const essayInput = document.getElementById('essayAnswer6');
-            essayInput.addEventListener('input', function() {
-                examData.answers['q6'] = this.value.trim();
-                updateProgress();
-                updateNavigation(6, this.value.trim() !== '');
-            });
-            
-            // Student info input
-            document.getElementById('studentNameInput').addEventListener('input', function() {
-                examData.studentName = this.value;
-                document.getElementById('userName').textContent = this.value || 'Học Sinh';
-                document.getElementById('userAvatar').textContent = this.value ? this.value.charAt(0).toUpperCase() : 'HS';
-            });
-            
-            document.getElementById('studentClassSelect').addEventListener('change', function() {
-                examData.studentClass = this.value;
-                document.getElementById('userClass').textContent = this.value ? `Lớp: ${this.value}` : 'Lớp: Chưa chọn';
-            });
-        }
-        
-        // ========== PROGRESS TRACKING ==========
-        function updateProgress() {
-            // Tính số câu đã trả lời
-            let answeredCount = 0;
-            
-            // Đếm câu trắc nghiệm
-            for (let i = 1; i <= 2; i++) {
-                if (examData.answers[`q${i}`]) answeredCount++;
-            }
-            
-            // Đếm câu đúng/sai (câu 3 có 4 mệnh đề)
-            const tfAnswered = ['q3_1', 'q3_2', 'q3_3', 'q3_4'].filter(key => examData.answers[key]).length;
-            if (tfAnswered === 4) answeredCount++;
-            
-            // Đếm câu trả lời ngắn
-            for (let i = 4; i <= 5; i++) {
-                if (examData.answers[`q${i}`] && examData.answers[`q${i}`].length > 0) answeredCount++;
-            }
-            
-            // Đếm câu tự luận
-            if (examData.answers['q6'] && examData.answers['q6'].length > 10) answeredCount++;
-            
-            examData.progress = answeredCount;
-            
-            // Update UI
-            document.getElementById('progressText').textContent = `${answeredCount}/${examData.totalQuestions}`;
-            
-            // Update progress percentage
-            const progressPercent = (answeredCount / examData.totalQuestions) * 100;
-            document.querySelectorAll('.nav-btn').forEach((btn, index) => {
-                const qNum = index + 1;
-                let isAnswered = false;
-                
-                if (qNum <= 2) isAnswered = !!examData.answers[`q${qNum}`];
-                else if (qNum === 3) isAnswered = ['q3_1', 'q3_2', 'q3_3', 'q3_4'].filter(key => examData.answers[key]).length === 4;
-                else if (qNum <= 5) isAnswered = !!(examData.answers[`q${qNum}`] && examData.answers[`q${qNum}`].length > 0);
-                else if (qNum === 6) isAnswered = !!(examData.answers[`q${qNum}`] && examData.answers[`q${qNum}`].length > 10);
-                
-                btn.classList.toggle('answered', isAnswered);
-            });
-        }
-        
-        function updateNavigation(questionNum, isAnswered) {
-            const navBtn = document.querySelector(`.nav-btn[data-question="${questionNum}"]`);
-            if (navBtn) {
-                navBtn.classList.toggle('answered', isAnswered);
-            }
-        }
-        
-        // ========== MATH TOOLS ==========
-        function insertMath(math) {
-            showToast('Công thức đã sao chép', `Dán vào ô trả lời: ${math}`, 'success');
-            // Trong thực tế, bạn có thể tự động chèn vào ô input hiện tại
-        }
-        
-        function appendToAnswer(value) {
-            const activeInput = document.activeElement;
-            if (activeInput && (activeInput.classList.contains('short-answer-input') || activeInput.classList.contains('editor-area'))) {
-                const start = activeInput.selectionStart;
-                const end = activeInput.selectionEnd;
-                activeInput.value = activeInput.value.substring(0, start) + value + activeInput.value.substring(end);
-                activeInput.selectionStart = activeInput.selectionEnd = start + value.length;
-                activeInput.focus();
-                
-                // Trigger input event
-                activeInput.dispatchEvent(new Event('input'));
-            }
-        }
-        
-        function clearAnswer() {
-            const activeInput = document.activeElement;
-            if (activeInput && activeInput.classList.contains('short-answer-input')) {
-                activeInput.value = '';
-                activeInput.dispatchEvent(new Event('input'));
-            }
-        }
-        
-        function insertMathEditor(math) {
-            const editor = document.getElementById('essayAnswer6');
-            const start = editor.selectionStart;
-            const end = editor.selectionEnd;
-            editor.value = editor.value.substring(0, start) + `$${math}$` + editor.value.substring(end);
-            editor.selectionStart = editor.selectionEnd = start + math.length + 2;
-            editor.focus();
-            editor.dispatchEvent(new Event('input'));
-        }
-        
-        function formatText(format) {
-            const editor = document.getElementById('essayAnswer6');
-            const start = editor.selectionStart;
-            const end = editor.selectionEnd;
-            const selectedText = editor.value.substring(start, end);
-            
-            let formattedText = '';
-            if (format === 'bold') formattedText = `**${selectedText}**`;
-            else if (format === 'italic') formattedText = `*${selectedText}*`;
-            
-            editor.value = editor.value.substring(0, start) + formattedText + editor.value.substring(end);
-            editor.selectionStart = editor.selectionEnd = start + formattedText.length;
-            editor.focus();
-        }
-        
-        // ========== SAVE & LOAD PROGRESS ==========
-        function saveProgress() {
-            const saveData = {
-                studentName: examData.studentName,
-                studentClass: examData.studentClass,
-                answers: examData.answers,
-                timeLeft: timeLeft,
-                saveTime: Date.now()
-            };
-            
-            localStorage.setItem('mathExamProgress', JSON.stringify(saveData));
-            showToast('Đã lưu tiến độ', 'Bài làm của bạn đã được lưu tự động', 'success');
-        }
-        
-        function loadProgress() {
-            const saved = localStorage.getItem('mathExamProgress');
-            if (saved) {
-                try {
-                    const data = JSON.parse(saved);
+            if (view === 'student_list') return (
+                <div className="max-w-4xl mx-auto p-12 text-center h-screen overflow-y-auto custom-scrollbar">
+                    <button onClick={() => setView('landing')} className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.4em] mb-12 mx-auto flex items-center gap-2 hover:bg-white px-6 py-2.5 rounded-xl transition-all shadow-sm"><Icon name="arrow-left" /> Quay lại trang chủ</button>
+                    <h1 className="text-[24px] font-black text-slate-800 mb-10 tracking-tighter uppercase italic decoration-blue-500 underline decoration-[4px] underline-offset-4 leading-none text-center">DANH SÁCH ĐỀ THI</h1>
                     
-                    // Kiểm tra thời gian lưu (không load nếu quá 24h)
-                    const hoursPassed = (Date.now() - data.saveTime) / (1000 * 60 * 60);
-                    if (hoursPassed > 24) {
-                        localStorage.removeItem('mathExamProgress');
-                        return;
-                    }
-                    
-                    if (confirm('Tìm thấy bài làm chưa hoàn thành. Tiếp tục?')) {
-                        // Load student info
-                        examData.studentName = data.studentName || '';
-                        examData.studentClass = data.studentClass || '';
-                        examData.answers = data.answers || {};
-                        
-                        // Update UI
-                        document.getElementById('studentNameInput').value = examData.studentName;
-                        document.getElementById('studentClassSelect').value = examData.studentClass;
-                        document.getElementById('userName').textContent = examData.studentName || 'Học Sinh';
-                        document.getElementById('userClass').textContent = examData.studentClass ? `Lớp: ${examData.studentClass}` : 'Lớp: Chưa chọn';
-                        document.getElementById('userAvatar').textContent = examData.studentName ? examData.studentName.charAt(0).toUpperCase() : 'HS';
-                        
-                        // Load time
-                        timeLeft = data.timeLeft || 45 * 60;
-                        
-                        // Load answers into UI
-                        loadAnswersToUI();
-                        
-                        // Update progress
-                        updateProgress();
-                        
-                        showToast('Đã khôi phục tiến độ', 'Tiếp tục làm bài từ vị trí đã lưu', 'success');
-                    }
-                } catch (e) {
-                    console.error('Lỗi khi load progress:', e);
-                }
-            }
-        }
-        
-        function loadAnswersToUI() {
-            // Load multiple choice answers
-            for (let i = 1; i <= 2; i++) {
-                const answer = examData.answers[`q${i}`];
-                if (answer) {
-                    const choiceItem = document.querySelector(`.question-card[data-question="${i}"] .choice-item[data-choice="${answer}"]`);
-                    if (choiceItem) {
-                        choiceItem.classList.add('selected');
-                    }
-                }
-            }
-            
-            // Load true/false answers
-            for (let i = 1; i <= 4; i++) {
-                const answer = examData.answers[`q3_${i}`];
-                if (answer) {
-                    const tfBtn = document.querySelector(`.tf-item[data-statement="${i}"] .tf-btn.${answer}`);
-                    if (tfBtn) {
-                        tfBtn.classList.add('selected');
-                    }
-                }
-            }
-            
-            // Load short answers
-            for (let i = 4; i <= 5; i++) {
-                const answer = examData.answers[`q${i}`];
-                if (answer) {
-                    const input = document.getElementById(`shortAnswer${i}`);
-                    if (input) {
-                        input.value = answer;
-                    }
-                }
-            }
-            
-            // Load essay answer
-            if (examData.answers['q6']) {
-                document.getElementById('essayAnswer6').value = examData.answers['q6'];
-            }
-        }
-        
-        // ========== EXAM SUBMISSION ==========
-        function submitExam() {
-            // Kiểm tra thông tin học sinh
-            if (!examData.studentName || !examData.studentClass) {
-                showToast('Thiếu thông tin', 'Vui lòng nhập đầy đủ họ tên và lớp', 'error');
-                
-                // Highlight student info fields
-                document.getElementById('studentNameInput').style.borderColor = '#ef4444';
-                document.getElementById('studentClassSelect').style.borderColor = '#ef4444';
-                
-                setTimeout(() => {
-                    document.getElementById('studentNameInput').style.borderColor = '';
-                    document.getElementById('studentClassSelect').style.borderColor = '';
-                }, 2000);
-                
-                return;
-            }
-            
-            // Kiểm tra câu chưa làm
-            const unanswered = [];
-            for (let i = 1; i <= examData.totalQuestions; i++) {
-                let isAnswered = false;
-                
-                if (i <= 2) isAnswered = !!examData.answers[`q${i}`];
-                else if (i === 3) isAnswered = ['q3_1', 'q3_2', 'q3_3', 'q3_4'].filter(key => examData.answers[key]).length === 4;
-                else if (i <= 5) isAnswered = !!(examData.answers[`q${i}`] && examData.answers[`q${i}`].length > 0);
-                else if (i === 6) isAnswered = !!(examData.answers[`q${i}`] && examData.answers[`q${i}`].length > 10);
-                
-                if (!isAnswered) unanswered.push(i);
-            }
-            
-            if (unanswered.length > 0) {
-                const confirmSubmit = confirm(`Bạn còn ${unanswered.length} câu chưa hoàn thành:\nCâu ${unanswered.join(', ')}\n\nBạn có chắc muốn nộp bài?`);
-                if (!confirmSubmit) return;
-            }
-            
-            // Dừng timer
-            clearInterval(examTimer);
-            
-            // Tính kết quả
-            calculateResults();
-            
-            // Hiển thị kết quả
-            showResults();
-            
-            // Xóa dữ liệu đã lưu
-            localStorage.removeItem('mathExamProgress');
-        }
-        
-        function calculateResults() {
-            let score = 0;
-            const maxScore = 20;
-            const correctAnswers = {
-                q1: 'A',
-                q2: 'B',
-                q3_1: 'true',
-                q3_2: 'true',
-                q3_3: 'false',
-                q3_4: 'true',
-                q4: '5/3',
-                q5: '1.5',
-                q6: 'essay' // Tự luận, chấm thủ công
-            };
-            
-            // Chấm câu trắc nghiệm
-            if (examData.answers.q1 === correctAnswers.q1) score += 2;
-            if (examData.answers.q2 === correctAnswers.q2) score += 3;
-            
-            // Chấm câu đúng/sai (mỗi ý 1 điểm)
-            for (let i = 1; i <= 4; i++) {
-                if (examData.answers[`q3_${i}`] === correctAnswers[`q3_${i}`]) score += 1;
-            }
-            
-            // Chấm câu trả lời ngắn
-            if (examData.answers.q4 && (examData.answers.q4 === '5/3' || examData.answers.q4 === '1.666')) score += 2;
-            if (examData.answers.q5 && (examData.answers.q5 === '1.5' || examData.answers.q5 === '3/2')) score += 3;
-            
-            // Câu tự luận: cho điểm cơ bản nếu có trả lời
-            if (examData.answers.q6 && examData.answers.q6.length > 50) score += 3;
-            
-            // Lưu kết quả
-            examData.finalScore = score;
-            examData.accuracy = (score / maxScore) * 100;
-            examData.timeSpent = (45 * 60 - timeLeft);
-        }
-        
-        function showResults() {
-            // Cập nhật thông tin kết quả
-            document.getElementById('finalScore').textContent = examData.finalScore.toFixed(1);
-            document.getElementById('timeSpent').textContent = formatTime(examData.timeSpent);
-            document.getElementById('accuracyRate').textContent = examData.accuracy.toFixed(1) + '%';
-            document.getElementById('questionsAnswered').textContent = `${examData.progress}/${examData.totalQuestions}`;
-            
-            // Tạo biểu đồ
-            createResultChart();
-            
-            // Hiển thị modal
-            document.getElementById('resultModal').style.display = 'flex';
-        }
-        
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-        
-        function createResultChart() {
-            const ctx = document.getElementById('resultChart').getContext('2d');
-            
-            // Dữ liệu mẫu - trong thực tế sẽ lấy từ kết quả thực
-            const data = {
-                labels: ['Đại số', 'Hình học', 'Giải tích', 'Lượng giác', 'Xác suất'],
-                datasets: [{
-                    label: 'Điểm số',
-                    data: [8, 6, 9, 7, 5],
-                    backgroundColor: [
-                        'rgba(67, 97, 238, 0.7)',
-                        'rgba(76, 201, 240, 0.7)',
-                        'rgba(247, 37, 133, 0.7)',
-                        'rgba(16, 185, 129, 0.7)',
-                        'rgba(245, 158, 11, 0.7)'
-                    ],
-                    borderColor: [
-                        'rgb(67, 97, 238)',
-                        'rgb(76, 201, 240)',
-                        'rgb(247, 37, 133)',
-                        'rgb(16, 185, 129)',
-                        'rgb(245, 158, 11)'
-                    ],
-                    borderWidth: 2
-                }]
-            };
-            
-            new Chart(ctx, {
-                type: 'radar',
-                data: data,
-                options: {
-                    scales: {
-                        r: {
-                            beginAtZero: true,
-                            max: 10,
-                            ticks: {
-                                stepSize: 2
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
-        
-        // ========== UTILITY FUNCTIONS ==========
-        function clearAllAnswers() {
-            if (!confirm('Bạn có chắc muốn xóa tất cả câu trả lời? Hành động này không thể hoàn tác.')) return;
-            
-            // Xóa dữ liệu
-            examData.answers = {};
-            
-            // Xóa UI
-            document.querySelectorAll('.choice-item').forEach(item => item.classList.remove('selected'));
-            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('selected'));
-            document.querySelectorAll('.short-answer-input').forEach(input => input.value = '');
-            document.getElementById('essayAnswer6').value = '';
-            
-            // Update progress
-            updateProgress();
-            
-            showToast('Đã xóa tất cả câu trả lời', 'Bạn có thể bắt đầu lại từ đầu', 'warning');
-        }
-        
-        function resetExam() {
-            if (!confirm('Bạn có chắc muốn làm lại bài thi từ đầu? Tất cả dữ liệu sẽ bị xóa.')) return;
-            
-            // Reset dữ liệu
-            examData.answers = {};
-            examData.progress = 0;
-            
-            // Reset timer
-            clearInterval(examTimer);
-            timeLeft = 45 * 60;
-            initTimer();
-            
-            // Reset UI
-            document.getElementById('studentNameInput').value = '';
-            document.getElementById('studentClassSelect').value = '';
-            document.getElementById('userName').textContent = 'Học Sinh';
-            document.getElementById('userClass').textContent = 'Lớp: Chưa chọn';
-            document.getElementById('userAvatar').textContent = 'HS';
-            
-            document.querySelectorAll('.choice-item').forEach(item => item.classList.remove('selected'));
-            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('selected'));
-            document.querySelectorAll('.short-answer-input').forEach(input => input.value = '');
-            document.getElementById('essayAnswer6').value = '';
-            
-            // Reset navigation
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('answered', 'current');
-                if (parseInt(btn.dataset.question) === 1) btn.classList.add('current');
-            });
-            
-            // Go to first question
-            navigateToQuestion(1);
-            
-            // Update progress
-            updateProgress();
-            
-            // Xóa dữ liệu đã lưu
-            localStorage.removeItem('mathExamProgress');
-            
-            showToast('Đã đặt lại bài thi', 'Bắt đầu bài thi mới', 'success');
-        }
-        
-        function showToast(title, message, type) {
-            const toast = document.getElementById('toast');
-            const toastTitle = document.getElementById('toastTitle');
-            const toastMessage = document.getElementById('toastMessage');
-            const toastIcon = document.getElementById('toastIcon');
-            
-            // Cập nhật nội dung
-            toastTitle.textContent = title;
-            toastMessage.textContent = message;
-            
-            // Cập nhật icon theo type
-            toastIcon.className = 'toast-icon ' + type;
-            const iconClass = type === 'success' ? 'fa-check' : 
-                             type === 'warning' ? 'fa-exclamation-triangle' : 'fa-times';
-            toastIcon.innerHTML = `<i class="fas ${iconClass}"></i>`;
-            
-            // Hiển thị toast
-            toast.classList.add('show');
-            
-            // Tự động ẩn sau 5 giây
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 5000);
-        }
-        
-        function closeModal() {
-            document.getElementById('resultModal').style.display = 'none';
-        }
-        
-        function reviewExam() {
-            closeModal();
-            // Trong phiên bản nâng cao, bạn có thể hiển thị từng câu hỏi với đáp án đúng/sai
-            alert('Tính năng xem lại bài làm chi tiết đang được phát triển. Phiên bản tiếp theo sẽ có đầy đủ!');
-        }
-        
-        function toggleUserMenu() {
-            // Trong phiên bản nâng cao, có thể thêm dropdown menu
-            showToast('Thông tin người dùng', 'Tính năng đang được phát triển', 'warning');
-        }
-        
-        function showSettings() {
-            showToast('Cài đặt', 'Tính năng đang được phát triển', 'warning');
-        }
-        
-        // Auto-save mỗi phút
-        setInterval(saveProgress, 60000);
-        
-        // Cảnh báo khi rời trang
-        window.addEventListener('beforeunload', function(e) {
-            if (examData.progress > 0) {
-                e.preventDefault();
-                e.returnValue = 'Bài làm của bạn chưa được nộp. Bạn có chắc muốn rời đi?';
-            }
-        });
+                    {/* KHU VỰC TABS DANH MỤC */}
+                    <div className="flex overflow-x-auto hide-scroll gap-3 mb-8 pb-2 shrink-0 px-2 justify-start md:justify-center">
+                        {Object.keys(CATEGORIES).map(function(key) {
+                            return (
+                                <button 
+                                    key={key}
+                                    onClick={() => setActiveCategory(key)}
+                                    className={`whitespace-nowrap px-5 py-2.5 rounded-full font-bold text-xs transition-all border ${activeCategory === key ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                                >
+                                    {CATEGORIES[key]}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* KHU VỰC HIỂN THỊ DANH SÁCH ĐỀ (Dùng filteredExams) */}
+                    {filteredExams.length === 0 ? (
+                        <div className="py-20 text-slate-400 italic font-bold">Chưa có đề thi nào trong mục này.</div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 gap-6 text-left">
+                            {filteredExams.map(e => (
+                                <button key={e.id} onClick={() => { setCurrentExam(e); setUserAnswers({p1:{},p2:{},p3:{}}); setView('student_form'); }} className="bg-white p-5 rounded-2xl border border-transparent hover:border-blue-500 shadow-sm hover:shadow-md transition-all group flex items-center gap-5 w-full">
+                                    <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all ${e.type==='pdf'?'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}`}>
+                                        <Icon name={e.type==='pdf'?'file-text':'file'} size={24} />
+                                    </div>
+                                    <div className="flex-1 overflow-hidden text-left">
+                                        <h3 className="text-[16px] font-bold text-slate-800 mb-2 leading-tight truncate block w-full">{e.title}</h3>
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                            <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{e.duration} PHÚT</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">{e.config.p1+e.config.p2+e.config.p3} CÂU</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded-md">{CATEGORIES[e.category || 'khac']}</span>
+                                        </div>
+                                    </div>
+                                    <Icon name="chevron-right" size={18} className="text-slate-200 group-hover:text-blue-500 shrink-0" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+
+            if (view === 'quiz') return (
+                <div className="h-screen flex flex-col bg-slate-100 overflow-hidden text-left">
+                    <header className="bg-white border-b border-slate-200 p-2 flex justify-between items-center z-20 shadow-sm shrink-0 px-6">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => { if(confirm("Kết quả bài làm sẽ không được lưu. Bạn chắc chứ?")) setView('student_list') }} className="p-2 text-slate-400 hover:text-slate-600 transition-all"><Icon name="arrow-left" size={20} /></button>
+                            <div className="max-w-[180px] sm:max-w-md text-left">
+                                <h2 className="font-bold text-slate-800 text-[14px] uppercase truncate leading-none">{currentExam.title}</h2>
+                                <div className="flex items-center gap-3 mt-1.5">
+                                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest truncate">{studentInfo.name}</p>
+                                    <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold">Đã làm: {stats.done}/{stats.total} câu</span>
+                                    {tabSwitchCount > 0 && <span className="text-[10px] px-2 py-0.5 bg-red-50 text-red-600 rounded-full font-bold">Chuyển tab: {tabSwitchCount}</span>}
+                                </div>
+                            </div>
+                        </div>
+                        <Timer initialMinutes={currentExam.duration} onTimeUp={() => setView('result')} />
+                        <button onClick={() => setShowSubmitModal(true)} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold shadow-sm hover:bg-emerald-700 transition-all uppercase tracking-widest text-[10px]">Nộp bài làm</button>
+                    </header>
+
+                    <div className="flex-1 flex overflow-hidden">
+                        <div className="flex-1 bg-slate-800 overflow-hidden">
+                            <ExamDisplay type={currentExam.type} path={currentExam.filePath} />
+                        </div>
+
+                        <div className="w-[280px] shrink-0 overflow-y-auto bg-[#fffbfb] custom-scrollbar shadow-inner border-l border-slate-200 flex flex-col p-5">
+                            <div className="space-y-6">
+                                <div className="text-center border-b-2 border-red-600 pb-3 mb-4">
+                                    <h2 className="text-[12px] font-black text-red-700 uppercase tracking-widest italic leading-none text-center">PHIẾU TRẢ LỜI</h2>
+                                </div>
+
+                                {currentExam.config.p1 > 0 && (
+                                    <section>
+                                        <div className="flex items-center gap-2 mb-3 text-left">
+                                            <div className="w-2.5 h-2.5 bg-black text-left"></div>
+                                            <h3 className="font-black text-red-700 text-[10px] uppercase italic text-left">Phần I (Trắc nghiệm)</h3>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-1">
+                                            {Array.from({length: currentExam.config.p1}, (_, i) => i + 1).map(n => (
+                                                <div key={n} className="flex items-center gap-2 py-1.5 border-b border-red-100">
+                                                    <span className="w-5 text-[12px] font-bold text-slate-400 leading-none">{n}</span>
+                                                    <div className="flex-1 flex justify-around">
+                                                        {['A','B','C','D'].map(c => (
+                                                            <button 
+                                                                key={c} 
+                                                                onClick={()=>setUserAnswers(p=>({...p, p1:{...p.p1,[n]:c}}))}
+                                                                className={`bubble-btn transition-all
+                                                                    ${userAnswers.p1[n]===c ? 'bubble-selected' : 'bg-white text-red-600 border-red-100 hover:bg-red-50'}`}
+                                                            >
+                                                                {c}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {currentExam.config.p2 > 0 && (
+                                    <section>
+                                        <div className="flex items-center gap-2 mb-3 text-left">
+                                            <div className="w-2.5 h-2.5 bg-black text-left"></div>
+                                            <h3 className="font-black text-red-700 text-[10px] uppercase italic">Phần II (Đúng/Sai)</h3>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {Array.from({length: currentExam.config.p2}, (_, i) => i + 1).map(n => (
+                                                <div key={n} className="border border-red-100 p-3 bg-white rounded-xl shadow-sm text-left">
+                                                    <div className="flex justify-between items-center mb-1.5 pb-1.5 border-b border-red-50">
+                                                        <span className="text-[12px] font-black text-red-700 italic">Câu {n}</span>
+                                                    </div>
+                                                    {['a','b','c','d'].map(s => (
+                                                        <div key={s} className="flex items-center gap-4 py-1.5 text-left">
+                                                            <span className="text-[12px] font-bold text-slate-400 w-4 uppercase">{s}</span>
+                                                            <div className="flex gap-2">
+                                                                {[true, false].map(val => (
+                                                                    <button 
+                                                                        key={val.toString()}
+                                                                        onClick={()=>setUserAnswers(p=>({...p, p2:{...p.p2,[n]:{...(p.p2[n]||{}),[s]:val}}}))}
+                                                                        className={`bubble-btn flex items-center justify-center transition-all
+                                                                            ${userAnswers.p2[n]?.[s] === val ? 'bubble-selected' : 'bg-white text-rose-500 border-rose-100'}`}
+                                                                    >
+                                                                        {val ? 'Đ' : 'S'}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {currentExam.config.p3 > 0 && (
+                                    <section className="pb-10 text-left">
+                                        <div className="flex items-center gap-2 mb-3 text-left">
+                                            <div className="w-2.5 h-2.5 bg-black text-left"></div>
+                                            <h3 className="font-black text-red-700 text-[10px] uppercase italic">Phần III (Trả lời ngắn)</h3>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 text-left">
+                                            {Array.from({length: currentExam.config.p3}, (_, i) => i + 1).map(n => (
+                                                <div key={n} className="flex items-center gap-3 py-2 border-b border-red-100 text-left">
+                                                    <span className="text-[14px] font-bold text-red-700 w-12 shrink-0 italic leading-none">Câu {n}</span>
+                                                    <input 
+                                                        type="text"
+                                                        value={userAnswers.p3[n] || ""}
+                                                        onChange={(e) => setUserAnswers(p => ({...p, p3: {...p.p3, [n]: e.target.value}}))}
+                                                        className="flex-1 bg-white border border-red-100 rounded-lg px-3 py-1.5 text-[14px] font-bold text-blue-600 focus:outline-none focus:border-blue-500 font-mono shadow-sm text-left"
+                                                        placeholder="..."
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {showSubmitModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm text-center">
+                            <div className="bg-white max-w-xs w-full p-10 rounded-2xl shadow-xl text-center animate-in zoom-in duration-200">
+                                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-5 text-center"><Icon name="send" size={28} /></div>
+                                <h3 className="text-[18px] font-bold text-slate-800 mb-4 uppercase italic tracking-tighter leading-none text-center">Xác nhận nộp bài</h3>
+                                
+                                <div className="bg-slate-50 rounded-xl p-4 mb-8 space-y-3 text-left">
+                                    <div className="flex justify-between items-center text-[14px]">
+                                        <span className="text-slate-500 font-medium">Thời gian:</span>
+                                        <span className="font-bold text-slate-800">{formatTimeSpent(Date.now() - startTime)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[14px]">
+                                        <span className="text-slate-500 font-medium">Đã làm:</span>
+                                        <span className="font-bold text-emerald-600">{stats.done}/{stats.total}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[14px]">
+                                        <span className="text-slate-500 font-medium">Bỏ trống:</span>
+                                        <span className={`font-bold ${stats.total - stats.done > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{stats.total - stats.done} câu</span>
+                                    </div>
+                                    {tabSwitchCount > 0 && (
+                                        <div className="flex justify-between items-center text-[14px]">
+                                            <span className="text-slate-500 font-medium">Chuyển tab:</span>
+                                            <span className="font-bold text-red-600">{tabSwitchCount} lần</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-4 text-center">
+                                    <button onClick={()=>setShowSubmitModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl text-[14px] uppercase transition-all hover:bg-slate-200">Trở lại</button>
+                                    <button onClick={handleSubmit} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg text-[14px] uppercase transition-all hover:bg-blue-700">Nộp ngay</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+
+            if (view === 'result') return <ResultDetailView attempt={{ name: studentInfo.name, class: studentInfo.class, school: studentInfo.school, score: resultsData.total, userAnswers: userAnswers }} exam={currentExam} onBack={() => setView('landing')} onChooseOther={() => setView('student_list')} />;
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 text-center">
+                    <div className="bg-white p-12 rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full text-center relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-600"></div>
+                        <div className="w-16 h-16 bg-blue-600 text-white rounded-xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-blue-100 rotate-3 transition-transform hover:rotate-0 text-center"><Icon name="graduation-cap" size={40} /></div>
+                        <h1 className="text-[18px] sm:text-[24px] font-black text-slate-800 mb-4 tracking-tighter uppercase italic decoration-blue-500 underline decoration-[4px] underline-offset-4 leading-none text-center">Ôn thi Toán 12</h1>
+                        <p className="text-slate-400 mb-12 text-[14px] font-medium italic border-t border-slate-100 pt-8 leading-relaxed text-center text-center">Phần mềm ôn luyện trắc nghiệm cấu trúc mới chuẩn Bộ GD&ĐT.</p>
+                        <div className="flex flex-col gap-6 items-center text-center">
+                            <button onClick={() => setView('student_list')} className="bg-blue-600 text-white px-12 py-3.5 rounded-xl font-bold text-[16px] shadow-lg shadow-blue-100 hover:scale-105 transition-all flex items-center justify-center gap-4 italic tracking-widest uppercase leading-none shadow-md text-center"><Icon name="play" size={20}/> BẮT ĐẦU ÔN TẬP</button>
+                        </div>
+                    </div>
+                    {/* Footer chân trang */}
+                    <div className="fixed bottom-6 left-0 w-full text-center">
+                        <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] italic">
+                            Trang luyện thi của thầy Nguyễn Duy Chiến
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
