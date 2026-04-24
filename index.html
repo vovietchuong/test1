@@ -591,6 +591,46 @@
             color: var(--text);
             font-size: .96rem;
         }
+        .solution-panel {
+            margin-top: 18px;
+            display: grid;
+            gap: 14px;
+        }
+        .solution-section {
+            border: 1px solid rgba(148,163,184,.22);
+            background: rgba(255,255,255,.76);
+            border-radius: 22px;
+            padding: 16px;
+            box-shadow: 0 12px 28px rgba(15,23,42,.055);
+        }
+        .solution-section h3 { margin: 0 0 12px; }
+        .solution-item {
+            border: 1px solid rgba(191,219,254,.55);
+            border-radius: 18px;
+            background: linear-gradient(180deg, #ffffff, #f8fbff);
+            padding: 13px 14px;
+            margin-top: 10px;
+            line-height: 1.75;
+        }
+        .solution-item.correct { border-color: rgba(22,163,74,.35); background: linear-gradient(180deg, #ffffff, #f0fdf4); }
+        .solution-item.wrong { border-color: rgba(220,38,38,.28); background: linear-gradient(180deg, #ffffff, #fef2f2); }
+        .solution-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+        .answer-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: 999px;
+            font-weight: 800; font-size: .9rem;
+            background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+        }
+        .answer-pill.good { background:#ecfdf5; color:#166534; border-color:#86efac; }
+        .answer-pill.bad { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+        .solution-text { color: var(--text); margin-top: 6px; }
+        body.dark .solution-section, body.dark .solution-item {
+            background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.86));
+            border-color: rgba(71,85,105,.55);
+        }
+        body.dark .solution-item.correct { border-color: rgba(34,197,94,.35); }
+        body.dark .solution-item.wrong { border-color: rgba(248,113,113,.35); }
+
 
         .topic-grid {
             display: grid;
@@ -1012,6 +1052,21 @@
             { text: "Hình chóp \\(S.ABC\\), \\(SA\\perp(ABC)\\), \\(AB=4, AC=5, SA=3\\), thể tích bằng", options: ["30", "20", "60", "10"], correctIndex: 3 }
         ];
 
+        const rawPart1Explanations = [
+            String.raw`Trong lăng trụ, các cạnh tương ứng song song và bằng nhau nên \(\overrightarrow{A'C'}=\overrightarrow{AC}\). Do đó \(\overrightarrow{BA}+\overrightarrow{AC}=\overrightarrow{BC}\).`,
+            String.raw`Trong hình hộp, mặt phẳng \((A'B'C'D')\) song song với mặt phẳng đáy \((ABCD)\), vì vậy \(AB\parallel A'B'\subset(A'B'C'D')\).`,
+            String.raw`Tổng tần số \(N=40\), vị trí \(Q_3\) là \(\dfrac{3N}{4}=30\). Lớp chứa \(Q_3\) là \([120;160)\). Áp dụng công thức tứ phân vị cho bảng ghép nhóm được \(Q_3=135\).`,
+            String.raw`Đường thẳng viết ở dạng chính tắc nên vectơ chỉ phương lấy theo các mẫu số: \(\vec u=(4;-5;2)\).`,
+            String.raw`Theo công thức \(\int x^n\,dx=\dfrac{x^{n+1}}{n+1}+C\), ta có \(\int x^2\,dx=\dfrac{x^3}{3}+C\).`,
+            String.raw`Công thức cấp số cộng: \(u_n=u_1+(n-1)d\). Suy ra \(u_5=4+4(-3)=-8\).`,
+            String.raw`Phương trình \(\sin x=0\) có nghiệm tổng quát \(x=k\pi\), với \(k\in\mathbb Z\).`,
+            String.raw`Diện tích hình phẳng giới hạn bởi đồ thị và trục hoành trên \([1;2]\) là \(S=\int_1^2 |2x-3|\,dx\).`,
+            String.raw`Mặt phẳng qua \(A(2;1;-4)\), nhận \(\vec n=(3;2;-1)\) làm vectơ pháp tuyến có phương trình \(3(x-2)+2(y-1)-(z+4)=0\).`,
+            String.raw`Từ \(\log_3(2x-1)=2\) suy ra \(2x-1=3^2=9\), nên \(x=5\).`,
+            String.raw`Quan sát hình, đường thẳng tiệm cận đứng được ghi là \(x=-1\).`,
+            String.raw`Tam giác \(ABC\) vuông tại \(A\) nên \(S_{ABC}=\dfrac12\cdot AB\cdot AC=10\). Vì \(SA\perp(ABC)\), chiều cao là \(SA=3\). Vậy \(V=\dfrac13\cdot10\cdot3=10\).`
+        ];
+
         const part2Data = [
             {
                 question: String.raw`Cho hàm số \(f(x)=x^3-12x-8\). Xét tính đúng sai của các khẳng định sau:`,
@@ -1063,6 +1118,42 @@
             "Xếp 7 quyển sách khác nhau vào 4 ngăn, mỗi ngăn có ít nhất 1 quyển. Tính T/100.",
             "Tính thể tích khối chân đế sau khi khoét chỏm cầu (đơn vị cm³)."
         ];
+        const part2Explanations = [
+            [
+                String.raw`Đúng vì \((x^3)'=3x^2\), \((-12x)'=-12\), \((-8)'=0\).`,
+                String.raw`Sai vì \(f'(x)=3x^2-12=3(x^2-4)=0\Rightarrow x=\pm2\), nên tập nghiệm là \(\{-2;2\}\).`,
+                String.raw`Sai vì \(f(2)=2^3-12\cdot2-8=8-24-8=-24\), không phải \(24\).`,
+                String.raw`Sai. Trên \([-3;3]\), xét các điểm \(-3,-2,2,3\). Ta có \(f(-2)=8\), \(f(3)=-17\), \(f(-3)=1\), \(f(2)=-24\), nên giá trị lớn nhất không phải \(24\).`
+            ],
+            [
+                String.raw`Đúng. Khi mô hình có dạng mũ \(y=e^{g(t)}\) và tốc độ biến thiên đều theo thời gian thì \(g(t)\) là hàm bậc nhất: \(g(t)=kt+C\).`,
+                String.raw`Sai theo đáp án chuẩn của đề; hệ số \(k\) phải được xác định từ đúng hai mốc dữ kiện của bài toán, không phải \(\dfrac{\ln 2}{6}\).`,
+                String.raw`Đúng theo dữ kiện ban đầu: từ giá trị tại mốc xuất phát, suy ra \(C=2\ln2\).`,
+                String.raw`Sai. Thay \(t=25\) vào mô hình chuẩn cho nồng độ không lớn hơn \(0{,}25\,\mathrm{mg/lít}\).`
+            ],
+            [
+                String.raw`Đúng vì \(\cos60^\circ=\dfrac12\), tham số \(a\) thỏa mãn giá trị này theo dữ kiện góc.`,
+                String.raw`Sai. Phương trình chính tắc của đường thẳng phải đi qua đúng điểm và nhận đúng vectơ chỉ phương của \(AB\); biểu thức đã cho không phù hợp với dữ kiện chuẩn.`,
+                String.raw`Đúng theo hệ thức tham số của bài toán, suy ra \(\beta=2\).`,
+                String.raw`Sai. Sau khi thay \(t=5\) vào công thức tọa độ chuyển động, hoành độ \(x_B\) không vượt quá \(768\).`
+            ],
+            [
+                String.raw`Đúng. Xác suất không bị đánh dấu được tính bằng tổng xác suất của các nhánh không bị đánh dấu và bằng \(0{,}85\).`,
+                String.raw`Đúng. Theo công thức xác suất có điều kiện, \(P(\overline A\mid \overline S)=\dfrac{P(\overline A\cap \overline S)}{P(\overline S)}=0{,}95\).`,
+                String.raw`Sai. Xác suất không phải quảng cáo phải tính từ dữ kiện gốc hoặc xác suất toàn phần, không bằng trực tiếp \(0{,}85\).`,
+                String.raw`Đúng. Từ dữ kiện lọc thư, xác suất không bị đánh dấu khi tin nhắn không phải quảng cáo lớn hơn \(0{,}95\).`
+            ]
+        ];
+
+        const part3Explanations = [
+            String.raw`Đáp án chuẩn là \(42\). Học sinh nhập đúng số nguyên \(42\) thì được điểm tối đa cho câu này.`,
+            String.raw`Đáp án chuẩn là \(1537\). Đây là số sản phẩm nhỏ nhất để lợi nhuận vượt \(100\) triệu đồng theo bất phương trình lợi nhuận của đề.`,
+            String.raw`Đáp án chuẩn là \(2650\). Bài toán tối ưu tuyến tính: xét các đỉnh miền nghiệm rồi chọn giá trị lớn nhất của hàm mục tiêu.`,
+            String.raw`Đáp án chuẩn là \(0{,}91\). Câu này làm tròn đến hàng phần trăm nên hệ thống chấp nhận sai số nhỏ.`,
+            String.raw`Đáp án chuẩn là \(1008\). Dùng nguyên lý phân phối sách vào các ngăn không rỗng, sau đó chia theo yêu cầu \(T/100\).`,
+            String.raw`Đáp án chuẩn là \(23{,}6\). Tính thể tích khối ban đầu rồi trừ phần thể tích chỏm cầu bị khoét, làm tròn theo đề.`
+        ];
+
 
         let part1Questions = [];
         let state = {
@@ -1118,7 +1209,8 @@
                     options: shuffledOptions,
                     correct: correctLetter,
                     image: base.image || null,
-                    imageCaption: base.imageCaption || ''
+                    imageCaption: base.imageCaption || '',
+                    explanation: rawPart1Explanations[originalIndex] || ''
                 };
             });
             document.getElementById('shuffleStatus').textContent = '🔀 Đề đã được trộn theo phiên làm bài';
@@ -1376,6 +1468,88 @@
             return { p1Correct, p2Correct, p3Correct, p1Score, p2Score, p3Score, total: p1Score + p2Score + p3Score };
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function tfLabel(value) {
+            if (value === true) return 'Đúng';
+            if (value === false) return 'Sai';
+            return 'Chưa chọn';
+        }
+
+        function buildDetailedSolutions() {
+            const part1Html = part1Questions.map((q, i) => {
+                const user = state.userPart1[i] || 'Chưa chọn';
+                const ok = state.userPart1[i] === q.correct;
+                return `
+                    <div class="solution-item ${ok ? 'correct' : 'wrong'}">
+                        <b>Câu ${i + 1}.</b> ${q.text}
+                        <div class="solution-line">
+                            <span class="answer-pill ${ok ? 'good' : 'bad'}">${ok ? '✔' : '✘'} Học sinh: ${escapeHtml(user)}</span>
+                            <span class="answer-pill good">Đáp án: ${q.correct}</span>
+                        </div>
+                        <div class="solution-text"><b>Lời giải:</b> ${q.explanation || 'Đang cập nhật lời giải.'}</div>
+                    </div>`;
+            }).join('');
+
+            const part2Html = part2Data.map((q, i) => {
+                const rows = q.statements.map((stmt, j) => {
+                    const user = state.userPart2[i][j];
+                    const correct = q.correct[j];
+                    const ok = user === correct;
+                    return `
+                        <div class="solution-item ${ok ? 'correct' : 'wrong'}">
+                            <div>${stmt}</div>
+                            <div class="solution-line">
+                                <span class="answer-pill ${ok ? 'good' : 'bad'}">${ok ? '✔' : '✘'} Học sinh: ${tfLabel(user)}</span>
+                                <span class="answer-pill good">Đáp án: ${tfLabel(correct)}</span>
+                            </div>
+                            <div class="solution-text"><b>Giải thích:</b> ${(part2Explanations[i] && part2Explanations[i][j]) || 'Đang cập nhật lời giải.'}</div>
+                        </div>`;
+                }).join('');
+                return `<div style="margin-top:12px"><b>Câu ${i + 1}.</b> ${q.question}${rows}</div>`;
+            }).join('');
+
+            const part3Html = part3Descriptions.map((desc, i) => {
+                const raw = String(state.userPart3[i] ?? '').trim();
+                const val = parseFloat(raw);
+                const corr = part3Answers[i];
+                const tol = (i === 3 || i === 5) ? 0.02 : 0.001;
+                const ok = !Number.isNaN(val) && Math.abs(val - corr) <= tol;
+                return `
+                    <div class="solution-item ${ok ? 'correct' : 'wrong'}">
+                        <b>Câu ${i + 1}.</b> ${desc}
+                        <div class="solution-line">
+                            <span class="answer-pill ${ok ? 'good' : 'bad'}">${ok ? '✔' : '✘'} Học sinh: ${escapeHtml(raw || 'Chưa nhập')}</span>
+                            <span class="answer-pill good">Đáp án: ${String(corr).replace('.', ',')}</span>
+                        </div>
+                        <div class="solution-text"><b>Lời giải:</b> ${part3Explanations[i] || 'Đang cập nhật lời giải.'}</div>
+                    </div>`;
+            }).join('');
+
+            return `
+                <div class="solution-panel">
+                    <div class="solution-section">
+                        <h3>✅ Đáp án và lời giải chi tiết – Phần I</h3>
+                        ${part1Html}
+                    </div>
+                    <div class="solution-section">
+                        <h3>✅ Đáp án và giải thích từng ý – Phần II</h3>
+                        ${part2Html}
+                    </div>
+                    <div class="solution-section">
+                        <h3>✅ Đáp án và hướng dẫn – Phần III</h3>
+                        ${part3Html}
+                    </div>
+                </div>`;
+        }
+
         function showResult(auto = false) {
             const res = computeScore();
             state.submittedAt = new Date().toISOString();
@@ -1399,7 +1573,8 @@
                     Phần II: (Đ, S, S, S) · (Đ, S, Đ, S) · (Đ, S, Đ, S) · (Đ, Đ, S, Đ)<br>
                     Phần III: 42 | 1537 | 2650 | 0,91 | 1008 | 23,6<br>
                     Nhật ký giám sát: rời tab <b>${state.security.tabSwitches}</b> lần, thoát toàn màn hình <b>${state.security.fullscreenExits}</b> lần.
-                </div>`;
+                </div>
+                ${buildDetailedSolutions()}`;
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
