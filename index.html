@@ -223,6 +223,62 @@ async function migrateAllExamStructures(){
     renderTeacherDashboard();
   }catch(err){toast('Chưa đồng bộ được cấu trúc đề: '+fbError(err),'bad');}
 }
+
+async function loadExamFromQuestionBank(examBase){
+  // Bước 4: học sinh lấy cấu trúc đề từ examQuestions và nội dung câu từ questionBanks.
+  // Nếu Firestore chưa có cấu trúc mới, hệ thống tự quay về questions cũ để không làm hỏng đề đang dùng.
+  const fallback=JSON.parse(JSON.stringify(examBase||{}));
+  if(!firebaseReady || !examBase?.id) return fallback;
+  try{
+    let links=[];
+    const snap=await db.collection('examQuestions').where('examId','==',String(examBase.id)).get();
+    if(!snap.empty){
+      links=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    }
+    if(!links.length && Array.isArray(examBase.questionIds) && examBase.questionIds.length){
+      links=examBase.questionIds.map((questionId,idx)=>({questionId,order:idx+1}));
+    }
+    if(!links.length) return fallback;
+
+    const questionDocs=await Promise.all(links.map(l=>db.collection('questionBanks').doc(String(l.questionId)).get()));
+    const questions=[];
+    questionDocs.forEach((doc,idx)=>{
+      if(!doc.exists) return;
+      const raw={id:doc.id,...doc.data()};
+      questions.push({
+        ...raw,
+        id:String(raw.id||doc.id),
+        sourceQuestionId:String(doc.id),
+        point:links[idx]?.point||raw.point||1,
+        order:links[idx]?.order||idx+1
+      });
+    });
+    if(!questions.length) return fallback;
+    return {
+      ...fallback,
+      questions,
+      questionCount:questions.length,
+      loadedFromQuestionBank:true,
+      usesQuestionBank:true
+    };
+  }catch(err){
+    console.warn('Không tải được đề từ questionBanks/examQuestions, dùng dữ liệu cũ:',err);
+    return fallback;
+  }
+}
+function publicQuestionForStudent(q){
+  const copy=JSON.parse(JSON.stringify(q));
+  delete copy.answer;
+  delete copy.solution;
+  delete copy.explanation;
+  return copy;
+}
+function safeExamForProgress(exam){
+  const copy=JSON.parse(JSON.stringify(exam));
+  copy.questions=(copy.questions||[]).map(publicQuestionForStudent);
+  return copy;
+}
+
 async function seedExamsToFirestore(){
   if(!firebaseReady || !currentUser || currentUser.role!=='teacher') return;
   const snap=await db.collection('exams').limit(1).get();
@@ -287,7 +343,7 @@ function buildAnswerKey(exam){
 }
 function sanitizeExamForStudent(exam){
   const copy=JSON.parse(JSON.stringify(exam));
-  copy.questions=(copy.questions||[]).map(q=>{delete q.answer; delete q.solution; return q;});
+  copy.questions=(copy.questions||[]).map(publicQuestionForStudent);
   return copy;
 }
 function prepareExamInstance(exam){
@@ -297,7 +353,7 @@ function prepareExamInstance(exam){
   return currentUser?.role==='student'?sanitizeExamForStudent(copy):copy;
 }
 function progressKey(examId=selectedExam?.originalId||selectedExam?.id){if(!currentUser||currentUser.role!=='student'||!examId)return null;return `mathpro12_progress_${currentUser.id}_${examId}`}
-function saveExamProgress(){const key=progressKey();if(!key||!selectedExam||examReview)return;localStorage.setItem(key,JSON.stringify({exam:selectedExam,answerKey:examAnswerKey,answers:examAnswers,remain:examRemain,warnings:examWarnings,startedAt:examStartedAt||new Date().toISOString(),savedAt:new Date().toISOString()}))}
+function saveExamProgress(){const key=progressKey();if(!key||!selectedExam||examReview)return;localStorage.setItem(key,JSON.stringify({exam:safeExamForProgress(selectedExam),answers:examAnswers,remain:examRemain,warnings:examWarnings,startedAt:examStartedAt||new Date().toISOString(),savedAt:new Date().toISOString()}))}
 function clearExamProgress(){const key=progressKey();if(key)localStorage.removeItem(key)}
 function enableAntiCheat(){examAntiCheatLocked=true;document.body.classList.add('exam-lock');try{document.documentElement.requestFullscreen?.()}catch(e){}}
 function disableAntiCheat(){examAntiCheatLocked=false;document.body.classList.remove('exam-lock');try{document.exitFullscreen?.()}catch(e){}}
@@ -362,16 +418,32 @@ async function doRegister(){
     toast('Đăng ký thất bại: '+fbError(err),'bad');
   }
 }
-function startExam(id){
+async function startExam(id){
   const base=exams.find(e=>String(e.id)==String(id)); if(!base)return;
   const key=progressKey(id), saved=key?JSON.parse(localStorage.getItem(key)||'null'):null;
-  if(saved?.exam && saved?.remain>0){selectedExam=saved.exam; examAnswerKey=saved.answerKey||{}; examAnswers=saved.answers||{}; examRemain=saved.remain; examWarnings=saved.warnings||0; examStartedAt=saved.startedAt||new Date().toISOString(); toast('Đã khôi phục bài đang làm trước đó','ok');}
-  else{selectedExam=prepareExamInstance(base); examAnswers={};examReview=false;examRemain=(selectedExam.duration||30)*60; examWarnings=0; examStartedAt=new Date().toISOString();}
+  if(saved?.exam && saved?.remain>0){
+    selectedExam=saved.exam;
+    examAnswers=saved.answers||{};
+    examRemain=saved.remain;
+    examWarnings=saved.warnings||0;
+    examStartedAt=saved.startedAt||new Date().toISOString();
+    // Không lưu đáp án trong localStorage. Khi khôi phục, tải lại đáp án tạm từ questionBanks/examQuestions để chấm.
+    const fullExam=await loadExamFromQuestionBank(base);
+    prepareExamInstance(fullExam);
+    selectedExam=saved.exam;
+    toast('Đã khôi phục bài đang làm trước đó','ok');
+  }
+  else{
+    $('mainView').innerHTML='<div class="glass-card p-8 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-3 font-semibold">Đang tải đề từ kho câu hỏi...</p></div>';
+    const fullExam=await loadExamFromQuestionBank(base);
+    selectedExam=prepareExamInstance(fullExam);
+    examAnswers={};examReview=false;examRemain=(selectedExam.duration||30)*60; examWarnings=0; examStartedAt=new Date().toISOString();
+  }
   renderExamRoom();
   if(currentUser?.role==='student'){enableAntiCheat();clearInterval(examTimer);examTimer=setInterval(()=>{examRemain--;saveExamProgress();updateTimer(); if(examRemain<=0){clearInterval(examTimer);submitExam(true)}},1000)}
 }
 function updateTimer(){const t=$('timerBox'); if(t)t.textContent=`${String(Math.floor(examRemain/60)).padStart(2,'0')}:${String(examRemain%60).padStart(2,'0')}`}
-function renderExamRoom(){const e=selectedExam;$('mainView').innerHTML=`<div class="glass-card p-5 mb-5 sticky top-20 z-20"><div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-2xl font-black">${safe(e.title)}</h2><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${currentUser?.role==='student'?`<span class="mini-badge ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> Rời tab: ${examWarnings}</span>`:''}</p></div><div class="flex gap-2 items-center"><span id="timerBox" class="px-4 py-2 rounded-2xl bg-slate-900 text-white font-mono">--:--</span><button onclick="submitExam(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold">Nộp bài</button><button onclick="renderExamsPublic()" class="btn-soft px-4 py-2 rounded-2xl">Thoát</button></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-4 mb-5 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ thi an toàn:</b> hệ thống ghi nhận rời tab, thoát toàn màn hình, chuột phải, copy/paste và phím tắt. Từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div>`;updateTimer();typeset()}
+function renderExamRoom(){const e=selectedExam;$('mainView').innerHTML=`<div class="glass-card p-5 mb-5 sticky top-20 z-20"><div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-2xl font-black">${safe(e.title)}</h2><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''} ${currentUser?.role==='student'?`<span class="mini-badge ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> Rời tab: ${examWarnings}</span>`:''}</p></div><div class="flex gap-2 items-center"><span id="timerBox" class="px-4 py-2 rounded-2xl bg-slate-900 text-white font-mono">--:--</span><button onclick="submitExam(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold">Nộp bài</button><button onclick="renderExamsPublic()" class="btn-soft px-4 py-2 rounded-2xl">Thoát</button></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-4 mb-5 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ thi an toàn:</b> hệ thống ghi nhận rời tab, thoát toàn màn hình, chuột phải, copy/paste và phím tắt. Từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div>`;updateTimer();typeset()}
 function renderQuestion(q,i){const saved=examAnswers[q.id];let body=''; if(q.type==='mc')body=q.options.map((o,idx)=>`<label class="option-card flex gap-3 ${saved==idx?'selected':''}"><input type="radio" name="${q.id}" onchange="setMC('${q.id}',${idx})" ${saved==idx?'checked':''}><span class="math-content"><b>${'ABCD'[idx]}.</b> ${o}</span></label>`).join('');
  if(q.type==='tf')body=q.statements.map((s,idx)=>`<div class="option-card"><div class="math-content mb-2"><b>${String.fromCharCode(97+idx)})</b> ${s}</div><label class="mr-4"><input type="radio" name="${q.id}_${idx}" onchange="setTF('${q.id}',${idx},true)" ${saved?.[idx]===true?'checked':''}> Đúng</label><label><input type="radio" name="${q.id}_${idx}" onchange="setTF('${q.id}',${idx},false)" ${saved?.[idx]===false?'checked':''}> Sai</label></div>`).join('');
  if(q.type==='short')body=`<input value="${safe(saved||'')}" oninput="setShort('${q.id}',this.value)" class="w-full md:w-80 px-4 py-3 rounded-2xl border" placeholder="Nhập đáp án ngắn, ví dụ: 0.6 hoặc 1/2">`;
@@ -424,7 +496,7 @@ function renderQuestionBank(){
   if(!requireRole('teacher'))return;
   if(!questionBank.length){questionBank=questionBankFromLocalExams(); localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));}
   const grouped=TOPICS.map(t=>({topic:t,items:questionBank.filter(q=>Number(q.topicId)===Number(t.id))}));
-  $('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🏦 Kho câu hỏi Firestore</h2><p style="color:var(--muted)">Bước 3: câu hỏi lưu ở <b>questionBanks</b>, mỗi đề liên kết câu hỏi qua <b>examQuestions</b>.</p></div><div class="flex gap-2"><button onclick="migrateAllQuestionsToBank()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">Đồng bộ lên Firestore</button><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button></div></div><div class="grid md:grid-cols-4 gap-4 mb-5"><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.length}</p><p class="text-sm" style="color:var(--muted)">Tổng câu hỏi</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='mc').length}</p><p class="text-sm" style="color:var(--muted)">Trắc nghiệm</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='tf').length}</p><p class="text-sm" style="color:var(--muted)">Đúng/Sai</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='short').length}</p><p class="text-sm" style="color:var(--muted)">Trả lời ngắn</p></div></div><div class="space-y-5">${grouped.map(g=>g.items.length?`<section class="glass-card p-5"><h3 class="font-black text-xl mb-3">${g.topic.name} <span class="text-sm font-normal" style="color:var(--muted)">(${g.items.length} câu)</span></h3><div class="space-y-3">${g.items.map((q,i)=>`<div class="p-3 rounded-2xl border bg-white/50"><div class="flex flex-wrap justify-between gap-2"><b>${i+1}. ${q.type==='mc'?'Trắc nghiệm':q.type==='tf'?'Đúng/Sai':'Trả lời ngắn'}</b><span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">${safe(q.level||'Chưa phân mức')}</span></div><div class="math-content mt-2">${q.text||''}</div><p class="text-xs mt-2" style="color:var(--muted)">Nguồn: ${safe(q.sourceExamTitle||'Đề hiện có')} • ID: ${safe(q.id)}</p></div>`).join('')}</div></section>`:'').join('')}</div>`;
+  $('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🏦 Kho câu hỏi Firestore</h2><p style="color:var(--muted)">Bước 4: học sinh tải đề qua <b>examQuestions</b> + <b>questionBanks</b>, không phụ thuộc mảng questions cũ.</p></div><div class="flex gap-2"><button onclick="migrateAllQuestionsToBank()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">Đồng bộ lên Firestore</button><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button></div></div><div class="grid md:grid-cols-4 gap-4 mb-5"><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.length}</p><p class="text-sm" style="color:var(--muted)">Tổng câu hỏi</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='mc').length}</p><p class="text-sm" style="color:var(--muted)">Trắc nghiệm</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='tf').length}</p><p class="text-sm" style="color:var(--muted)">Đúng/Sai</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='short').length}</p><p class="text-sm" style="color:var(--muted)">Trả lời ngắn</p></div></div><div class="space-y-5">${grouped.map(g=>g.items.length?`<section class="glass-card p-5"><h3 class="font-black text-xl mb-3">${g.topic.name} <span class="text-sm font-normal" style="color:var(--muted)">(${g.items.length} câu)</span></h3><div class="space-y-3">${g.items.map((q,i)=>`<div class="p-3 rounded-2xl border bg-white/50"><div class="flex flex-wrap justify-between gap-2"><b>${i+1}. ${q.type==='mc'?'Trắc nghiệm':q.type==='tf'?'Đúng/Sai':'Trả lời ngắn'}</b><span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">${safe(q.level||'Chưa phân mức')}</span></div><div class="math-content mt-2">${q.text||''}</div><p class="text-xs mt-2" style="color:var(--muted)">Nguồn: ${safe(q.sourceExamTitle||'Đề hiện có')} • ID: ${safe(q.id)}</p></div>`).join('')}</div></section>`:'').join('')}</div>`;
   typeset();
 }
 async function migrateAllQuestionsToBank(){
