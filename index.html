@@ -85,6 +85,13 @@ let firebaseReady = !!(window.firebase && window.auth && window.db);
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
 const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
 const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com'];
+const TEACHER_REGISTER_CODE='CHUONG2026';
+function detectRegisterRole(email='', requestedRole='student', teacherCode=''){
+  email=String(email).toLowerCase().trim();
+  const autoTeacher=TEACHER_EMAILS.includes(email) || email.startsWith('gv') || email.includes('giaovien') || email.includes('teacher') || email.includes('admin');
+  const codeTeacher=requestedRole==='teacher' && String(teacherCode).trim()===TEACHER_REGISTER_CODE;
+  return (autoTeacher || codeTeacher) ? 'teacher' : 'student';
+}
 function fbError(err){console.error(err); return err?.message||'Lỗi Firebase';}
 async function getUserProfile(user){
   if(!user) return null;
@@ -93,7 +100,13 @@ async function getUserProfile(user){
   if(firebaseReady){
     const ref=db.collection('users').doc(user.uid);
     const snap=await ref.get();
-    if(snap.exists){profile={...profile,...snap.data(),id:user.uid,email:user.email,username:user.email}}
+    if(snap.exists){
+      profile={...profile,...snap.data(),id:user.uid,email:user.email,username:user.email};
+      if(fallbackRole==='teacher' && profile.role!=='teacher'){
+        profile.role='teacher';
+        await ref.set({role:'teacher',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      }
+    }
     else{await ref.set({...profile,createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
   }
   return profile;
@@ -171,7 +184,7 @@ function statCards(){const totalQ=exams.reduce((s,e)=>s+e.questions.length,0);re
 function renderLessons(){ $('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">📚 Bài giảng ôn tập theo chủ đề</h2><div class="grid md:grid-cols-2 gap-5">${TOPICS.map(t=>`<article class="glass-card p-6"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl btn-primary text-white grid place-items-center"><i class="fa-solid ${t.icon}"></i></div><h3 class="font-bold text-lg">${t.name}</h3></div><ul class="mt-4 space-y-2 text-sm" style="color:var(--muted)"><li>• Tóm tắt công thức trọng tâm</li><li>• Ví dụ minh họa có lời giải</li><li>• Bài tập luyện tập theo mức độ</li></ul><button onclick="renderExamsPublic(${t.id})" class="mt-4 btn-soft px-4 py-2 rounded-xl font-semibold">Luyện đề chủ đề này</button></article>`).join('')}</div>`; }
 function renderExamsPublic(topic='all'){let list=topic==='all'?exams:exams.filter(e=>e.topicId==topic);$('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🧪 Kho đề luyện thi</h2><p style="color:var(--muted)">Chọn đề để xem chi tiết. Học sinh cần đăng nhập để nộp bài và lưu điểm.</p></div><select onchange="renderExamsPublic(this.value)" class="px-4 py-3 rounded-2xl border bg-white"><option value="all">Tất cả chủ đề</option>${TOPICS.map(t=>`<option value="${t.id}" ${topic==t.id?'selected':''}>${t.name}</option>`).join('')}</select></div><div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">${list.map(examCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Chưa có đề trong chủ đề này.</div>'}</div>`;typeset()}
 function examCard(e){return `<article class="glass-card p-5 slide-up"><div class="flex justify-between gap-3"><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">${topicName(e.topicId)}</span><span class="text-xs" style="color:var(--muted)"><i class="fa-regular fa-clock"></i> ${e.duration||30} phút</span></div><h3 class="font-black text-xl mt-3 math-content">${safe(e.title)}</h3><p class="text-sm mt-2 min-h-10" style="color:var(--muted)">${safe(e.description||'Đề ôn tập')}</p><div class="flex gap-2 mt-3 text-xs"><span class="px-2 py-1 rounded-lg bg-slate-100">${e.questions.length} câu</span><span class="px-2 py-1 rounded-lg bg-slate-100">${safe(e.level||'Ôn tập')}</span></div><button onclick="startExam(${e.id})" class="mt-4 w-full btn-primary text-white py-3 rounded-2xl font-bold"><i class="fa-solid fa-play"></i> ${currentUser?.role==='student'?'Làm bài':'Xem / làm thử'}</button></article>`}
-function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Dùng email Firebase. Ví dụ: hs1@mathpro12.edu.vn / 123456</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><div class="grid grid-cols-2 gap-2"><button onclick="quickLogin('hs1@mathpro12.edu.vn','123456')" class="btn-soft py-2 rounded-xl">Học sinh mẫu</button><button onclick="quickLogin('giaovien@mathpro12.edu.vn','giaovien')" class="btn-soft py-2 rounded-xl">Giáo viên mẫu</button></div><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản học sinh</button></div></div>`;document.body.appendChild(m)}
+function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Dùng email Firebase. Ví dụ: hs1@mathpro12.edu.vn / 123456</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><div class="grid grid-cols-2 gap-2"><button onclick="quickLogin('hs1@mathpro12.edu.vn','123456')" class="btn-soft py-2 rounded-xl">Học sinh mẫu</button><button onclick="quickLogin('giaovien@mathpro12.edu.vn','giaovien')" class="btn-soft py-2 rounded-xl">Giáo viên mẫu</button></div><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
 async function doLogin(){
   const email=emailFromLogin($('loginU')?.value||''), password=$('loginP')?.value;
   if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
@@ -189,19 +202,26 @@ async function doLogin(){
   }
 }
 function quickLogin(u,p){$('loginU').value=u;$('loginP').value=p;doLogin()}
-function showRegister(){document.querySelector('.fixed')?.remove();const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký học sinh</h2><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
+function showRegister(){document.querySelector('.fixed')?.remove();const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký tài khoản</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Chọn vai trò. Giáo viên cần mã xác nhận.</p><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập, ví dụ: gvtoan@gmail.com"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu ít nhất 6 ký tự"><select id="regRole" onchange="document.getElementById('teacherCodeWrap').style.display=this.value==='teacher'?'block':'none'" class="w-full px-4 py-3 rounded-2xl border bg-white"><option value="student">Học sinh</option><option value="teacher">Giáo viên</option></select><div id="teacherCodeWrap" style="display:none"><input id="regTeacherCode" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mã giáo viên: CHUONG2026"><p class="text-xs mt-1" style="color:var(--muted)">Email có chữ gv/giaovien cũng tự nhận giáo viên.</p></div><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
 async function doRegister(){
   const email=emailFromLogin($('regU').value.trim()), password=$('regP').value, fullname=$('regName').value.trim()||email;
+  const requestedRole=$('regRole')?.value||'student';
+  const teacherCode=$('regTeacherCode')?.value||'';
   if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
   if(password.length<6) return toast('Mật khẩu Firebase cần ít nhất 6 ký tự','bad');
+  if(requestedRole==='teacher' && detectRegisterRole(email,requestedRole,teacherCode)!=='teacher') return toast('Mã giáo viên chưa đúng. Hãy nhập CHUONG2026 hoặc dùng email có chữ gv/giaovien.','bad');
   try{
     const cred=await auth.createUserWithEmailAndPassword(email,password);
-    const role=TEACHER_EMAILS.includes(email.toLowerCase())?'teacher':'student';
-    await db.collection('users').doc(cred.user.uid).set({id:cred.user.uid,email,username:email,fullname,role,createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    users.push({id:cred.user.uid,username:email,fullname,role}); save();
+    const role=detectRegisterRole(email,requestedRole,teacherCode);
+    const profile={id:cred.user.uid,email,username:email,fullname,role,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    await db.collection('users').doc(cred.user.uid).set(profile,{merge:true});
+    currentUser={id:cred.user.uid,email,username:email,fullname,role};
+    users=users.filter(u=>u.id!==cred.user.uid);
+    users.push(currentUser); save();
     document.querySelector('.fixed')?.remove();
-    toast('Đăng ký Firebase thành công','ok');
-    showLoginModal();
+    renderHeader();
+    if(role==='teacher'){ await seedExamsToFirestore(); renderTeacherDashboard(); toast('Đăng ký giáo viên thành công','ok'); }
+    else{ renderExamsPublic(); toast('Đăng ký học sinh thành công','ok'); }
   }catch(err){
     toast('Đăng ký thất bại: '+fbError(err),'bad');
   }
