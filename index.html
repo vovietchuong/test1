@@ -482,6 +482,64 @@
             gap: 10px;
             align-items: center;
         }
+        .short-answer-panel {
+            margin-top: 12px;
+            padding: 14px;
+            border: 1px solid rgba(251,146,60,.32);
+            border-radius: 20px;
+            background: linear-gradient(135deg, #fff7ed, #fffaf2);
+        }
+        .decimal-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .decimal-chip {
+            border: 1px solid rgba(251,146,60,.40);
+            background: #fff;
+            color: #9a3412;
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+        .decimal-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(249,115,22,.12);
+        }
+        .decimal-preview {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            color: var(--muted);
+            font-size: .92rem;
+            line-height: 1.55;
+        }
+        .decimal-preview b {
+            color: #9a3412;
+            background: #ffedd5;
+            border: 1px solid #fed7aa;
+            border-radius: 999px;
+            padding: 4px 9px;
+        }
+        body.dark .short-answer-panel {
+            background: linear-gradient(180deg, rgba(67,43,24,.82), rgba(15,23,42,.86));
+            border-color: rgba(251,146,60,.34);
+        }
+        body.dark .decimal-chip {
+            background: rgba(15,23,42,.96);
+            color: #fed7aa;
+            border-color: rgba(251,146,60,.42);
+        }
+        body.dark .decimal-preview b {
+            color: #fed7aa;
+            background: rgba(124,45,18,.34);
+            border-color: rgba(251,146,60,.38);
+        }
         .help {
             color: var(--muted);
             font-size: .92rem;
@@ -1385,30 +1443,115 @@
             });
         }
 
+        function normalizeShortAnswer(raw) {
+            let value = String(raw ?? '').trim();
+            if (!value) return '';
+            value = value
+                .replace(/[−–—]/g, '-')
+                .replace(/\s+/g, '')
+                .replace(/，/g, ',')
+                .replace(/,/g, '.');
+            if (value.startsWith('.')) value = '0' + value;
+            if (value.startsWith('-.')) value = '-0' + value.slice(1);
+            const parts = value.split('.');
+            if (parts.length > 2) value = parts.shift() + '.' + parts.join('');
+            return value;
+        }
+
+        function parseShortAnswer(raw) {
+            const normalized = normalizeShortAnswer(raw);
+            if (!normalized || normalized === '-' || normalized === '.' || normalized === '-.') return NaN;
+            const numberPattern = /^-?\d+(\.\d+)?$/;
+            if (!numberPattern.test(normalized)) return NaN;
+            return Number(normalized);
+        }
+
+        function formatVietnameseNumber(value) {
+            if (value === '' || value === null || value === undefined || Number.isNaN(Number(value))) return '';
+            return String(value).replace('.', ',');
+        }
+
+        function updateDecimalPreview(idx, input, preview) {
+            const raw = input.value;
+            const normalized = normalizeShortAnswer(raw);
+            const value = parseShortAnswer(raw);
+            if (!raw.trim()) {
+                preview.innerHTML = 'Có thể nhập <b>0,91</b> hoặc <b>0.91</b>; hệ thống tự hiểu đúng số thập phân.';
+                return;
+            }
+            if (Number.isNaN(value)) {
+                preview.innerHTML = '⚠️ Định dạng chưa hợp lệ. Chỉ nhập số, dấu âm, dấu phẩy hoặc dấu chấm thập phân.';
+                return;
+            }
+            const toleranceText = (idx === 3 || idx === 5) ? 'Câu này có làm tròn, chấp nhận sai số nhỏ.' : 'Câu này cần nhập đúng giá trị số.';
+            preview.innerHTML = `Hệ thống sẽ chấm như số <b>${formatVietnameseNumber(normalized)}</b>. ${toleranceText}`;
+        }
+
+        function appendToShortAnswer(idx, token) {
+            const input = document.getElementById(`ans_${idx}`);
+            if (!input) return;
+            const start = input.selectionStart ?? input.value.length;
+            const end = input.selectionEnd ?? input.value.length;
+            input.value = input.value.slice(0, start) + token + input.value.slice(end);
+            const cursor = start + token.length;
+            input.focus();
+            input.setSelectionRange(cursor, cursor);
+            state.userPart3[idx] = input.value;
+            const preview = document.getElementById(`decimalPreview_${idx}`);
+            if (preview) updateDecimalPreview(idx, input, preview);
+            updateAll();
+        }
+
         function renderPart3() {
             const container = document.getElementById('part3');
             container.innerHTML = '';
             part3Descriptions.forEach((text, idx) => {
                 const card = createQuestionCardBase(idx + 1, `p3q${idx}`, `<b>Câu ${idx + 1}.</b> ${text}`, state.flags.part3[idx]);
-                const wrap = document.createElement('div');
-                wrap.className = 'short-answer-wrap';
-                wrap.innerHTML = `<input class="short-answer" id="ans_${idx}" type="number" step="any" placeholder="Nhập kết quả số"><button class="ghost-btn" type="button">Xóa</button>`;
-                const input = wrap.querySelector('input');
-                const clearBtn = wrap.querySelector('button');
+                const panel = document.createElement('div');
+                panel.className = 'short-answer-panel';
+                panel.innerHTML = `
+                    <div class="short-answer-wrap">
+                        <input class="short-answer" id="ans_${idx}" type="text" inputmode="decimal" autocomplete="off" placeholder="Ví dụ: 0,91 hoặc 23.6" aria-label="Nhập đáp án số cho câu ${idx + 1}">
+                        <button class="ghost-btn" type="button" data-clear="${idx}">Xóa</button>
+                    </div>
+                    <div class="decimal-toolbar" aria-label="Phím nhập nhanh số thập phân">
+                        <button class="decimal-chip" type="button" data-token=",">Thêm dấu phẩy ,</button>
+                        <button class="decimal-chip" type="button" data-token=".">Thêm dấu chấm .</button>
+                        <button class="decimal-chip" type="button" data-token="-">Số âm −</button>
+                    </div>
+                    <div class="decimal-preview" id="decimalPreview_${idx}"></div>`;
+                const input = panel.querySelector('input');
+                const clearBtn = panel.querySelector('[data-clear]');
+                const preview = panel.querySelector(`#decimalPreview_${idx}`);
                 input.value = state.userPart3[idx] ?? '';
+                updateDecimalPreview(idx, input, preview);
                 input.addEventListener('input', e => {
                     state.userPart3[idx] = e.target.value;
+                    updateDecimalPreview(idx, input, preview);
                     updateAll();
+                });
+                input.addEventListener('blur', e => {
+                    const normalized = normalizeShortAnswer(e.target.value);
+                    if (normalized && !Number.isNaN(parseShortAnswer(normalized))) {
+                        e.target.value = formatVietnameseNumber(normalized);
+                        state.userPart3[idx] = e.target.value;
+                        updateDecimalPreview(idx, input, preview);
+                        updateAll();
+                    }
                 });
                 clearBtn.addEventListener('click', () => {
                     state.userPart3[idx] = '';
-                    renderPart3();
+                    input.value = '';
+                    updateDecimalPreview(idx, input, preview);
                     updateAll();
+                });
+                panel.querySelectorAll('.decimal-chip').forEach(btn => {
+                    btn.addEventListener('click', () => appendToShortAnswer(idx, btn.dataset.token));
                 });
                 const help = document.createElement('div');
                 help.className = 'help';
-                help.textContent = 'Nhập kết quả dạng số. Với các câu làm tròn, hệ thống chấp nhận sai số nhỏ.';
-                card.appendChild(wrap);
+                help.innerHTML = 'Học sinh có thể nhập <b>dấu phẩy</b> theo thói quen Việt Nam hoặc <b>dấu chấm</b> kiểu máy tính. Ví dụ: <b>0,91</b>, <b>0.91</b>, <b>23,6</b> đều được chấm đúng nếu khớp đáp án.';
+                card.appendChild(panel);
                 card.appendChild(help);
                 container.appendChild(card);
             });
@@ -1473,7 +1616,7 @@
             state.userPart1.forEach((ans, i) => { if (ans === part1Questions[i].correct) p1Correct++; });
             part2Data.forEach((q, i) => q.correct.forEach((correctVal, j) => { if (state.userPart2[i][j] === correctVal) p2Correct++; }));
             state.userPart3.forEach((ans, i) => {
-                const val = parseFloat(ans);
+                const val = parseShortAnswer(ans);
                 if (!Number.isNaN(val)) {
                     const corr = part3Answers[i];
                     const tol = (i === 3 || i === 5) ? 0.02 : 0.001;
@@ -1536,7 +1679,7 @@
 
             const part3Html = part3Descriptions.map((desc, i) => {
                 const raw = String(state.userPart3[i] ?? '').trim();
-                const val = parseFloat(raw);
+                const val = parseShortAnswer(raw);
                 const corr = part3Answers[i];
                 const tol = (i === 3 || i === 5) ? 0.02 : 0.001;
                 const ok = !Number.isNaN(val) && Math.abs(val - corr) <= tol;
