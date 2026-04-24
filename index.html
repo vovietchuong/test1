@@ -902,6 +902,43 @@
         body.dark .auth-ok { color:#bbf7d0; }
         body.dark .auth-warn { color:#fed7aa; }
 
+
+        .role-switcher { margin-top: 12px; display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,.24); }
+        .role-options { display:flex; flex-wrap:wrap; gap:8px; }
+        .role-btn.active { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; border-color: transparent; }
+        .teacher-code-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+        .teacher-code-row input { width: 100%; border: 1px solid rgba(148,163,184,.30); background: rgba(255,255,255,.95); padding: 10px 12px; border-radius: 14px; outline: none; }
+        body.dark .teacher-code-row input { background: rgba(15,23,42,.96); color: var(--text); border-color: rgba(71,85,105,.55); }
+        .teacher-dashboard { display: grid; gap: 14px; }
+        .teacher-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .teacher-result-list { display:grid; gap:12px; }
+        .teacher-result-item { border: 1px solid rgba(148,163,184,.24); border-radius: 20px; padding: 14px 16px; background: linear-gradient(180deg, #ffffff, #f8fbff); line-height: 1.65; }
+        body.dark .teacher-result-item { background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.86)); border-color: rgba(71,85,105,.55); }
+        .teacher-result-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+        .teacher-kpi { border-radius: 16px; border: 1px solid rgba(191,219,254,.55); background: rgba(239,246,255,.72); padding: 10px 12px; }
+        body.dark .teacher-kpi { background: rgba(30,41,59,.72); border-color: rgba(96,165,250,.25); }
+        @media (max-width: 900px) { .teacher-tools, .teacher-result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 640px) { .teacher-tools, .teacher-result-grid, .teacher-code-row { grid-template-columns: 1fr; } }
+
+
+        .login-gate { margin:0 0 18px; padding:24px; border-radius:var(--radius-xl); background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(30,64,175,.90) 54%,rgba(249,115,22,.82)); color:#fff; box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.18); display:grid; grid-template-columns:1.15fr .85fr; gap:18px; align-items:stretch; position:relative; overflow:hidden; }
+        .login-gate::after { content:""; position:absolute; right:-80px; top:-90px; width:260px; height:260px; border-radius:999px; background:radial-gradient(circle,rgba(255,255,255,.22),transparent 66%); pointer-events:none; }
+        .login-gate h2 { margin:0 0 10px; font-size:clamp(1.45rem,2vw,2.1rem); }
+        .login-gate p { margin:0; color:rgba(255,255,255,.82); line-height:1.7; }
+        .login-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:18px; }
+        .login-choice { border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.12); color:#fff; border-radius:20px; padding:16px; text-align:left; cursor:pointer; transition:.2s ease; }
+        .login-choice:hover,.login-choice.active { transform:translateY(-2px); background:rgba(255,255,255,.20); box-shadow:0 18px 35px rgba(2,8,23,.22); }
+        .login-choice b { display:block; font-size:1.03rem; margin-bottom:6px; }
+        .login-choice span { color:rgba(255,255,255,.78); line-height:1.55; font-size:.92rem; }
+        .login-box { background:rgba(255,255,255,.94); color:var(--text); border-radius:24px; padding:18px; border:1px solid rgba(255,255,255,.65); position:relative; z-index:1; }
+        .login-box h3 { margin:0 0 8px; }
+        .login-box .auth-row { margin-top:12px; }
+        .access-notice { display:none; margin:0 0 16px; padding:14px 16px; border-radius:18px; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; line-height:1.6; font-weight:700; }
+        .access-notice.show { display:block; }
+        body.dark .login-box { background:rgba(15,23,42,.94); color:var(--text); border-color:rgba(71,85,105,.55); }
+        body.dark .access-notice { background:rgba(124,45,18,.20); border-color:rgba(251,146,60,.38); color:#fed7aa; }
+        @media (max-width:900px) { .login-gate { grid-template-columns:1fr; } .login-cards { grid-template-columns:1fr; } }
+
         @media print {
             .tabs, .sidebar-card, .hero-side, .action-row, .flag-btn, .utility-row, .footer, .modal { display:none !important; }
             body, .shell { background:#fff !important; padding:0; }
@@ -967,7 +1004,7 @@
                 </div>
                 <div class="cloud-panel" id="cloudPanel"><b>Cloud:</b> Đang kết nối Firebase để lưu bài làm lên Firestore. Nếu mất mạng, hệ thống vẫn lưu cục bộ trên máy.</div>
                 <div class="auth-panel" id="authPanel">
-                    <div class="auth-title">🔐 Tài khoản làm bài</div>
+                    <div class="auth-title">🔐 Đăng nhập giáo viên / học sinh</div>
                     <div id="authStatus" class="auth-meta">Đang kiểm tra đăng nhập...</div>
                     <div id="authUserInfo" class="auth-meta"></div>
                     <div class="auth-row">
@@ -975,22 +1012,60 @@
                         <button class="small-btn" id="googleLoginBtn">Đăng nhập Google</button>
                         <button class="small-btn" id="signOutBtn">Đăng xuất</button>
                     </div>
+                    <div class="role-switcher">
+                        <div class="auth-meta">Chọn vai trò sử dụng hệ thống:</div>
+                        <div class="role-options">
+                            <button class="small-btn role-btn active" id="studentRoleBtn" type="button">👨‍🎓 Học sinh</button>
+                            <button class="small-btn role-btn" id="teacherRoleBtn" type="button">👩‍🏫 Giáo viên</button>
+                        </div>
+                        <div class="teacher-code-row hidden" id="teacherCodeRow">
+                            <input id="teacherCodeInput" type="password" placeholder="Mã giáo viên nội bộ" autocomplete="off" />
+                            <button class="small-btn" id="verifyTeacherBtn" type="button">Xác nhận</button>
+                        </div>
+                        <div id="roleStatus" class="auth-meta">Vai trò hiện tại: Học sinh.</div>
+                    </div>
                 </div>
                 <div class="violation-log" id="violationLog">Chưa ghi nhận rời tab hoặc thoát toàn màn hình.</div>
             </aside>
         </section>
 
+
+        <section class="login-gate" id="loginGate">
+            <div>
+                <span class="badge">🔐 Cổng vào hệ thống</span>
+                <h2>Đăng nhập ngay từ trang chủ</h2>
+                <p>Khách có thể xem bài giảng và ôn tập. Học sinh đăng nhập để mở phòng thi online và lưu bài. Giáo viên đăng nhập, xác nhận mã nội bộ để mở bảng quản lý kết quả.</p>
+                <div class="login-cards">
+                    <button class="login-choice active" id="guestAccessBtn" type="button"><b>👀 Khách</b><span>Xem bài giảng, ôn tập, hướng dẫn. Không mở phòng thi.</span></button>
+                    <button class="login-choice" id="studentAccessBtn" type="button"><b>👨‍🎓 Học sinh</b><span>Vào phòng thi online, nộp bài, lưu kết quả Firebase.</span></button>
+                    <button class="login-choice" id="teacherAccessBtn" type="button"><b>👩‍🏫 Giáo viên</b><span>Mở quản lý lớp, xem kết quả học sinh đã nộp.</span></button>
+                </div>
+            </div>
+            <div class="login-box">
+                <h3>Trạng thái truy cập</h3>
+                <div id="landingAccessText" class="auth-meta">Đang ở chế độ khách.</div>
+                <div class="auth-row">
+                    <button class="small-btn" id="landingGuestBtn" type="button">Xem ôn tập</button>
+                    <button class="small-btn" id="landingStudentBtn" type="button">Đăng nhập học sinh</button>
+                    <button class="small-btn" id="landingTeacherBtn" type="button">Đăng nhập giáo viên</button>
+                </div>
+                <div class="auth-meta" style="margin-top:10px">Mã giáo viên mặc định: <b>GV2026</b>. Khi dùng chính thức nên cấp quyền bằng Firestore <b>teacherAccess/{UID}</b>.</div>
+            </div>
+        </section>
+        <div class="access-notice" id="accessNotice"></div>
+
         <div class="tabs">
-            <button class="tab-btn active" data-tab="exam">📄 Phòng thi</button>
-            <button class="tab-btn" data-tab="review">📚 Ôn tập chủ đề</button>
+            <button class="tab-btn hidden" data-tab="exam" id="examTabBtn">📄 Phòng thi</button>
+            <button class="tab-btn active" data-tab="review" id="reviewTabBtn">📚 Bài giảng & ôn tập</button>
             <button class="tab-btn" data-tab="guide">🧭 Hướng dẫn sử dụng</button>
+            <button class="tab-btn hidden" data-tab="teacher" id="teacherTabBtn">👩‍🏫 Quản lý giáo viên</button>
         </div>
 
         <div class="workspace">
             <main class="main-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;border:1px solid rgba(191,219,254,.55);border-radius:20px;background:linear-gradient(135deg,rgba(239,246,255,.95),rgba(248,250,252,.88));box-shadow:0 10px 24px rgba(15,23,42,.04)"><div><div style="font-weight:900;font-size:1.05rem;letter-spacing:-.02em">Phòng thi trực tuyến</div><div class="muted" style="margin-top:4px">Giao diện mới ưu tiên rõ ràng, tập trung và dễ thao tác khi làm bài lâu.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge" style="background:#e0edff;color:#1d4ed8;border:none">🎨 Giao diện mới</span><span class="badge" style="background:#ecfeff;color:#0f766e;border:none">📱 Responsive</span></div></div>
                 <div class="pro-tip"><b>Bản production frontend:</b> có trộn câu hỏi cho từng phiên, chế độ sáng/tối, hỗ trợ ảnh phóng to, cảnh báo rời tab/toàn màn hình, đăng nhập Firebase Auth, lưu bài theo UID và đồng bộ Firestore. Có thể mở tiếp dashboard giáo viên ở giai đoạn sau.</div>
-                <section id="examTab">
+                <section id="examTab" class="hidden">
                     <div class="panel-title">
                         <h2>Thông tin thí sinh</h2>
                         <span class="muted">Dữ liệu tự lưu trên máy đang dùng</span>
@@ -1035,7 +1110,7 @@
                     <div id="resultPanel" class="result-panel"></div>
                 </section>
 
-                <section id="reviewTab" class="hidden">
+                <section id="reviewTab">
                     <div class="panel-title">
                         <h2>Ôn tập theo chủ đề trọng tâm</h2>
                         <span class="muted">Có thể mở rộng thêm chủ đề và ngân hàng câu hỏi</span>
@@ -1061,6 +1136,28 @@
                             <div class="theory"><b>Ghi nhớ:</b> Công thức xác suất toàn phần và Bayes rất hay xuất hiện trong các câu vận dụng thực tế. Nên vẽ sơ đồ cây để tránh nhầm dữ kiện.</div>
                             <div class="practice"><b>Bài tập:</b> Từ dữ kiện tin nhắn quảng cáo và đánh dấu spam, hãy xác định xác suất tin nhắn không phải quảng cáo.<br><button class="small-btn toggle-answer" data-ans="ans4">Xem hướng dẫn</button><div id="ans4" class="answer-box">Sử dụng sơ đồ cây và cộng các nhánh tương ứng. Kết quả gần đúng là \(0{,}8225\).</div></div>
                         </article>
+                    </div>
+                </section>
+
+
+                <section id="teacherTab" class="hidden">
+                    <div class="panel-title"><h2>Quản lý giáo viên</h2><span class="muted">Theo dõi bài làm đã nộp trên Firestore</span></div>
+                    <div class="teacher-dashboard">
+                        <div class="topic-card"><h3>👩‍🏫 Bảng điều khiển giáo viên</h3><div class="theory">Giáo viên đăng nhập Google, xác nhận mã nội bộ, sau đó có thể xem danh sách kết quả học sinh đã nộp. Để bảo mật thật khi dùng chính thức, thầy tạo document <b>teacherAccess/{UID giáo viên}</b> trong Firestore.</div></div>
+                        <div class="teacher-tools">
+                            <div class="field"><label for="teacherClassFilter">Lọc theo lớp</label><input id="teacherClassFilter" type="text" placeholder="Ví dụ: 12A1" /></div>
+                            <div class="field"><label for="teacherNameFilter">Tìm học sinh</label><input id="teacherNameFilter" type="text" placeholder="Tên hoặc SBD" /></div>
+                            <div class="field"><label for="teacherLimitSelect">Số bài tải</label><select id="teacherLimitSelect"><option value="20">20 bài</option><option value="50">50 bài</option><option value="100">100 bài</option></select></div>
+                            <div class="field"><label>&nbsp;</label><button class="primary-btn" id="loadTeacherResultsBtn" type="button">Tải kết quả</button></div>
+                        </div>
+                        <div class="result-grid">
+                            <div class="result-box">Số bài đã tải<b id="teacherLoadedCount">0</b></div>
+                            <div class="result-box">Điểm trung bình<b id="teacherAverageScore">-</b></div>
+                            <div class="result-box">Điểm cao nhất<b id="teacherMaxScore">-</b></div>
+                            <div class="result-box">Bài có cảnh báo<b id="teacherWarningCount">0</b></div>
+                        </div>
+                        <div id="teacherResultStatus" class="status-line">Chưa tải dữ liệu.</div>
+                        <div id="teacherResultsList" class="teacher-result-list"></div>
                     </div>
                 </section>
 
@@ -1165,17 +1262,34 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
-
-    match /users/{uid}/examSessions/{sessionId} {
-      allow create, update, read: if isOwner(uid)
-        && request.resource.data.ownerUid == request.auth.uid;
-      allow delete: if false;
+    function isTeacher() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/teacherAccess/$(request.auth.uid));
     }
 
-    match /users/{uid}/examResults/{sessionId} {
-      allow create, update, read: if isOwner(uid)
-        && request.resource.data.ownerUid == request.auth.uid;
+    match /teacherAccess/{teacherUid} {
+      allow read: if signedIn() && request.auth.uid == teacherUid;
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isTeacher();
+      allow create, update: if isOwner(uid);
       allow delete: if false;
+
+      match /examSessions/{sessionId} {
+        allow create, update: if isOwner(uid)
+          && request.resource.data.ownerUid == request.auth.uid;
+        allow read: if isOwner(uid) || isTeacher();
+        allow delete: if false;
+      }
+
+      match /examResults/{sessionId} {
+        allow create, update: if isOwner(uid)
+          && request.resource.data.ownerUid == request.auth.uid;
+        allow read: if isOwner(uid) || isTeacher();
+        allow delete: if false;
+      }
     }
   }
 }`;
@@ -1307,6 +1421,9 @@ service cloud.firestore {
         let state = {
             candidate: { name: '', id: '', class: '' },
             user: { uid: null, isAnonymous: true, email: '', displayName: '', provider: 'local' },
+            role: 'guest',
+            accessMode: 'guest',
+            teacherVerified: false,
             userPart1: [],
             userPart2: Array.from({length: 4}, () => [null, null, null, null]),
             userPart3: new Array(6).fill(''),
@@ -1353,6 +1470,144 @@ service cloud.firestore {
             status.textContent = message;
         }
 
+
+        function getTeacherCode() {
+            return 'GV2026';
+        }
+
+        function setRoleStatus(message, ok = true) {
+            const el = document.getElementById('roleStatus');
+            if (!el) return;
+            el.className = ok ? 'auth-meta auth-ok' : 'auth-meta auth-warn';
+            el.textContent = message;
+        }
+
+        function isLoggedInForExam() {
+            return !!(state.user && state.user.uid);
+        }
+
+        function canAccessTab(tab) {
+            if (tab === 'review' || tab === 'guide') return true;
+            if (tab === 'exam') return state.accessMode === 'student' && isLoggedInForExam();
+            if (tab === 'teacher') return state.accessMode === 'teacher' && isLoggedInForExam() && state.teacherVerified;
+            return false;
+        }
+
+        function showAccessNotice(message) {
+            const el = document.getElementById('accessNotice');
+            if (!el) return;
+            el.textContent = message || '';
+            el.classList.toggle('show', !!message);
+            if (message) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function setActiveAccessCard() {
+            document.getElementById('guestAccessBtn')?.classList.toggle('active', state.accessMode === 'guest');
+            document.getElementById('studentAccessBtn')?.classList.toggle('active', state.accessMode === 'student');
+            document.getElementById('teacherAccessBtn')?.classList.toggle('active', state.accessMode === 'teacher');
+            const text = document.getElementById('landingAccessText');
+            if (text) {
+                if (state.accessMode === 'teacher') text.innerHTML = state.teacherVerified
+                    ? 'Đang ở chế độ <b>giáo viên</b>: đã mở bảng quản lý.'
+                    : 'Đang ở chế độ <b>giáo viên</b>: cần đăng nhập Google và nhập mã giáo viên.';
+                else if (state.accessMode === 'student') text.innerHTML = isLoggedInForExam()
+                    ? 'Đang ở chế độ <b>học sinh</b>: đã mở phòng thi online.'
+                    : 'Đang ở chế độ <b>học sinh</b>: cần đăng nhập để mở phòng thi.';
+                else text.innerHTML = 'Đang ở chế độ <b>khách</b>: xem bài giảng và ôn tập.';
+            }
+        }
+
+        function switchTab(tab, silent = false) {
+            if (!canAccessTab(tab)) {
+                if (!silent) {
+                    const msg = tab === 'exam'
+                        ? 'Khách chưa được mở phòng thi. Học sinh hãy chọn Học sinh và đăng nhập để thi online.'
+                        : 'Chức năng quản lý chỉ dành cho giáo viên đã đăng nhập và xác nhận mã nội bộ.';
+                    showAccessNotice(msg);
+                }
+                tab = 'review';
+            } else {
+                showAccessNotice('');
+            }
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            document.getElementById('examTab')?.classList.toggle('hidden', tab !== 'exam');
+            document.getElementById('reviewTab')?.classList.toggle('hidden', tab !== 'review');
+            document.getElementById('guideTab')?.classList.toggle('hidden', tab !== 'guide');
+            document.getElementById('teacherTab')?.classList.toggle('hidden', tab !== 'teacher');
+            refreshMath();
+        }
+
+        function updateRoleUi() {
+            const isTeacher = state.accessMode === 'teacher' || state.role === 'teacher';
+            const isStudent = state.accessMode === 'student' || state.role === 'student';
+            document.getElementById('studentRoleBtn')?.classList.toggle('active', isStudent);
+            document.getElementById('teacherRoleBtn')?.classList.toggle('active', isTeacher);
+            document.getElementById('teacherCodeRow')?.classList.toggle('hidden', !isTeacher || state.teacherVerified);
+            document.getElementById('examTabBtn')?.classList.toggle('hidden', !canAccessTab('exam'));
+            document.getElementById('teacherTabBtn')?.classList.toggle('hidden', !canAccessTab('teacher'));
+            setActiveAccessCard();
+            setRoleStatus(isTeacher
+                ? (state.teacherVerified ? 'Vai trò hiện tại: Giáo viên đã xác nhận.' : 'Vai trò hiện tại: Giáo viên, cần đăng nhập và nhập mã nội bộ để mở bảng quản lý.')
+                : (isStudent ? 'Vai trò hiện tại: Học sinh.' : 'Vai trò hiện tại: Khách xem ôn tập.'),
+                !isTeacher || state.teacherVerified);
+            const active = document.querySelector('.tab-btn.active')?.dataset.tab || 'review';
+            if (!canAccessTab(active)) switchTab('review', true);
+        }
+
+        function setAccessMode(mode) {
+            state.accessMode = ['guest','student','teacher'].includes(mode) ? mode : 'guest';
+            state.role = state.accessMode;
+            if (state.accessMode !== 'teacher') state.teacherVerified = false;
+            saveState(true, { skipCloud: state.accessMode === 'guest' });
+            updateRoleUi();
+            syncUserProfile();
+            if (state.accessMode === 'guest') switchTab('review');
+            if (state.accessMode === 'student') {
+                if (isLoggedInForExam()) switchTab('exam');
+                else showAccessNotice('Học sinh cần đăng nhập ẩn danh hoặc Google để mở phòng thi online.');
+            }
+            if (state.accessMode === 'teacher') {
+                if (!isLoggedInForExam()) showAccessNotice('Giáo viên cần đăng nhập Google trước, sau đó nhập mã GV2026 để mở quản lý.');
+                else if (state.teacherVerified) switchTab('teacher');
+            }
+        }
+
+        function selectRole(role) {
+            setAccessMode(role === 'teacher' ? 'teacher' : 'student');
+        }
+
+        async function verifyTeacherCode() {
+            const input = document.getElementById('teacherCodeInput');
+            const code = (input?.value || '').trim();
+            if (code !== getTeacherCode()) {
+                setRoleStatus('Mã giáo viên chưa đúng. Thầy có thể đổi mã trong hàm getTeacherCode().', false);
+                return;
+            }
+            state.role = 'teacher';
+            state.teacherVerified = true;
+            saveState(true, { skipCloud: true });
+            updateRoleUi();
+            await syncUserProfile();
+            setRoleStatus('Đã mở quyền giao diện giáo viên trên máy này.', true);
+            switchTab('teacher');
+        }
+
+        async function syncUserProfile() {
+            if (!firebaseReady || !firestoreDb || !state.user?.uid) return;
+            try {
+                await firestoreDb.collection('users').doc(state.user.uid).set({
+                    uid: state.user.uid,
+                    email: state.user.email || '',
+                    displayName: state.user.displayName || '',
+                    role: state.role || 'guest',
+                    teacherVerifiedClient: !!state.teacherVerified,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (err) {
+                console.warn('Không lưu được hồ sơ người dùng:', err);
+            }
+        }
+
         function updateAuthUi(user) {
             const info = document.getElementById('authUserInfo');
             const signOutBtn = document.getElementById('signOutBtn');
@@ -1369,6 +1624,7 @@ service cloud.firestore {
                 if (info) info.innerHTML = `UID: <b>${escapeHtml(user.uid)}</b>${user.email ? `<br>Email: <b>${escapeHtml(user.email)}</b>` : ''}`;
                 if (signOutBtn) signOutBtn.style.display = 'inline-flex';
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                syncUserProfile();
                 queueCloudSave('auth-ready');
             } else {
                 currentUser = null;
@@ -1384,6 +1640,7 @@ service cloud.firestore {
             try {
                 setAuthStatus('Đang tạo tài khoản làm bài nhanh...', true);
                 await firebaseAuth.signInAnonymously();
+                setAccessMode('student');
             } catch (err) {
                 console.error('Anonymous login error:', err);
                 setAuthStatus('Chưa bật Anonymous Auth trong Firebase Console hoặc cấu hình Auth chưa đúng.', false);
@@ -1395,6 +1652,8 @@ service cloud.firestore {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 await firebaseAuth.signInWithPopup(provider);
+                if (state.accessMode === 'teacher' || state.role === 'teacher') setAccessMode('teacher');
+                else setAccessMode('student');
             } catch (err) {
                 console.error('Google login error:', err);
                 setAuthStatus('Chưa đăng nhập Google được. Thầy kiểm tra Google provider trong Firebase Auth.', false);
@@ -1404,6 +1663,7 @@ service cloud.firestore {
         async function signOutFirebase() {
             if (!firebaseAuth) return;
             await firebaseAuth.signOut();
+            setAccessMode('guest');
             saveState(true, { skipCloud: true });
         }
 
@@ -1418,7 +1678,7 @@ service cloud.firestore {
                 firebaseAuth = firebase.auth ? firebase.auth() : null;
                 if (firebaseAuth) {
                     firebaseAuth.onAuthStateChanged(updateAuthUi);
-                    if (!firebaseAuth.currentUser) signInAnonymously();
+                    if (!firebaseAuth.currentUser) updateAuthUi(null);
                 } else {
                     setAuthStatus('Không tải được Firebase Auth.', false);
                 }
@@ -1462,6 +1722,8 @@ service cloud.firestore {
                 ownerUid: state.user?.uid || null,
                 examVersion: EXAM_VERSION,
                 user: state.user || null,
+                role: state.role || 'guest',
+                teacherVerifiedClient: !!state.teacherVerified,
                 candidate: state.candidate,
                 userPart1: state.userPart1,
                 userPart2: state.userPart2,
@@ -1653,6 +1915,9 @@ service cloud.firestore {
                     ...parsed,
                     candidate: parsed.candidate || state.candidate,
                     user: parsed.user || state.user,
+                    role: parsed.role || state.role || 'guest',
+                    accessMode: parsed.accessMode || parsed.role || state.accessMode || 'guest',
+                    teacherVerified: !!parsed.teacherVerified,
                     security: parsed.security || state.security,
                     timerSeconds: Number.isFinite(parsed.timerSeconds) ? parsed.timerSeconds : EXAM_DURATION,
                     theme: parsed.theme || DEFAULT_THEME,
@@ -2086,6 +2351,9 @@ service cloud.firestore {
             state = {
                 candidate: { name: '', id: '', class: '' },
                 user: state.user || { uid: null, isAnonymous: true, email: '', displayName: '', provider: 'local' },
+                role: state.role || 'guest',
+                accessMode: state.accessMode || state.role || 'guest',
+                teacherVerified: !!state.teacherVerified,
                 userPart1: new Array(rawPart1Questions.length).fill(null),
                 userPart2: Array.from({length: 4}, () => [null, null, null, null]),
                 userPart3: new Array(6).fill(''),
@@ -2119,6 +2387,7 @@ service cloud.firestore {
         function startTimer() {
             updateTimer();
             setInterval(() => {
+                if (state.accessMode !== 'student' || !isLoggedInForExam()) return;
                 if (state.timerSeconds <= 0) return;
                 state.timerSeconds -= 1;
                 updateTimer();
@@ -2132,15 +2401,25 @@ service cloud.firestore {
 
         function setupTabs() {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    const tab = btn.dataset.tab;
-                    document.getElementById('examTab').classList.toggle('hidden', tab !== 'exam');
-                    document.getElementById('reviewTab').classList.toggle('hidden', tab !== 'review');
-                    document.getElementById('guideTab').classList.toggle('hidden', tab !== 'guide');
-                    refreshMath();
-                });
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
+            document.getElementById('guestAccessBtn')?.addEventListener('click', () => setAccessMode('guest'));
+            document.getElementById('landingGuestBtn')?.addEventListener('click', () => setAccessMode('guest'));
+            document.getElementById('studentAccessBtn')?.addEventListener('click', () => {
+                setAccessMode('student');
+                if (!isLoggedInForExam()) signInAnonymously();
+            });
+            document.getElementById('landingStudentBtn')?.addEventListener('click', () => {
+                setAccessMode('student');
+                if (!isLoggedInForExam()) signInAnonymously();
+            });
+            document.getElementById('teacherAccessBtn')?.addEventListener('click', () => {
+                setAccessMode('teacher');
+                if (!isLoggedInForExam()) signInWithGoogle();
+            });
+            document.getElementById('landingTeacherBtn')?.addEventListener('click', () => {
+                setAccessMode('teacher');
+                if (!isLoggedInForExam()) signInWithGoogle();
             });
         }
 
@@ -2254,6 +2533,83 @@ service cloud.firestore {
             });
         }
 
+
+
+        function getScoreNumber(item) {
+            const score = item?.score || {};
+            const value = score.totalScore ?? score.score ?? score.total ?? null;
+            const num = Number(value);
+            return Number.isFinite(num) ? num : null;
+        }
+
+        function renderTeacherResults(items) {
+            const list = document.getElementById('teacherResultsList');
+            const status = document.getElementById('teacherResultStatus');
+            if (!list) return;
+            const classFilter = (document.getElementById('teacherClassFilter')?.value || '').trim().toLowerCase();
+            const nameFilter = (document.getElementById('teacherNameFilter')?.value || '').trim().toLowerCase();
+            let filtered = (items || []).filter(item => {
+                const c = String(item.candidate?.class || '').toLowerCase();
+                const n = `${item.candidate?.name || ''} ${item.candidate?.id || ''}`.toLowerCase();
+                return (!classFilter || c.includes(classFilter)) && (!nameFilter || n.includes(nameFilter));
+            });
+            const scores = filtered.map(getScoreNumber).filter(v => v !== null);
+            const avg = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
+            const max = scores.length ? Math.max(...scores) : null;
+            const warnCount = filtered.filter(item => (item.security?.tabSwitches || 0) + (item.security?.fullscreenExits || 0) > 0).length;
+            document.getElementById('teacherLoadedCount').textContent = filtered.length;
+            document.getElementById('teacherAverageScore').textContent = avg === null ? '-' : avg.toFixed(2);
+            document.getElementById('teacherMaxScore').textContent = max === null ? '-' : max.toFixed(2);
+            document.getElementById('teacherWarningCount').textContent = warnCount;
+            if (!filtered.length) {
+                list.innerHTML = '<div class="teacher-result-item">Chưa có kết quả phù hợp bộ lọc.</div>';
+                if (status) status.textContent = 'Đã tải dữ liệu nhưng chưa có bài phù hợp.';
+                return;
+            }
+            list.innerHTML = filtered.map(item => {
+                const score = getScoreNumber(item);
+                const submitted = item.submittedAt || item.updatedAtClient || 'Chưa rõ thời điểm';
+                const candidate = item.candidate || {};
+                const progress = item.progress || {};
+                return `<article class="teacher-result-item">
+                    <b>${escapeHtml(candidate.name || 'Chưa nhập tên')}</b> · SBD: <b>${escapeHtml(candidate.id || '-')}</b> · Lớp: <b>${escapeHtml(candidate.class || '-')}</b><br>
+                    Email/UID: ${escapeHtml(item.user?.email || item.ownerUid || '-')}
+                    <div class="teacher-result-grid">
+                        <div class="teacher-kpi">Điểm<br><b>${score === null ? '-' : score.toFixed(2)}</b></div>
+                        <div class="teacher-kpi">Hoàn thành<br><b>${progress.doneUnits || 0}/${progress.totalUnits || 34}</b></div>
+                        <div class="teacher-kpi">Cảnh báo<br><b>${(item.security?.tabSwitches || 0)} tab · ${(item.security?.fullscreenExits || 0)} full</b></div>
+                        <div class="teacher-kpi">Nộp lúc<br><b>${escapeHtml(String(submitted))}</b></div>
+                    </div>
+                </article>`;
+            }).join('');
+            if (status) status.textContent = `Đã hiển thị ${filtered.length} bài làm.`;
+        }
+
+        async function loadTeacherResults() {
+            const status = document.getElementById('teacherResultStatus');
+            if (!state.user?.uid || !firebaseReady || !firestoreDb) {
+                if (status) status.textContent = 'Cần đăng nhập Firebase trước khi tải dữ liệu.';
+                return;
+            }
+            if (state.role !== 'teacher' || !state.teacherVerified) {
+                if (status) status.textContent = 'Cần chọn vai trò giáo viên và xác nhận mã nội bộ.';
+                return;
+            }
+            try {
+                if (status) status.textContent = 'Đang tải kết quả từ Firestore...';
+                const limit = Number(document.getElementById('teacherLimitSelect')?.value || 20);
+                const snap = await firestoreDb.collectionGroup(FIREBASE_RESULTS_COLLECTION).limit(limit).get();
+                const items = [];
+                snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+                items.sort((a,b) => String(b.submittedAt || b.updatedAtClient || '').localeCompare(String(a.submittedAt || a.updatedAtClient || '')));
+                window.teacherCachedResults = items;
+                renderTeacherResults(items);
+            } catch (err) {
+                console.error('Teacher load results error:', err);
+                if (status) status.textContent = 'Chưa tải được. Cần tạo teacherAccess/{UID giáo viên} trong Firestore Rules hoặc kiểm tra quyền đọc collectionGroup.';
+            }
+        }
+
         function setupActions() {
             document.getElementById('submitBtn').addEventListener('click', () => showResult(false));
             document.getElementById('saveBtn').addEventListener('click', () => {
@@ -2273,9 +2629,15 @@ service cloud.firestore {
                 if (e.target.id === 'summaryModal') e.currentTarget.classList.remove('open');
             });
             document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-            document.getElementById('anonymousLoginBtn')?.addEventListener('click', signInAnonymously);
-            document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithGoogle);
+            document.getElementById('anonymousLoginBtn')?.addEventListener('click', () => { setAccessMode('student'); signInAnonymously(); });
+            document.getElementById('googleLoginBtn')?.addEventListener('click', () => { if (state.accessMode !== 'teacher') setAccessMode('student'); signInWithGoogle(); });
             document.getElementById('signOutBtn')?.addEventListener('click', signOutFirebase);
+            document.getElementById('studentRoleBtn')?.addEventListener('click', () => selectRole('student'));
+            document.getElementById('teacherRoleBtn')?.addEventListener('click', () => selectRole('teacher'));
+            document.getElementById('verifyTeacherBtn')?.addEventListener('click', verifyTeacherCode);
+            document.getElementById('loadTeacherResultsBtn')?.addEventListener('click', loadTeacherResults);
+            document.getElementById('teacherClassFilter')?.addEventListener('input', () => renderTeacherResults(window.teacherCachedResults || []));
+            document.getElementById('teacherNameFilter')?.addEventListener('input', () => renderTeacherResults(window.teacherCachedResults || []));
             const rulesBlock = document.getElementById('rulesSampleBlock');
             if (rulesBlock) rulesBlock.textContent = FIRESTORE_RULES_SAMPLE;
             document.getElementById('copyRulesBtn')?.addEventListener('click', async () => {
@@ -2299,6 +2661,8 @@ service cloud.firestore {
             setupThemeToggle();
             setupImageModal();
             setupSecurityMonitoring();
+            updateRoleUi();
+            switchTab(canAccessTab('exam') ? 'exam' : 'review', true);
             rerenderExamOnly();
             updateDashboard();
             updateSecurityLog();
