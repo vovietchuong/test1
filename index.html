@@ -1085,6 +1085,14 @@
                                 - Có thể tích hợp thêm đăng nhập, lưu bài lên máy chủ, trộn đề, chống gian lận và xuất báo cáo lớp học.
                             </div>
                         </article>
+                        <article class="topic-card">
+                            <h3>3. Cấu hình Firestore Rules cho giai đoạn 1</h3>
+                            <div class="theory">
+                                Vào Firebase Console → Firestore Database → Rules, dán bộ luật mẫu dưới đây để chỉ học sinh đã đăng nhập mới ghi/đọc bài làm của chính mình:
+                                <pre style="white-space:pre-wrap;overflow:auto;margin-top:12px;padding:14px;border-radius:16px;background:#0f172a;color:#e5e7eb;font-size:.86rem"><code id="rulesSampleBlock"></code></pre>
+                                <button class="small-btn" id="copyRulesBtn" type="button">📋 Sao chép Rules</button>
+                            </div>
+                        </article>
                     </div>
                 </section>
             </main>
@@ -1151,6 +1159,26 @@
         const FIREBASE_COLLECTION = 'examSessions';
         const FIREBASE_RESULTS_COLLECTION = 'examResults';
         const CLOUD_SAVE_DEBOUNCE = 1800;
+        const EXAM_VERSION = 'thpt-toan-2026-giai-doan-1';
+        const FIRESTORE_RULES_SAMPLE = String.raw`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /users/{uid}/examSessions/{sessionId} {
+      allow create, update, read: if isOwner(uid)
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /users/{uid}/examResults/{sessionId} {
+      allow create, update, read: if isOwner(uid)
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}`;
 
         const rawPart1Questions = [
             { text: "Cho hình lăng trụ ABC.A'B'C'. Phát biểu đúng về \\( \\overrightarrow{BA} + \\overrightarrow{A'C'} \\) ?", options: ["\\( \\overrightarrow{BC'} \\)", "\\( \\overrightarrow{C'B'} \\)", "\\( \\overrightarrow{BC} \\)", "\\( \\overrightarrow{A'A} \\)"], correctIndex: 2 },
@@ -1413,12 +1441,26 @@
             }
         }
 
+        function buildExamOrderMetadata() {
+            return {
+                part1: part1Questions.map((q, displayIndex) => ({
+                    displayIndex,
+                    originalIndex: q.originalIndex,
+                    correct: q.correct,
+                    optionOrder: q.optionOrder || []
+                })),
+                part2: part2Data.map((q, displayIndex) => ({ displayIndex, originalIndex: q.originalIndex })),
+                part3: part3Descriptions.map((_, displayIndex) => ({ displayIndex, answer: part3Answers[displayIndex] }))
+            };
+        }
+
         function buildCloudPayload(reason = 'autosave') {
             const progress = countProgress();
             return {
                 reason,
                 sessionId: state.sessionId,
                 ownerUid: state.user?.uid || null,
+                examVersion: EXAM_VERSION,
                 user: state.user || null,
                 candidate: state.candidate,
                 userPart1: state.userPart1,
@@ -1428,6 +1470,7 @@
                 timerSeconds: state.timerSeconds,
                 sessionSeed: state.sessionSeed,
                 orderVersion: state.orderVersion,
+                examOrder: buildExamOrderMetadata(),
                 progress: {
                     p1Done: progress.p1Done,
                     p2Done: progress.p2Done,
@@ -1560,6 +1603,7 @@
             part3Answers = part3Order.map(originalIndex => rawPart3Answers[originalIndex]);
             part3Descriptions = part3Order.map(originalIndex => rawPart3Descriptions[originalIndex]);
             part3Explanations = part3Order.map(originalIndex => rawPart3Explanations[originalIndex]);
+            state.orderVersion = 2;
 
             const shuffleStatus = document.getElementById('shuffleStatus');
             if (shuffleStatus) shuffleStatus.textContent = '🔀 Đề và đáp án đã được trộn theo phiên làm bài';
@@ -1576,12 +1620,12 @@
 
         function ensureStateArrays() {
             if (!Array.isArray(state.userPart1) || state.userPart1.length !== rawPart1Questions.length) state.userPart1 = new Array(rawPart1Questions.length).fill(null);
-            if (!state.flags || !Array.isArray(state.flags.part1) || state.flags.part1.length !== rawPart1Questions.length) {
-                state.flags = state.flags || {};
-                state.flags.part1 = new Array(rawPart1Questions.length).fill(false);
-                state.flags.part2 = state.flags.part2 || new Array(4).fill(false);
-                state.flags.part3 = state.flags.part3 || new Array(6).fill(false);
-            }
+            if (!Array.isArray(state.userPart2) || state.userPart2.length !== rawPart2Data.length) state.userPart2 = Array.from({length: rawPart2Data.length}, () => [null, null, null, null]);
+            if (!Array.isArray(state.userPart3) || state.userPart3.length !== rawPart3Answers.length) state.userPart3 = new Array(rawPart3Answers.length).fill('');
+            state.flags = state.flags || {};
+            if (!Array.isArray(state.flags.part1) || state.flags.part1.length !== rawPart1Questions.length) state.flags.part1 = new Array(rawPart1Questions.length).fill(false);
+            if (!Array.isArray(state.flags.part2) || state.flags.part2.length !== rawPart2Data.length) state.flags.part2 = new Array(rawPart2Data.length).fill(false);
+            if (!Array.isArray(state.flags.part3) || state.flags.part3.length !== rawPart3Answers.length) state.flags.part3 = new Array(rawPart3Answers.length).fill(false);
         }
 
         function saveState(showStatus = false, options = {}) {
@@ -1844,7 +1888,7 @@
             const p2Done = state.userPart2.flat().filter(v => v !== null).length;
             const p3Done = state.userPart3.filter(v => String(v).trim() !== '').length;
             const flags = [...state.flags.part1, ...state.flags.part2, ...state.flags.part3].filter(Boolean).length;
-            const totalUnits = 12 + 4 + 6;
+            const totalUnits = rawPart1Questions.length + rawPart2Data.length + rawPart3Answers.length;
             const doneUnits = p1Done + state.userPart2.filter((_, i) => isPart2QuestionAnswered(i)).length + p3Done;
             return { p1Done, p2Done, p3Done, flags, totalUnits, doneUnits };
         }
@@ -1862,9 +1906,9 @@
             const p2 = document.getElementById('palettePart2');
             const p3 = document.getElementById('palettePart3');
             p1.innerHTML = ''; p2.innerHTML = ''; p3.innerHTML = '';
-            for (let i = 0; i < 12; i++) p1.appendChild(makePaletteBtn(i + 1, `p1q${i}`, !!state.userPart1[i], state.flags.part1[i]));
-            for (let i = 0; i < 4; i++) p2.appendChild(makePaletteBtn(i + 1, `p2q${i}`, isPart2QuestionAnswered(i), state.flags.part2[i]));
-            for (let i = 0; i < 6; i++) p3.appendChild(makePaletteBtn(i + 1, `p3q${i}`, isPart3QuestionAnswered(i), state.flags.part3[i]));
+            for (let i = 0; i < rawPart1Questions.length; i++) p1.appendChild(makePaletteBtn(i + 1, `p1q${i}`, !!state.userPart1[i], state.flags.part1[i]));
+            for (let i = 0; i < rawPart2Data.length; i++) p2.appendChild(makePaletteBtn(i + 1, `p2q${i}`, isPart2QuestionAnswered(i), state.flags.part2[i]));
+            for (let i = 0; i < rawPart3Answers.length; i++) p3.appendChild(makePaletteBtn(i + 1, `p3q${i}`, isPart3QuestionAnswered(i), state.flags.part3[i]));
         }
 
         function toggleFlag(globalKey) {
@@ -2011,8 +2055,8 @@
                 <div class="answer-key">
                     <b>Đáp án tham chiếu theo đề đã trộn</b><br>
                     Phần I: ${part1Questions.map(q => q.correct).join(' - ')}<br>
-                    Phần II: (Đ, S, S, S) · (Đ, S, Đ, S) · (Đ, S, Đ, S) · (Đ, Đ, S, Đ)<br>
-                    Phần III: 42 | 1537 | 2650 | 0,91 | 1008 | 23,6<br>
+                    Phần II: ${part2Data.map(q => '(' + q.correct.map(v => v ? 'Đ' : 'S').join(', ') + ')').join(' · ')}<br>
+                    Phần III: ${part3Answers.map(v => String(v).replace('.', ',')).join(' | ')}<br>
                     Nhật ký giám sát: rời tab <b>${state.security.tabSwitches}</b> lần, thoát toàn màn hình <b>${state.security.fullscreenExits}</b> lần.
                 </div>
                 ${buildDetailedSolutions()}`;
@@ -2052,7 +2096,7 @@
                 theme: preservedTheme,
                 security: { tabSwitches: 0, fullscreenExits: 0, warnings: [] },
                 sessionSeed: newSeed,
-                orderVersion: 1,
+                orderVersion: 2,
                 sessionId: makeSessionId(),
                 cloud: { enabled: firebaseReady, lastSavedAt: null, lastSubmittedAt: null, error: '' }
             };
@@ -2128,9 +2172,9 @@
         }
 
         function jumpToFirstUnanswered() {
-            for (let i = 0; i < 12; i++) if (!state.userPart1[i]) return document.getElementById(`p1q${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
-            for (let i = 0; i < 4; i++) if (!isPart2QuestionAnswered(i)) return document.getElementById(`p2q${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
-            for (let i = 0; i < 6; i++) if (!isPart3QuestionAnswered(i)) return document.getElementById(`p3q${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            for (let i = 0; i < rawPart1Questions.length; i++) if (!state.userPart1[i]) return document.getElementById(`p1q${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            for (let i = 0; i < rawPart2Data.length; i++) if (!isPart2QuestionAnswered(i)) return document.getElementById(`p2q${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            for (let i = 0; i < rawPart3Answers.length; i++) if (!isPart3QuestionAnswered(i)) return document.getElementById(`p3q${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
             openSummaryModal();
         }
 
@@ -2232,6 +2276,16 @@
             document.getElementById('anonymousLoginBtn')?.addEventListener('click', signInAnonymously);
             document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithGoogle);
             document.getElementById('signOutBtn')?.addEventListener('click', signOutFirebase);
+            const rulesBlock = document.getElementById('rulesSampleBlock');
+            if (rulesBlock) rulesBlock.textContent = FIRESTORE_RULES_SAMPLE;
+            document.getElementById('copyRulesBtn')?.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(FIRESTORE_RULES_SAMPLE);
+                    document.getElementById('autosaveStatus').textContent = 'Đã sao chép Firestore Rules mẫu.';
+                } catch (err) {
+                    document.getElementById('autosaveStatus').textContent = 'Không sao chép tự động được, thầy copy thủ công trong tab Hướng dẫn.';
+                }
+            });
         }
 
         function init() {
