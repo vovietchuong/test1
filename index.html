@@ -85,7 +85,7 @@ const TOPICS=[
  {id:7,name:'Thống kê và xác suất',icon:'fa-dice',color:'amber'},
  {id:8,name:'Chuyên đề vận dụng cao',icon:'fa-star',color:'fuchsia'}
 ];
-let currentUser=null, users=[], exams=[], submissions=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false;
+let currentUser=null, users=[], exams=[], submissions=[], questionBank=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false;
 let firebaseReady = !!(window.firebase && window.auth && window.db);
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
 const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
@@ -124,6 +124,47 @@ async function loadExamsFromFirestore(){
   if(arr.length){exams=arr;localStorage.setItem('mathpro12_exams',JSON.stringify(exams));return true;}
   return false;
 }
+
+async function loadQuestionBankFromFirestore(){
+  if(!firebaseReady) return false;
+  const snap=await db.collection('questionBanks').orderBy('updatedAt','desc').limit(500).get().catch(()=>null);
+  if(!snap) return false;
+  questionBank=snap.docs.map(d=>({id:d.id,...d.data()}));
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  return true;
+}
+function questionBankFromLocalExams(){
+  const map={};
+  exams.forEach(e=>(e.questions||[]).forEach((q,idx)=>{
+    const id=String(q.bankId||q.id||('q'+uid()));
+    map[id]={...q,id,sourceExamId:String(e.id),sourceExamTitle:e.title,topicId:e.topicId,topicName:topicName(e.topicId),level:e.level||'',order:idx+1,status:'published',updatedAt:new Date().toISOString()};
+  }));
+  return Object.values(map);
+}
+async function syncExamQuestionsToQuestionBank(examData){
+  const now=new Date().toISOString();
+  const items=(examData.questions||[]).map((q,idx)=>({
+    ...q,
+    id:String(q.bankId||q.id||('q'+uid())),
+    sourceExamId:String(examData.id),
+    sourceExamTitle:examData.title,
+    topicId:examData.topicId,
+    topicName:topicName(examData.topicId),
+    level:examData.level||'',
+    order:idx+1,
+    status:'published',
+    createdBy:currentUser?.id||null,
+    updatedAt:now
+  }));
+  const byId={}; questionBank.forEach(q=>byId[String(q.id)]=q); items.forEach(q=>byId[String(q.id)]=q);
+  questionBank=Object.values(byId);
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    const batch=db.batch();
+    items.forEach(q=>batch.set(db.collection('questionBanks').doc(String(q.id)),{...q,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+    await batch.commit();
+  }
+}
 async function seedExamsToFirestore(){
   if(!firebaseReady || !currentUser || currentUser.role!=='teacher') return;
   const snap=await db.collection('exams').limit(1).get();
@@ -156,8 +197,10 @@ async function load(){
   ];
   exams=JSON.parse(localStorage.getItem('mathpro12_exams')||'null')||seedExams();
   submissions=JSON.parse(localStorage.getItem('mathpro12_submissions')||'[]');
+  questionBank=JSON.parse(localStorage.getItem('mathpro12_questionBank')||'[]');
   currentUser=JSON.parse(localStorage.getItem('mathpro12_user')||'null');
-  try{ await loadExamsFromFirestore(); await loadSubmissionsFromFirestore(); }catch(err){console.warn('Không tải được Firestore, dùng dữ liệu local:',err)}
+  try{ await loadExamsFromFirestore(); await loadQuestionBankFromFirestore(); await loadSubmissionsFromFirestore(); }catch(err){console.warn('Không tải được Firestore, dùng dữ liệu local:',err)}
+  if(!questionBank.length){questionBank=questionBankFromLocalExams(); localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));}
   save();
 }
 function seedExams(){return [
@@ -229,7 +272,7 @@ async function doLogin(){
     save();
     document.querySelector('.fixed')?.remove();
     renderHeader();
-    await loadExamsFromFirestore(); await loadSubmissionsFromFirestore();
+    await loadExamsFromFirestore(); await loadQuestionBankFromFirestore(); await loadSubmissionsFromFirestore();
     if(currentUser.role==='teacher') { await seedExamsToFirestore(); renderTeacherDashboard(); } else renderExamsPublic();
     toast('Đăng nhập Firebase thành công','ok');
   }catch(err){
@@ -318,7 +361,20 @@ function exportCSV(){
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bang-diem-mathpro12.csv';a.click();
 }
 function renderStats(){const mine=currentUser?.role==='student'?submissions.filter(s=>s.studentId===currentUser.id):submissions;$('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">📊 Thống kê học tập</h2><div class="grid md:grid-cols-3 gap-4 mb-5">${statCards()}</div><div class="glass-card p-5 overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-2">Học sinh</th><th>Đề thi</th><th>Điểm</th><th>Ngày làm</th></tr></thead><tbody>${mine.map(s=>`<tr class="border-b"><td class="p-2">${safe(s.studentName||'Học sinh')}</td><td>${safe(s.examTitle)}</td><td><b>${s.score}/${s.total}</b> (${s.percent}%)</td><td>${s.date}</td></tr>`).join('')||'<tr><td class="p-4" colspan="4">Chưa có dữ liệu.</td></tr>'}</tbody></table></div>`}
-function renderTeacherDashboard(){if(!requireRole('teacher'))return;$('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><h2 class="text-3xl font-black">👩‍🏫 Bảng quản lý giáo viên</h2><div class="flex gap-2 flex-wrap"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">+ Tạo đề</button><button onclick="exportCSV()" class="btn-soft px-4 py-2 rounded-2xl">Xuất Excel CSV</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl">Rules bảo mật</button><button onclick="exportData()" class="btn-soft px-4 py-2 rounded-2xl">Xuất JSON</button><button onclick="resetDemo()" class="bg-red-50 text-red-600 px-4 py-2 rounded-2xl">Reset</button></div></div>${teacherAnalyticsHTML()}<div class="grid lg:grid-cols-[1fr_.9fr] gap-5"><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Quản lý đề thi</h3><div class="space-y-3">${exams.map(e=>`<div class="p-4 rounded-2xl border flex justify-between gap-3"><div><b>${safe(e.title)}</b><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • ${e.duration||30} phút</p></div><div class="flex gap-2"><button onclick="openExamEditor(${e.id})" class="bg-amber-500 text-white px-3 py-1 rounded-xl">Sửa</button><button onclick="deleteExam(${e.id})" class="bg-red-600 text-white px-3 py-1 rounded-xl">Xóa</button></div></div>`).join('')}</div></section><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Điểm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${submissions.slice().reverse().map(s=>`<tr class="border-b"><td class="p-2">${safe(s.studentName)}</td><td>${safe(s.examTitle)}</td><td><b>${s.score}/${s.total}</b></td></tr>`).join('')||'<tr><td>Chưa có bài làm.</td></tr>'}</tbody></table></div></section></div>`}
+
+function renderQuestionBank(){
+  if(!requireRole('teacher'))return;
+  if(!questionBank.length){questionBank=questionBankFromLocalExams(); localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));}
+  const grouped=TOPICS.map(t=>({topic:t,items:questionBank.filter(q=>Number(q.topicId)===Number(t.id))}));
+  $('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🏦 Kho câu hỏi Firestore</h2><p style="color:var(--muted)">Bước 1: mỗi câu hỏi được lưu riêng vào collection <b>questionBanks</b>. Đề thi cũ vẫn chạy bình thường.</p></div><div class="flex gap-2"><button onclick="migrateAllQuestionsToBank()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">Đồng bộ lên Firestore</button><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button></div></div><div class="grid md:grid-cols-4 gap-4 mb-5"><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.length}</p><p class="text-sm" style="color:var(--muted)">Tổng câu hỏi</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='mc').length}</p><p class="text-sm" style="color:var(--muted)">Trắc nghiệm</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='tf').length}</p><p class="text-sm" style="color:var(--muted)">Đúng/Sai</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='short').length}</p><p class="text-sm" style="color:var(--muted)">Trả lời ngắn</p></div></div><div class="space-y-5">${grouped.map(g=>g.items.length?`<section class="glass-card p-5"><h3 class="font-black text-xl mb-3">${g.topic.name} <span class="text-sm font-normal" style="color:var(--muted)">(${g.items.length} câu)</span></h3><div class="space-y-3">${g.items.map((q,i)=>`<div class="p-3 rounded-2xl border bg-white/50"><div class="flex flex-wrap justify-between gap-2"><b>${i+1}. ${q.type==='mc'?'Trắc nghiệm':q.type==='tf'?'Đúng/Sai':'Trả lời ngắn'}</b><span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">${safe(q.level||'Chưa phân mức')}</span></div><div class="math-content mt-2">${q.text||''}</div><p class="text-xs mt-2" style="color:var(--muted)">Nguồn: ${safe(q.sourceExamTitle||'Đề hiện có')} • ID: ${safe(q.id)}</p></div>`).join('')}</div></section>`:'').join('')}</div>`;
+  typeset();
+}
+async function migrateAllQuestionsToBank(){
+  if(!requireRole('teacher'))return;
+  try{for(const e of exams){await syncExamQuestionsToQuestionBank(e);} toast('Đã đồng bộ kho câu hỏi lên Firestore','ok'); renderQuestionBank();}
+  catch(err){toast('Chưa đồng bộ được: '+fbError(err),'bad');}
+}
+function renderTeacherDashboard(){if(!requireRole('teacher'))return;$('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><h2 class="text-3xl font-black">👩‍🏫 Bảng quản lý giáo viên</h2><div class="flex gap-2 flex-wrap"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">+ Tạo đề</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl">Kho câu hỏi</button><button onclick="exportCSV()" class="btn-soft px-4 py-2 rounded-2xl">Xuất Excel CSV</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl">Rules bảo mật</button><button onclick="exportData()" class="btn-soft px-4 py-2 rounded-2xl">Xuất JSON</button><button onclick="resetDemo()" class="bg-red-50 text-red-600 px-4 py-2 rounded-2xl">Reset</button></div></div>${teacherAnalyticsHTML()}<div class="grid lg:grid-cols-[1fr_.9fr] gap-5"><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Quản lý đề thi</h3><div class="space-y-3">${exams.map(e=>`<div class="p-4 rounded-2xl border flex justify-between gap-3"><div><b>${safe(e.title)}</b><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • ${e.duration||30} phút</p></div><div class="flex gap-2"><button onclick="openExamEditor(${e.id})" class="bg-amber-500 text-white px-3 py-1 rounded-xl">Sửa</button><button onclick="deleteExam(${e.id})" class="bg-red-600 text-white px-3 py-1 rounded-xl">Xóa</button></div></div>`).join('')}</div></section><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Điểm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${submissions.slice().reverse().map(s=>`<tr class="border-b"><td class="p-2">${safe(s.studentName)}</td><td>${safe(s.examTitle)}</td><td><b>${s.score}/${s.total}</b></td></tr>`).join('')||'<tr><td>Chưa có bài làm.</td></tr>'}</tbody></table></div></section></div>`}
 function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:30,level:'',description:'',questions:[]};const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${TOPICS.map(t=>`<option value="${t.id}" ${e.topicId==t.id?'selected':''}>${t.name}</option>`).join('')}</select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||30}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;document.body.appendChild(m);window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));refreshEditorQuestions()}
 function refreshEditorQuestions(){const box=$('editorQuestions');if(!box)return;box.innerHTML=window.editorQ.map((q,i)=>`<div class="p-4 rounded-2xl border bg-white/60"><div class="flex justify-between"><b>Câu ${i+1} - ${q.type}</b><button onclick="editorQ.splice(${i},1);refreshEditorQuestions()" class="text-red-600">Xóa</button></div><textarea onchange="editorQ[${i}].text=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Nội dung câu hỏi">${safe(q.text||'')}</textarea>${editorFields(q,i)}<textarea onchange="editorQ[${i}].solution=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Lời giải">${safe(q.solution||'')}</textarea></div>`).join('')||'<p class="text-slate-500">Chưa có câu hỏi. Hãy thêm câu mới.</p>';typeset()}
 function editorFields(q,i){if(q.type==='mc')return `<div class="grid md:grid-cols-2 gap-2 mt-2">${[0,1,2,3].map(k=>`<input onchange="editorQ[${i}].options[${k}]=this.value" class="border rounded-xl p-2" placeholder="Phương án ${'ABCD'[k]}" value="${safe(q.options?.[k]||'')}">`).join('')}</div><select onchange="editorQ[${i}].answer=Number(this.value)" class="border rounded-xl p-2 mt-2"><option value="0" ${q.answer==0?'selected':''}>Đáp án A</option><option value="1" ${q.answer==1?'selected':''}>Đáp án B</option><option value="2" ${q.answer==2?'selected':''}>Đáp án C</option><option value="3" ${q.answer==3?'selected':''}>Đáp án D</option></select>`; if(q.type==='tf')return `<div class="space-y-2 mt-2">${[0,1,2,3].map(k=>`<div class="grid md:grid-cols-[1fr_140px] gap-2"><input onchange="editorQ[${i}].statements[${k}]=this.value" class="border rounded-xl p-2" placeholder="Mệnh đề ${String.fromCharCode(97+k)}" value="${safe(q.statements?.[k]||'')}"><select onchange="editorQ[${i}].answer[${k}]=this.value==='true'" class="border rounded-xl p-2"><option value="true" ${q.answer?.[k]!==false?'selected':''}>Đúng</option><option value="false" ${q.answer?.[k]===false?'selected':''}>Sai</option></select></div>`).join('')}</div>`; return `<input onchange="editorQ[${i}].answer=this.value" class="border rounded-xl p-2 mt-2 w-full" placeholder="Đáp án ngắn" value="${safe(q.answer||'')}">`}
@@ -330,9 +386,9 @@ async function saveExamEditor(id){
   if(id){const idx=exams.findIndex(e=>String(e.id)==String(id)); if(idx>=0)exams[idx]=data}else exams.push(data);
   save();
   if(firebaseReady){
-    try{await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+    try{await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); await syncExamQuestionsToQuestionBank(data);}
     catch(err){toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad')}
-  }
+  } else { await syncExamQuestionsToQuestionBank(data); }
   document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã lưu đề thi','ok');
 }
 async function deleteExam(id){
@@ -392,7 +448,7 @@ async function bootstrap(){
       if(user){
         try{
           currentUser=await getUserProfile(user); save(); renderHeader();
-          await loadExamsFromFirestore(); await loadSubmissionsFromFirestore();
+          await loadExamsFromFirestore(); await loadQuestionBankFromFirestore(); await loadSubmissionsFromFirestore();
         }catch(err){console.warn(err)}
       }else{currentUser=null; save(); renderHeader();}
     });
