@@ -624,6 +624,11 @@
         .answer-pill.good { background:#ecfdf5; color:#166534; border-color:#86efac; }
         .answer-pill.bad { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
         .solution-text { color: var(--text); margin-top: 6px; }
+        .solution-item mjx-container, .answer-key mjx-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
+        }
         body.dark .solution-section, body.dark .solution-item {
             background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.86));
             border-color: rgba(71,85,105,.55);
@@ -1171,8 +1176,21 @@
             orderVersion: 1
         };
 
-        function refreshMath() {
-            if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise().catch(() => {});
+        function refreshMath(target = document.body) {
+            if (!window.MathJax) return;
+
+            const typesetTarget = target || document.body;
+            const runTypeset = () => {
+                if (!MathJax.typesetPromise) return;
+                if (MathJax.typesetClear) MathJax.typesetClear([typesetTarget]);
+                MathJax.typesetPromise([typesetTarget]).catch((err) => console.warn('MathJax render error:', err));
+            };
+
+            if (MathJax.startup && MathJax.startup.promise) {
+                MathJax.startup.promise.then(runTypeset).catch((err) => console.warn('MathJax startup error:', err));
+            } else {
+                runTypeset();
+            }
         }
 
         function mulberry32(a) {
@@ -1575,6 +1593,7 @@
                     Nhật ký giám sát: rời tab <b>${state.security.tabSwitches}</b> lần, thoát toàn màn hình <b>${state.security.fullscreenExits}</b> lần.
                 </div>
                 ${buildDetailedSolutions()}`;
+            refreshMath(panel);
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
