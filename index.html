@@ -13,6 +13,10 @@
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics-compat.js"></script>
     <style>
         :root {
             --bg: #06101f;
@@ -874,6 +878,30 @@
         .image-viewer-wrap img { max-width:100%; max-height:78vh; margin:0 auto; border-radius:20px; display:block; }
         .pro-tip { margin-top:14px; padding:14px 16px; border-radius:18px; border:1px solid rgba(59,130,246,.18); background:linear-gradient(135deg, rgba(239,246,255,.78), rgba(255,255,255,.7)); }
         body.dark .pro-tip { background:linear-gradient(135deg, rgba(30,41,59,.9), rgba(15,23,42,.82)); }
+        .cloud-panel { margin-top:14px; padding:14px 16px; border-radius:18px; border:1px solid rgba(34,197,94,.24); background:linear-gradient(135deg, rgba(240,253,244,.88), rgba(255,255,255,.72)); line-height:1.65; font-size:.94rem; }
+        .cloud-panel b { color:#166534; }
+        body.dark .cloud-panel { background:linear-gradient(135deg, rgba(20,83,45,.22), rgba(15,23,42,.82)); border-color:rgba(34,197,94,.30); }
+        body.dark .cloud-panel b { color:#bbf7d0; }
+
+        .auth-panel {
+            border: 1px solid rgba(59,130,246,.20);
+            background: linear-gradient(135deg, rgba(239,246,255,.92), rgba(255,255,255,.72));
+            border-radius: 20px;
+            padding: 14px 16px;
+            line-height: 1.6;
+        }
+        .auth-title { font-weight: 900; margin-bottom: 6px; }
+        .auth-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+        .auth-meta { color: var(--muted); font-size:.92rem; overflow-wrap:anywhere; }
+        .auth-ok { color:#166534; font-weight:800; }
+        .auth-warn { color:#9a3412; font-weight:800; }
+        body.dark .auth-panel {
+            background: linear-gradient(135deg, rgba(30,41,59,.9), rgba(15,23,42,.82));
+            border-color: rgba(96,165,250,.25);
+        }
+        body.dark .auth-ok { color:#bbf7d0; }
+        body.dark .auth-warn { color:#fed7aa; }
+
         @media print {
             .tabs, .sidebar-card, .hero-side, .action-row, .flag-btn, .utility-row, .footer, .modal { display:none !important; }
             body, .shell { background:#fff !important; padding:0; }
@@ -935,6 +963,18 @@
                 <div class="utility-row">
                     <span class="status-chip" id="shuffleStatus">🔀 Đề đang cố định</span>
                     <span class="status-chip" id="securityStatus">🛡️ Giám sát đang bật</span>
+                    <span class="status-chip" id="cloudStatus">☁️ Firebase đang khởi tạo</span>
+                </div>
+                <div class="cloud-panel" id="cloudPanel"><b>Cloud:</b> Đang kết nối Firebase để lưu bài làm lên Firestore. Nếu mất mạng, hệ thống vẫn lưu cục bộ trên máy.</div>
+                <div class="auth-panel" id="authPanel">
+                    <div class="auth-title">🔐 Tài khoản làm bài</div>
+                    <div id="authStatus" class="auth-meta">Đang kiểm tra đăng nhập...</div>
+                    <div id="authUserInfo" class="auth-meta"></div>
+                    <div class="auth-row">
+                        <button class="small-btn" id="anonymousLoginBtn">Vào thi nhanh</button>
+                        <button class="small-btn" id="googleLoginBtn">Đăng nhập Google</button>
+                        <button class="small-btn" id="signOutBtn">Đăng xuất</button>
+                    </div>
                 </div>
                 <div class="violation-log" id="violationLog">Chưa ghi nhận rời tab hoặc thoát toàn màn hình.</div>
             </aside>
@@ -949,7 +989,7 @@
         <div class="workspace">
             <main class="main-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;border:1px solid rgba(191,219,254,.55);border-radius:20px;background:linear-gradient(135deg,rgba(239,246,255,.95),rgba(248,250,252,.88));box-shadow:0 10px 24px rgba(15,23,42,.04)"><div><div style="font-weight:900;font-size:1.05rem;letter-spacing:-.02em">Phòng thi trực tuyến</div><div class="muted" style="margin-top:4px">Giao diện mới ưu tiên rõ ràng, tập trung và dễ thao tác khi làm bài lâu.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge" style="background:#e0edff;color:#1d4ed8;border:none">🎨 Giao diện mới</span><span class="badge" style="background:#ecfeff;color:#0f766e;border:none">📱 Responsive</span></div></div>
-                <div class="pro-tip"><b>Bản production frontend:</b> có trộn câu hỏi cho từng phiên, chế độ sáng/tối, hỗ trợ ảnh phóng to, cảnh báo rời tab/toàn màn hình và sẵn sàng nối backend. Muốn thi online thật đa thiết bị, thầy chỉ cần kết nối thêm Firebase hoặc API máy chủ.</div>
+                <div class="pro-tip"><b>Bản production frontend:</b> có trộn câu hỏi cho từng phiên, chế độ sáng/tối, hỗ trợ ảnh phóng to, cảnh báo rời tab/toàn màn hình, đăng nhập Firebase Auth, lưu bài theo UID và đồng bộ Firestore. Có thể mở tiếp dashboard giáo viên ở giai đoạn sau.</div>
                 <section id="examTab">
                     <div class="panel-title">
                         <h2>Thông tin thí sinh</h2>
@@ -1099,6 +1139,18 @@
         const STORAGE_KEY = 'math_exam_upgrade_v3';
         const EXAM_DURATION = 90 * 60;
         const DEFAULT_THEME = 'light';
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDlUDLFCbrt9Fgm7_j9czKofsluwz2QX9Y",
+            authDomain: "thionline2027.firebaseapp.com",
+            projectId: "thionline2027",
+            storageBucket: "thionline2027.firebasestorage.app",
+            messagingSenderId: "798882238835",
+            appId: "1:798882238835:web:0ca9e033ae3a6b9d55b506",
+            measurementId: "G-18BKNWVMDL"
+        };
+        const FIREBASE_COLLECTION = 'examSessions';
+        const FIREBASE_RESULTS_COLLECTION = 'examResults';
+        const CLOUD_SAVE_DEBOUNCE = 1800;
 
         const rawPart1Questions = [
             { text: "Cho hình lăng trụ ABC.A'B'C'. Phát biểu đúng về \\( \\overrightarrow{BA} + \\overrightarrow{A'C'} \\) ?", options: ["\\( \\overrightarrow{BC'} \\)", "\\( \\overrightarrow{C'B'} \\)", "\\( \\overrightarrow{BC} \\)", "\\( \\overrightarrow{A'A} \\)"], correctIndex: 2 },
@@ -1130,7 +1182,7 @@
             String.raw`Tam giác \(ABC\) vuông tại \(A\) nên \(S_{ABC}=\dfrac12\cdot AB\cdot AC=10\). Vì \(SA\perp(ABC)\), chiều cao là \(SA=3\). Vậy \(V=\dfrac13\cdot10\cdot3=10\).`
         ];
 
-        const part2Data = [
+        const rawPart2Data = [
             {
                 question: String.raw`Cho hàm số \(f(x)=x^3-12x-8\). Xét tính đúng sai của các khẳng định sau:`,
                 statements: [
@@ -1172,8 +1224,8 @@
                 correct: [true, true, false, true]
             }
         ];
-        const part3Answers = [42, 1537, 2650, 0.91, 1008, 23.6];
-        const part3Descriptions = [
+        const rawPart3Answers = [42, 1537, 2650, 0.91, 1008, 23.6];
+        const rawPart3Descriptions = [
             "Xác suất giải mặt thư là a. Tính 1/a (số nguyên).",
             "Lợi nhuận > 100 triệu đồng, cần sản xuất ít nhất bao nhiêu sản phẩm?",
             "Tối đa số tiền thu được từ hai loại thực đơn với các ràng buộc nguyên liệu.",
@@ -1181,7 +1233,7 @@
             "Xếp 7 quyển sách khác nhau vào 4 ngăn, mỗi ngăn có ít nhất 1 quyển. Tính T/100.",
             "Tính thể tích khối chân đế sau khi khoét chỏm cầu (đơn vị cm³)."
         ];
-        const part2Explanations = [
+        const rawPart2Explanations = [
             [
                 String.raw`Đúng vì \((x^3)'=3x^2\), \((-12x)'=-12\), \((-8)'=0\).`,
                 String.raw`Sai vì \(f'(x)=3x^2-12=3(x^2-4)=0\Rightarrow x=\pm2\), nên tập nghiệm là \(\{-2;2\}\).`,
@@ -1208,7 +1260,7 @@
             ]
         ];
 
-        const part3Explanations = [
+        const rawPart3Explanations = [
             String.raw`Đáp án chuẩn là \(42\). Học sinh nhập đúng số nguyên \(42\) thì được điểm tối đa cho câu này.`,
             String.raw`Đáp án chuẩn là \(1537\). Đây là số sản phẩm nhỏ nhất để lợi nhuận vượt \(100\) triệu đồng theo bất phương trình lợi nhuận của đề.`,
             String.raw`Đáp án chuẩn là \(2650\). Bài toán tối ưu tuyến tính: xét các đỉnh miền nghiệm rồi chọn giá trị lớn nhất của hàm mục tiêu.`,
@@ -1219,8 +1271,14 @@
 
 
         let part1Questions = [];
+        let part2Data = [];
+        let part2Explanations = [];
+        let part3Answers = [];
+        let part3Descriptions = [];
+        let part3Explanations = [];
         let state = {
             candidate: { name: '', id: '', class: '' },
+            user: { uid: null, isAnonymous: true, email: '', displayName: '', provider: 'local' },
             userPart1: [],
             userPart2: Array.from({length: 4}, () => [null, null, null, null]),
             userPart3: new Array(6).fill(''),
@@ -1231,8 +1289,210 @@
             theme: DEFAULT_THEME,
             security: { tabSwitches: 0, fullscreenExits: 0, warnings: [] },
             sessionSeed: null,
-            orderVersion: 1
+            orderVersion: 1,
+            sessionId: null,
+            cloud: { enabled: false, lastSavedAt: null, lastSubmittedAt: null, error: '' }
         };
+
+        let firebaseReady = false;
+        let firestoreDb = null;
+        let firebaseAuth = null;
+        let currentUser = null;
+        let cloudSaveTimer = null;
+        let cloudSaveInFlight = false;
+
+        function makeSessionId() {
+            const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const randomPart = Math.random().toString(36).slice(2, 10);
+            return `math-${datePart}-${Date.now()}-${randomPart}`;
+        }
+
+        function setCloudStatus(message, ok = true) {
+            const status = document.getElementById('cloudStatus');
+            const panel = document.getElementById('cloudPanel');
+            if (status) status.textContent = message;
+            if (panel) {
+                panel.innerHTML = ok
+                    ? `<b>Cloud:</b> ${message.replace('☁️ ', '')}. Dữ liệu vẫn được lưu dự phòng trên máy bằng localStorage.`
+                    : `<b>Cloud:</b> ${message.replace('⚠️ ', '')}. Học sinh vẫn làm bài bình thường, hệ thống sẽ lưu cục bộ.`;
+            }
+        }
+
+        function setAuthStatus(message, ok = true) {
+            const status = document.getElementById('authStatus');
+            if (!status) return;
+            status.className = ok ? 'auth-meta auth-ok' : 'auth-meta auth-warn';
+            status.textContent = message;
+        }
+
+        function updateAuthUi(user) {
+            const info = document.getElementById('authUserInfo');
+            const signOutBtn = document.getElementById('signOutBtn');
+            if (user) {
+                currentUser = user;
+                state.user = {
+                    uid: user.uid,
+                    isAnonymous: !!user.isAnonymous,
+                    email: user.email || '',
+                    displayName: user.displayName || '',
+                    provider: user.isAnonymous ? 'anonymous' : 'firebase'
+                };
+                setAuthStatus(user.isAnonymous ? 'Đang dùng tài khoản ẩn danh để lưu bài theo thiết bị.' : 'Đã đăng nhập Firebase Auth.', true);
+                if (info) info.innerHTML = `UID: <b>${escapeHtml(user.uid)}</b>${user.email ? `<br>Email: <b>${escapeHtml(user.email)}</b>` : ''}`;
+                if (signOutBtn) signOutBtn.style.display = 'inline-flex';
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                queueCloudSave('auth-ready');
+            } else {
+                currentUser = null;
+                state.user = { uid: null, isAnonymous: true, email: '', displayName: '', provider: 'local' };
+                setAuthStatus('Chưa đăng nhập. Hệ thống vẫn lưu cục bộ, nhưng chưa đồng bộ cloud theo tài khoản.', false);
+                if (info) info.textContent = '';
+                if (signOutBtn) signOutBtn.style.display = 'none';
+            }
+        }
+
+        async function signInAnonymously() {
+            if (!firebaseAuth) return setAuthStatus('Firebase Auth chưa sẵn sàng.', false);
+            try {
+                setAuthStatus('Đang tạo tài khoản làm bài nhanh...', true);
+                await firebaseAuth.signInAnonymously();
+            } catch (err) {
+                console.error('Anonymous login error:', err);
+                setAuthStatus('Chưa bật Anonymous Auth trong Firebase Console hoặc cấu hình Auth chưa đúng.', false);
+            }
+        }
+
+        async function signInWithGoogle() {
+            if (!firebaseAuth || !firebase.auth.GoogleAuthProvider) return setAuthStatus('Firebase Auth chưa sẵn sàng.', false);
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await firebaseAuth.signInWithPopup(provider);
+            } catch (err) {
+                console.error('Google login error:', err);
+                setAuthStatus('Chưa đăng nhập Google được. Thầy kiểm tra Google provider trong Firebase Auth.', false);
+            }
+        }
+
+        async function signOutFirebase() {
+            if (!firebaseAuth) return;
+            await firebaseAuth.signOut();
+            saveState(true, { skipCloud: true });
+        }
+
+        function initFirebaseCloud() {
+            try {
+                if (!window.firebase || !firebase.initializeApp) {
+                    setCloudStatus('⚠️ Chưa tải được Firebase CDN', false);
+                    return false;
+                }
+                if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+                firestoreDb = firebase.firestore();
+                firebaseAuth = firebase.auth ? firebase.auth() : null;
+                if (firebaseAuth) {
+                    firebaseAuth.onAuthStateChanged(updateAuthUi);
+                    if (!firebaseAuth.currentUser) signInAnonymously();
+                } else {
+                    setAuthStatus('Không tải được Firebase Auth.', false);
+                }
+                if (firebase.analytics) {
+                    try { firebase.analytics(); } catch (analyticsErr) { console.warn('Analytics chưa sẵn sàng:', analyticsErr); }
+                }
+                firebaseReady = true;
+                state.cloud = { ...(state.cloud || {}), enabled: true, error: '' };
+                if (!state.sessionId) state.sessionId = makeSessionId();
+                setCloudStatus('☁️ Firebase đã kết nối');
+                saveState(false, { skipCloud: true });
+                queueCloudSave('init');
+                return true;
+            } catch (err) {
+                firebaseReady = false;
+                state.cloud = { ...(state.cloud || {}), enabled: false, error: err.message || String(err) };
+                console.error('Firebase init error:', err);
+                setCloudStatus('⚠️ Firebase chưa kết nối được', false);
+                return false;
+            }
+        }
+
+        function buildCloudPayload(reason = 'autosave') {
+            const progress = countProgress();
+            return {
+                reason,
+                sessionId: state.sessionId,
+                ownerUid: state.user?.uid || null,
+                user: state.user || null,
+                candidate: state.candidate,
+                userPart1: state.userPart1,
+                userPart2: state.userPart2,
+                userPart3: state.userPart3,
+                flags: state.flags,
+                timerSeconds: state.timerSeconds,
+                sessionSeed: state.sessionSeed,
+                orderVersion: state.orderVersion,
+                progress: {
+                    p1Done: progress.p1Done,
+                    p2Done: progress.p2Done,
+                    p3Done: progress.p3Done,
+                    doneUnits: progress.doneUnits,
+                    totalUnits: progress.totalUnits,
+                    flags: progress.flags
+                },
+                security: state.security,
+                submittedAt: state.submittedAt,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAtClient: new Date().toISOString(),
+                userAgent: navigator.userAgent
+            };
+        }
+
+        function queueCloudSave(reason = 'autosave') {
+            if (!firebaseReady || !firestoreDb || !state.sessionId) return;
+            clearTimeout(cloudSaveTimer);
+            cloudSaveTimer = setTimeout(() => saveCloudState(reason), CLOUD_SAVE_DEBOUNCE);
+        }
+
+        async function saveCloudState(reason = 'autosave') {
+            if (!firebaseReady || !firestoreDb || !state.sessionId || !state.user?.uid || cloudSaveInFlight) return;
+            cloudSaveInFlight = true;
+            try {
+                await firestoreDb.collection('users').doc(state.user.uid).collection(FIREBASE_COLLECTION).doc(state.sessionId).set(buildCloudPayload(reason), { merge: true });
+                state.cloud = { ...(state.cloud || {}), enabled: true, lastSavedAt: new Date().toISOString(), error: '' };
+                setCloudStatus(`☁️ Đã đồng bộ ${new Date().toLocaleTimeString('vi-VN')}`);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (err) {
+                state.cloud = { ...(state.cloud || {}), enabled: false, error: err.message || String(err) };
+                console.error('Cloud save error:', err);
+                setCloudStatus('⚠️ Chưa đồng bộ cloud được', false);
+            } finally {
+                cloudSaveInFlight = false;
+            }
+        }
+
+        async function submitCloudResult(scoreResult, auto = false) {
+            if (!firebaseReady || !firestoreDb || !state.sessionId || !state.user?.uid) return;
+            try {
+                const payload = {
+                    ...buildCloudPayload(auto ? 'auto-submit' : 'submit'),
+                    autoSubmit: auto,
+                    score: scoreResult,
+                    submittedAt: state.submittedAt,
+                    submittedAtServer: firebase.firestore.FieldValue.serverTimestamp(),
+                    answersKey: {
+                        part1: part1Questions.map(q => q.correct),
+                        part2: part2Data.map(q => q.correct),
+                        part3: part3Answers
+                    }
+                };
+                await firestoreDb.collection('users').doc(state.user.uid).collection(FIREBASE_RESULTS_COLLECTION).doc(state.sessionId).set(payload, { merge: true });
+                await firestoreDb.collection('users').doc(state.user.uid).collection(FIREBASE_COLLECTION).doc(state.sessionId).set(payload, { merge: true });
+                state.cloud = { ...(state.cloud || {}), enabled: true, lastSubmittedAt: new Date().toISOString(), error: '' };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                setCloudStatus('☁️ Đã nộp và lưu kết quả lên Firebase');
+            } catch (err) {
+                state.cloud = { ...(state.cloud || {}), enabled: false, error: err.message || String(err) };
+                console.error('Cloud submit error:', err);
+                setCloudStatus('⚠️ Chưa gửi được kết quả lên Firebase', false);
+            }
+        }
 
         function refreshMath(target = document.body) {
             if (!window.MathJax) return;
@@ -1284,12 +1544,25 @@
                     text: base.text,
                     options: shuffledOptions,
                     correct: correctLetter,
+                    originalIndex,
+                    optionOrder: optionOrder.map(item => item.originalIndex),
                     image: base.image || null,
                     imageCaption: base.imageCaption || '',
                     explanation: rawPart1Explanations[originalIndex] || ''
                 };
             });
-            document.getElementById('shuffleStatus').textContent = '🔀 Đề đã được trộn theo phiên làm bài';
+
+            const part2Order = shuffleArray(rawPart2Data.map((_, index) => index), state.sessionSeed + 2026);
+            part2Data = part2Order.map(originalIndex => ({ ...rawPart2Data[originalIndex], originalIndex }));
+            part2Explanations = part2Order.map(originalIndex => rawPart2Explanations[originalIndex]);
+
+            const part3Order = shuffleArray(rawPart3Answers.map((_, index) => index), state.sessionSeed + 3036);
+            part3Answers = part3Order.map(originalIndex => rawPart3Answers[originalIndex]);
+            part3Descriptions = part3Order.map(originalIndex => rawPart3Descriptions[originalIndex]);
+            part3Explanations = part3Order.map(originalIndex => rawPart3Explanations[originalIndex]);
+
+            const shuffleStatus = document.getElementById('shuffleStatus');
+            if (shuffleStatus) shuffleStatus.textContent = '🔀 Đề và đáp án đã được trộn theo phiên làm bài';
         }
 
         function applyTheme(theme) {
@@ -1311,17 +1584,20 @@
             }
         }
 
-        function saveState(showStatus = false) {
+        function saveState(showStatus = false, options = {}) {
             state.saveCount += 1;
+            if (!state.sessionId) state.sessionId = makeSessionId();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
             document.getElementById('saveCount').textContent = state.saveCount;
             if (showStatus) document.getElementById('autosaveStatus').textContent = `Đã lưu lúc ${new Date().toLocaleTimeString('vi-VN')}`;
+            if (!options.skipCloud) queueCloudSave(showStatus ? 'manual-or-input-save' : 'autosave');
         }
 
         function loadState() {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) {
                 document.getElementById('autosaveStatus').textContent = 'Chưa có dữ liệu cũ. Bài làm sẽ tự lưu.';
+                if (!state.sessionId) state.sessionId = makeSessionId();
                 ensureStateArrays();
                 buildExamOrder();
                 return;
@@ -1332,11 +1608,14 @@
                     ...state,
                     ...parsed,
                     candidate: parsed.candidate || state.candidate,
+                    user: parsed.user || state.user,
                     security: parsed.security || state.security,
                     timerSeconds: Number.isFinite(parsed.timerSeconds) ? parsed.timerSeconds : EXAM_DURATION,
                     theme: parsed.theme || DEFAULT_THEME,
                     saveCount: parsed.saveCount || 0,
-                    sessionSeed: parsed.sessionSeed || state.sessionSeed
+                    sessionSeed: parsed.sessionSeed || state.sessionSeed,
+                    sessionId: parsed.sessionId || state.sessionId || makeSessionId(),
+                    cloud: parsed.cloud || state.cloud
                 };
                 ensureStateArrays();
                 buildExamOrder();
@@ -1715,6 +1994,7 @@
             const res = computeScore();
             state.submittedAt = new Date().toISOString();
             saveState(false);
+            submitCloudResult(res, auto);
             const panel = document.getElementById('resultPanel');
             panel.style.display = 'block';
             panel.innerHTML = `
@@ -1761,6 +2041,7 @@
             const newSeed = Math.floor((Date.now() + Math.random() * 100000) % 2147483647);
             state = {
                 candidate: { name: '', id: '', class: '' },
+                user: state.user || { uid: null, isAnonymous: true, email: '', displayName: '', provider: 'local' },
                 userPart1: new Array(rawPart1Questions.length).fill(null),
                 userPart2: Array.from({length: 4}, () => [null, null, null, null]),
                 userPart3: new Array(6).fill(''),
@@ -1771,7 +2052,9 @@
                 theme: preservedTheme,
                 security: { tabSwitches: 0, fullscreenExits: 0, warnings: [] },
                 sessionSeed: newSeed,
-                orderVersion: 1
+                orderVersion: 1,
+                sessionId: makeSessionId(),
+                cloud: { enabled: firebaseReady, lastSavedAt: null, lastSubmittedAt: null, error: '' }
             };
             buildExamOrder();
             bindCandidateInputs();
@@ -1931,6 +2214,7 @@
             document.getElementById('submitBtn').addEventListener('click', () => showResult(false));
             document.getElementById('saveBtn').addEventListener('click', () => {
                 saveState(true);
+                saveCloudState('manual-save');
                 document.getElementById('autosaveStatus').textContent = 'Đã lưu bài thủ công thành công.';
             });
             document.getElementById('exportBtn').addEventListener('click', () => window.print());
@@ -1945,10 +2229,14 @@
                 if (e.target.id === 'summaryModal') e.currentTarget.classList.remove('open');
             });
             document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            document.getElementById('anonymousLoginBtn')?.addEventListener('click', signInAnonymously);
+            document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithGoogle);
+            document.getElementById('signOutBtn')?.addEventListener('click', signOutFirebase);
         }
 
         function init() {
             loadState();
+            initFirebaseCloud();
             applyTheme(state.theme || DEFAULT_THEME);
             bindCandidateInputs();
             setupTabs();
