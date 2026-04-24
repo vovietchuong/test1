@@ -48,6 +48,27 @@
   <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1"><div id="mainView"></div></main>
 </div>
 
+<!-- FIREBASE SDK: Authentication + Firestore -->
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlUDLFCbrt9Fgm7_j9czKofsluwz2QX9Y",
+    authDomain: "thionline2027.firebaseapp.com",
+    projectId: "thionline2027",
+    storageBucket: "thionline2027.firebasestorage.app",
+    messagingSenderId: "798882238835",
+    appId: "1:798882238835:web:0ca9e033ae3a6b9d55b506",
+    measurementId: "G-18BKNWVMDL"
+  };
+  firebase.initializeApp(firebaseConfig);
+  try { firebase.analytics(); } catch(e) {}
+  window.auth = firebase.auth();
+  window.db = firebase.firestore();
+</script>
+
 <script>
 const TOPICS=[
  {id:1,name:'Phương trình, hệ phương trình và bất phương trình',icon:'fa-code-branch',color:'blue'},
@@ -60,14 +81,67 @@ const TOPICS=[
  {id:8,name:'Chuyên đề vận dụng cao',icon:'fa-star',color:'fuchsia'}
 ];
 let currentUser=null, users=[], exams=[], submissions=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0;
+let firebaseReady = !!(window.firebase && window.auth && window.db);
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
+const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
+const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com'];
+function fbError(err){console.error(err); return err?.message||'Lỗi Firebase';}
+async function getUserProfile(user){
+  if(!user) return null;
+  let fallbackRole=TEACHER_EMAILS.includes((user.email||'').toLowerCase())?'teacher':'student';
+  let profile={id:user.uid,username:user.email,fullname:user.displayName||user.email,role:fallbackRole,email:user.email};
+  if(firebaseReady){
+    const ref=db.collection('users').doc(user.uid);
+    const snap=await ref.get();
+    if(snap.exists){profile={...profile,...snap.data(),id:user.uid,email:user.email,username:user.email}}
+    else{await ref.set({...profile,createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+  }
+  return profile;
+}
+async function loadExamsFromFirestore(){
+  if(!firebaseReady) return false;
+  const snap=await db.collection('exams').orderBy('createdAt','desc').get().catch(()=>null);
+  if(!snap) return false;
+  const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(arr.length){exams=arr;localStorage.setItem('mathpro12_exams',JSON.stringify(exams));return true;}
+  return false;
+}
+async function seedExamsToFirestore(){
+  if(!firebaseReady || !currentUser || currentUser.role!=='teacher') return;
+  const snap=await db.collection('exams').limit(1).get();
+  if(!snap.empty) return;
+  for(const e of exams){await db.collection('exams').doc(String(e.id)).set({...e,createdBy:currentUser.id,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+}
+async function loadSubmissionsFromFirestore(){
+  if(!firebaseReady) return false;
+  let q=db.collection('examResults').orderBy('createdAt','desc').limit(300);
+  const snap=await q.get().catch(()=>null);
+  if(!snap) return false;
+  submissions=snap.docs.map(d=>({id:d.id,...d.data()}));
+  localStorage.setItem('mathpro12_submissions',JSON.stringify(submissions));
+  return true;
+}
 function safe(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function typeset(){setTimeout(()=>window.MathJax&&MathJax.typesetPromise&&MathJax.typesetPromise(),30)}
 function toast(msg,type='info'){const d=document.createElement('div');d.className='fixed top-20 right-4 z-[80] px-4 py-3 rounded-2xl shadow-xl text-white fade-in '+(type==='ok'?'bg-green-600':type==='bad'?'bg-red-600':'bg-blue-600');d.innerHTML=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
-function save(){localStorage.setItem('mathpro12_users',JSON.stringify(users));localStorage.setItem('mathpro12_exams',JSON.stringify(exams));localStorage.setItem('mathpro12_submissions',JSON.stringify(submissions));localStorage.setItem('mathpro12_user',JSON.stringify(currentUser));}
-function load(){users=JSON.parse(localStorage.getItem('mathpro12_users')||'null')||[
- {id:1,username:'giaovien',password:'giaovien',role:'teacher',fullname:'Giáo viên Toán'}, {id:2,username:'hs1',password:'123',role:'student',fullname:'Nguyễn Văn An'}, {id:3,username:'hs2',password:'123',role:'student',fullname:'Trần Thị Bình'}];
- exams=JSON.parse(localStorage.getItem('mathpro12_exams')||'null')||seedExams(); submissions=JSON.parse(localStorage.getItem('mathpro12_submissions')||'[]'); currentUser=JSON.parse(localStorage.getItem('mathpro12_user')||'null'); save();}
+function save(){
+  localStorage.setItem('mathpro12_users',JSON.stringify(users));
+  localStorage.setItem('mathpro12_exams',JSON.stringify(exams));
+  localStorage.setItem('mathpro12_submissions',JSON.stringify(submissions));
+  localStorage.setItem('mathpro12_user',JSON.stringify(currentUser));
+}
+async function load(){
+  users=JSON.parse(localStorage.getItem('mathpro12_users')||'null')||[
+   {id:1,username:'giaovien@mathpro12.edu.vn',password:'giaovien',role:'teacher',fullname:'Giáo viên Toán'},
+   {id:2,username:'hs1@mathpro12.edu.vn',password:'123456',role:'student',fullname:'Nguyễn Văn An'},
+   {id:3,username:'hs2@mathpro12.edu.vn',password:'123456',role:'student',fullname:'Trần Thị Bình'}
+  ];
+  exams=JSON.parse(localStorage.getItem('mathpro12_exams')||'null')||seedExams();
+  submissions=JSON.parse(localStorage.getItem('mathpro12_submissions')||'[]');
+  currentUser=JSON.parse(localStorage.getItem('mathpro12_user')||'null');
+  try{ await loadExamsFromFirestore(); await loadSubmissionsFromFirestore(); }catch(err){console.warn('Không tải được Firestore, dùng dữ liệu local:',err)}
+  save();
+}
 function seedExams(){return [
  {id:101,title:'Đề nhanh: Hàm số và đạo hàm',topicId:4,duration:25,level:'Nhận biết - Thông hiểu',description:'Luyện nền tảng cực trị, đạo hàm, tính đơn điệu.',questions:[
   {id:'q1',type:'mc',text:'Hàm số $y=x^3-3x$ đạt cực đại tại giá trị nào của $x$?',options:['$x=-1$','$x=1$','$x=0$','$x=2$'],answer:0,solution:'Ta có $y\'=3x^2-3=3(x-1)(x+1)$. Đạo hàm đổi dấu từ $+$ sang $-$ tại $x=-1$, nên hàm số đạt cực đại tại $x=-1$.'},
@@ -87,18 +161,51 @@ function seedExams(){return [
 function topicName(id){return (TOPICS.find(t=>t.id==id)||{}).name||'Chủ đề khác'}
 function renderHeader(){const ui=$('userInfo');const theme=localStorage.getItem('mathpro12_theme')||'light';document.documentElement.dataset.theme=theme;ui.innerHTML=`<button onclick="toggleTheme()" class="btn-soft px-3 py-2 rounded-xl no-print"><i class="fa-solid ${theme==='dark'?'fa-sun':'fa-moon'}"></i></button>`+(currentUser?`<div class="flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-50/80"><i class="fa-solid fa-circle-user text-blue-600"></i><span class="font-semibold text-sm">${safe(currentUser.fullname||currentUser.username)}</span><span class="text-xs px-2 py-1 rounded-full bg-white">${currentUser.role==='teacher'?'Giáo viên':'Học sinh'}</span><button onclick="logout()" class="text-red-500 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button></div>`:`<button onclick="showLoginModal()" class="btn-primary text-white px-4 py-2 rounded-2xl no-print"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>`)}
 function toggleTheme(){const n=(document.documentElement.dataset.theme==='dark')?'light':'dark';localStorage.setItem('mathpro12_theme',n);renderHeader()}
-function logout(){currentUser=null;save();renderHeader();renderHome();toast('Đã đăng xuất','ok')}
+async function logout(){
+  try{ if(firebaseReady) await auth.signOut(); }catch(e){}
+  currentUser=null; save(); renderHeader(); renderHome(); toast('Đã đăng xuất','ok');
+}
 function requireRole(role){if(!currentUser){showLoginModal();return false} if(role&&currentUser.role!==role){toast('Tài khoản hiện tại không có quyền truy cập','bad');return false} return true}
 function renderHome(){clearInterval(examTimer);$('mainView').innerHTML=`<section class="grid lg:grid-cols-[1.1fr_.9fr] gap-6 items-center fade-in"><div class="glass-card p-7 md:p-10"><span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold"><i class="fa-solid fa-bolt"></i> Nền tảng ôn thi Toán 12</span><h2 class="text-3xl md:text-5xl font-black mt-4 leading-tight">Ôn tập, thi online, quản lý điểm <span class="bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent">chuyên nghiệp</span></h2><p class="mt-4 text-lg" style="color:var(--muted)">Khách có thể xem bài giảng và kho đề. Học sinh đăng nhập để làm bài, xem lời giải. Giáo viên quản lý đề thi, điểm số và dữ liệu học sinh.</p><div class="flex flex-wrap gap-3 mt-6"><button onclick="renderLessons()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-book-open"></i> Xem bài giảng</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-pen"></i> Vào kho đề</button>${currentUser?.role==='teacher'?`<button onclick="renderTeacherDashboard()" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-chalkboard-user"></i> Quản lý</button>`:''}</div></div><div class="grid grid-cols-2 gap-4">${statCards()}</div></section><section class="mt-7 grid md:grid-cols-4 gap-4">${TOPICS.map(t=>`<button onclick="renderExamsPublic(${t.id})" class="glass-card p-5 text-left"><i class="fa-solid ${t.icon} text-2xl text-blue-600"></i><h3 class="font-bold mt-3">${t.name}</h3><p class="text-sm mt-1" style="color:var(--muted)">${exams.filter(e=>e.topicId==t.id).length} đề thi</p></button>`).join('')}</section>`;typeset()}
 function statCards(){const totalQ=exams.reduce((s,e)=>s+e.questions.length,0);return [['Đề thi',exams.length,'fa-file-lines'],['Câu hỏi',totalQ,'fa-circle-question'],['Học sinh',users.filter(u=>u.role==='student').length,'fa-users'],['Lượt làm',submissions.length,'fa-chart-simple']].map(x=>`<div class="glass-card p-5"><i class="fa-solid ${x[2]} text-blue-600 text-2xl"></i><p class="text-3xl font-black mt-2">${x[1]}</p><p class="text-sm" style="color:var(--muted)">${x[0]}</p></div>`).join('')}
 function renderLessons(){ $('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">📚 Bài giảng ôn tập theo chủ đề</h2><div class="grid md:grid-cols-2 gap-5">${TOPICS.map(t=>`<article class="glass-card p-6"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl btn-primary text-white grid place-items-center"><i class="fa-solid ${t.icon}"></i></div><h3 class="font-bold text-lg">${t.name}</h3></div><ul class="mt-4 space-y-2 text-sm" style="color:var(--muted)"><li>• Tóm tắt công thức trọng tâm</li><li>• Ví dụ minh họa có lời giải</li><li>• Bài tập luyện tập theo mức độ</li></ul><button onclick="renderExamsPublic(${t.id})" class="mt-4 btn-soft px-4 py-2 rounded-xl font-semibold">Luyện đề chủ đề này</button></article>`).join('')}</div>`; }
 function renderExamsPublic(topic='all'){let list=topic==='all'?exams:exams.filter(e=>e.topicId==topic);$('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🧪 Kho đề luyện thi</h2><p style="color:var(--muted)">Chọn đề để xem chi tiết. Học sinh cần đăng nhập để nộp bài và lưu điểm.</p></div><select onchange="renderExamsPublic(this.value)" class="px-4 py-3 rounded-2xl border bg-white"><option value="all">Tất cả chủ đề</option>${TOPICS.map(t=>`<option value="${t.id}" ${topic==t.id?'selected':''}>${t.name}</option>`).join('')}</select></div><div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">${list.map(examCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Chưa có đề trong chủ đề này.</div>'}</div>`;typeset()}
 function examCard(e){return `<article class="glass-card p-5 slide-up"><div class="flex justify-between gap-3"><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">${topicName(e.topicId)}</span><span class="text-xs" style="color:var(--muted)"><i class="fa-regular fa-clock"></i> ${e.duration||30} phút</span></div><h3 class="font-black text-xl mt-3 math-content">${safe(e.title)}</h3><p class="text-sm mt-2 min-h-10" style="color:var(--muted)">${safe(e.description||'Đề ôn tập')}</p><div class="flex gap-2 mt-3 text-xs"><span class="px-2 py-1 rounded-lg bg-slate-100">${e.questions.length} câu</span><span class="px-2 py-1 rounded-lg bg-slate-100">${safe(e.level||'Ôn tập')}</span></div><button onclick="startExam(${e.id})" class="mt-4 w-full btn-primary text-white py-3 rounded-2xl font-bold"><i class="fa-solid fa-play"></i> ${currentUser?.role==='student'?'Làm bài':'Xem / làm thử'}</button></article>`}
-function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Mẫu: hs1/123 hoặc giaovien/giaovien</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Tên đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><div class="grid grid-cols-2 gap-2"><button onclick="quickLogin('hs1','123')" class="btn-soft py-2 rounded-xl">Học sinh mẫu</button><button onclick="quickLogin('giaovien','giaovien')" class="btn-soft py-2 rounded-xl">Giáo viên mẫu</button></div><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản học sinh</button></div></div>`;document.body.appendChild(m)}
-function doLogin(){const u=$('loginU')?.value.trim(),p=$('loginP')?.value;const found=users.find(x=>x.username===u&&x.password===p);if(!found){toast('Sai tài khoản hoặc mật khẩu','bad');return}currentUser={...found};save();document.querySelector('.fixed')?.remove();renderHeader();currentUser.role==='teacher'?renderTeacherDashboard():renderExamsPublic();toast('Đăng nhập thành công','ok')}
+function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Dùng email Firebase. Ví dụ: hs1@mathpro12.edu.vn / 123456</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><div class="grid grid-cols-2 gap-2"><button onclick="quickLogin('hs1@mathpro12.edu.vn','123456')" class="btn-soft py-2 rounded-xl">Học sinh mẫu</button><button onclick="quickLogin('giaovien@mathpro12.edu.vn','giaovien')" class="btn-soft py-2 rounded-xl">Giáo viên mẫu</button></div><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản học sinh</button></div></div>`;document.body.appendChild(m)}
+async function doLogin(){
+  const email=emailFromLogin($('loginU')?.value||''), password=$('loginP')?.value;
+  if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
+  try{
+    const cred=await auth.signInWithEmailAndPassword(email,password);
+    currentUser=await getUserProfile(cred.user);
+    save();
+    document.querySelector('.fixed')?.remove();
+    renderHeader();
+    await loadExamsFromFirestore(); await loadSubmissionsFromFirestore();
+    if(currentUser.role==='teacher') { await seedExamsToFirestore(); renderTeacherDashboard(); } else renderExamsPublic();
+    toast('Đăng nhập Firebase thành công','ok');
+  }catch(err){
+    toast('Đăng nhập thất bại: '+fbError(err),'bad');
+  }
+}
 function quickLogin(u,p){$('loginU').value=u;$('loginP').value=p;doLogin()}
-function showRegister(){document.querySelector('.fixed')?.remove();const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký học sinh</h2><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Tên đăng nhập"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
-function doRegister(){const username=$('regU').value.trim(),password=$('regP').value,fullname=$('regName').value.trim()||username;if(!username||!password)return toast('Vui lòng nhập đủ thông tin','bad');if(users.some(u=>u.username===username))return toast('Tên đăng nhập đã tồn tại','bad');users.push({id:uid(),username,password,fullname,role:'student'});save();document.querySelector('.fixed')?.remove();toast('Đăng ký thành công, hãy đăng nhập','ok');showLoginModal()}
+function showRegister(){document.querySelector('.fixed')?.remove();const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký học sinh</h2><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
+async function doRegister(){
+  const email=emailFromLogin($('regU').value.trim()), password=$('regP').value, fullname=$('regName').value.trim()||email;
+  if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
+  if(password.length<6) return toast('Mật khẩu Firebase cần ít nhất 6 ký tự','bad');
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    const role=TEACHER_EMAILS.includes(email.toLowerCase())?'teacher':'student';
+    await db.collection('users').doc(cred.user.uid).set({id:cred.user.uid,email,username:email,fullname,role,createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    users.push({id:cred.user.uid,username:email,fullname,role}); save();
+    document.querySelector('.fixed')?.remove();
+    toast('Đăng ký Firebase thành công','ok');
+    showLoginModal();
+  }catch(err){
+    toast('Đăng ký thất bại: '+fbError(err),'bad');
+  }
+}
 function startExam(id){selectedExam=exams.find(e=>e.id==id); if(!selectedExam)return; examAnswers={};examReview=false;examRemain=(selectedExam.duration||30)*60; renderExamRoom(); if(currentUser?.role==='student'){clearInterval(examTimer);examTimer=setInterval(()=>{examRemain--;updateTimer(); if(examRemain<=0){clearInterval(examTimer);submitExam(true)}},1000)} }
 function updateTimer(){const t=$('timerBox'); if(t)t.textContent=`${String(Math.floor(examRemain/60)).padStart(2,'0')}:${String(examRemain%60).padStart(2,'0')}`}
 function renderExamRoom(){const e=selectedExam;$('mainView').innerHTML=`<div class="glass-card p-5 mb-5 sticky top-20 z-20"><div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-2xl font-black">${safe(e.title)}</h2><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu</p></div><div class="flex gap-2 items-center"><span id="timerBox" class="px-4 py-2 rounded-2xl bg-slate-900 text-white font-mono">--:--</span><button onclick="submitExam(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold">Nộp bài</button><button onclick="renderExamsPublic()" class="btn-soft px-4 py-2 rounded-2xl">Thoát</button></div></div></div><div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div>`;updateTimer();typeset()}
@@ -108,7 +215,27 @@ function renderQuestion(q,i){const saved=examAnswers[q.id];let body=''; if(q.typ
  return `<section class="glass-card p-5"><div class="font-bold mb-3 math-content">Câu ${i+1}. ${q.text}</div><div class="space-y-3">${body}</div></section>`}
 function setTF(qid,idx,val){if(!examAnswers[qid])examAnswers[qid]=[];examAnswers[qid][idx]=val}
 function norm(x){return String(x??'').trim().replace(',','.').replace(/\s+/g,'').toLowerCase()}
-function submitExam(auto=false){if(!selectedExam)return;if(!currentUser){showLoginModal();toast('Thầy/các em cần đăng nhập học sinh để lưu điểm.','info');return}let score=0,details=[];selectedExam.questions.forEach(q=>{let ok=false,a=examAnswers[q.id]; if(q.type==='mc')ok=Number(a)===Number(q.answer); if(q.type==='tf')ok=Array.isArray(a)&&q.answer.every((v,i)=>a[i]===v); if(q.type==='short')ok=norm(a)===norm(q.answer); if(ok)score++; details.push({qid:q.id,answer:a,ok});}); const sub={id:uid(),studentId:currentUser.id,studentName:currentUser.fullname,examId:selectedExam.id,examTitle:selectedExam.title,score,total:selectedExam.questions.length,percent:Math.round(score*100/selectedExam.questions.length),date:new Date().toLocaleString('vi-VN'),details}; if(currentUser.role==='student'){submissions.push(sub);save()} clearInterval(examTimer);renderResult(sub,auto)}
+async function submitExam(auto=false){
+  if(!selectedExam)return;
+  if(!currentUser){showLoginModal();toast('Thầy/các em cần đăng nhập học sinh để lưu điểm.','info');return}
+  let score=0,details=[];
+  selectedExam.questions.forEach(q=>{
+    let ok=false,a=examAnswers[q.id];
+    if(q.type==='mc')ok=Number(a)===Number(q.answer);
+    if(q.type==='tf')ok=Array.isArray(a)&&q.answer.every((v,i)=>a[i]===v);
+    if(q.type==='short')ok=norm(a)===norm(q.answer);
+    if(ok)score++; details.push({qid:q.id,answer:a??null,ok});
+  });
+  const sub={id:String(uid()),studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,examId:String(selectedExam.id),examTitle:selectedExam.title,score,total:selectedExam.questions.length,percent:Math.round(score*100/selectedExam.questions.length),date:new Date().toLocaleString('vi-VN'),details,createdAt:new Date().toISOString()};
+  if(currentUser.role==='student'){
+    submissions.unshift(sub); save();
+    if(firebaseReady){
+      try{ await db.collection('examResults').doc(sub.id).set({...sub,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); }
+      catch(err){ toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad'); }
+    }
+  }
+  clearInterval(examTimer);renderResult(sub,auto);
+}
 function renderResult(sub,auto){$('mainView').innerHTML=`<div class="glass-card p-7 text-center"><h2 class="text-3xl font-black">${auto?'Hết giờ - ':''}Kết quả bài làm</h2><p class="text-6xl font-black text-blue-600 my-4">${sub.score}/${sub.total}</p><p class="text-xl">Tỷ lệ đúng: <b>${sub.percent}%</b></p><div class="flex justify-center gap-3 mt-5"><button onclick="renderReview()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold">Xem đáp án & lời giải</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Về kho đề</button></div></div>`}
 function renderReview(){const e=selectedExam;$('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">Đáp án và lời giải</h2><div class="space-y-5">${e.questions.map((q,i)=>`<section class="glass-card p-5"><div class="font-bold math-content">Câu ${i+1}. ${q.text}</div><div class="mt-3 text-sm"><b>Đáp án:</b> ${answerText(q)}</div><div class="mt-2 math-content"><b>Lời giải:</b> ${q.solution||'Chưa có lời giải.'}</div></section>`).join('')}</div>`;typeset()}
 function answerText(q){if(q.type==='mc')return 'ABCD'[q.answer]+'. '+q.options[q.answer]; if(q.type==='tf')return q.answer.map((v,i)=>`${String.fromCharCode(97+i)}) ${v?'Đúng':'Sai'}`).join('; '); return q.answer}
@@ -118,11 +245,46 @@ function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',to
 function refreshEditorQuestions(){const box=$('editorQuestions');if(!box)return;box.innerHTML=window.editorQ.map((q,i)=>`<div class="p-4 rounded-2xl border bg-white/60"><div class="flex justify-between"><b>Câu ${i+1} - ${q.type}</b><button onclick="editorQ.splice(${i},1);refreshEditorQuestions()" class="text-red-600">Xóa</button></div><textarea onchange="editorQ[${i}].text=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Nội dung câu hỏi">${safe(q.text||'')}</textarea>${editorFields(q,i)}<textarea onchange="editorQ[${i}].solution=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Lời giải">${safe(q.solution||'')}</textarea></div>`).join('')||'<p class="text-slate-500">Chưa có câu hỏi. Hãy thêm câu mới.</p>';typeset()}
 function editorFields(q,i){if(q.type==='mc')return `<div class="grid md:grid-cols-2 gap-2 mt-2">${[0,1,2,3].map(k=>`<input onchange="editorQ[${i}].options[${k}]=this.value" class="border rounded-xl p-2" placeholder="Phương án ${'ABCD'[k]}" value="${safe(q.options?.[k]||'')}">`).join('')}</div><select onchange="editorQ[${i}].answer=Number(this.value)" class="border rounded-xl p-2 mt-2"><option value="0" ${q.answer==0?'selected':''}>Đáp án A</option><option value="1" ${q.answer==1?'selected':''}>Đáp án B</option><option value="2" ${q.answer==2?'selected':''}>Đáp án C</option><option value="3" ${q.answer==3?'selected':''}>Đáp án D</option></select>`; if(q.type==='tf')return `<div class="space-y-2 mt-2">${[0,1,2,3].map(k=>`<div class="grid md:grid-cols-[1fr_140px] gap-2"><input onchange="editorQ[${i}].statements[${k}]=this.value" class="border rounded-xl p-2" placeholder="Mệnh đề ${String.fromCharCode(97+k)}" value="${safe(q.statements?.[k]||'')}"><select onchange="editorQ[${i}].answer[${k}]=this.value==='true'" class="border rounded-xl p-2"><option value="true" ${q.answer?.[k]!==false?'selected':''}>Đúng</option><option value="false" ${q.answer?.[k]===false?'selected':''}>Sai</option></select></div>`).join('')}</div>`; return `<input onchange="editorQ[${i}].answer=this.value" class="border rounded-xl p-2 mt-2 w-full" placeholder="Đáp án ngắn" value="${safe(q.answer||'')}">`}
 function addEditorQuestion(type){const base={id:'q'+uid(),type,text:'',solution:''};if(type==='mc'){base.options=['','','',''];base.answer=0}else if(type==='tf'){base.statements=['','','',''];base.answer=[true,true,true,true]}else{base.answer=''}window.editorQ.push(base);refreshEditorQuestions()}
-function saveExamEditor(id){const data={id:id||uid(),title:$('edTitle').value.trim(),topicId:Number($('edTopic').value),duration:Number($('edDuration').value||30),level:$('edLevel').value,description:$('edDesc').value,questions:window.editorQ};if(!data.title||!data.questions.length)return toast('Cần nhập tên đề và ít nhất 1 câu hỏi','bad');if(id){const idx=exams.findIndex(e=>e.id==id);exams[idx]=data}else exams.push(data);save();document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã lưu đề thi','ok')}
-function deleteExam(id){if(confirm('Xóa đề này và các điểm liên quan?')){exams=exams.filter(e=>e.id!=id);submissions=submissions.filter(s=>s.examId!=id);save();renderTeacherDashboard();toast('Đã xóa','ok')}}
+async function saveExamEditor(id){
+  const docId=String(id||uid());
+  const data={id:docId,title:$('edTitle').value.trim(),topicId:Number($('edTopic').value),duration:Number($('edDuration').value||30),level:$('edLevel').value,description:$('edDesc').value,questions:window.editorQ,updatedAt:new Date().toISOString()};
+  if(!data.title||!data.questions.length)return toast('Cần nhập tên đề và ít nhất 1 câu hỏi','bad');
+  if(id){const idx=exams.findIndex(e=>String(e.id)==String(id)); if(idx>=0)exams[idx]=data}else exams.push(data);
+  save();
+  if(firebaseReady){
+    try{await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+    catch(err){toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad')}
+  }
+  document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã lưu đề thi','ok');
+}
+async function deleteExam(id){
+  if(confirm('Xóa đề này và các điểm liên quan?')){
+    exams=exams.filter(e=>String(e.id)!=String(id));
+    submissions=submissions.filter(s=>String(s.examId)!=String(id));
+    save();
+    if(firebaseReady){try{await db.collection('exams').doc(String(id)).delete();}catch(err){toast('Chưa xóa được trên Firestore: '+fbError(err),'bad')}}
+    renderTeacherDashboard();toast('Đã xóa','ok');
+  }
+}
 function exportData(){const blob=new Blob([JSON.stringify({users,exams,submissions},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mathpro12-data.json';a.click()}
-function resetDemo(){if(confirm('Khôi phục dữ liệu mẫu?')){localStorage.removeItem('mathpro12_users');localStorage.removeItem('mathpro12_exams');localStorage.removeItem('mathpro12_submissions');localStorage.removeItem('mathpro12_user');load();renderHeader();renderTeacherDashboard()}}
-load();renderHeader();renderHome();
+function resetDemo(){if(confirm('Khôi phục dữ liệu mẫu?')){localStorage.removeItem('mathpro12_users');localStorage.removeItem('mathpro12_exams');localStorage.removeItem('mathpro12_submissions');localStorage.removeItem('mathpro12_user');bootstrap()}}
+async function bootstrap(){
+  $('mainView').innerHTML='<div class="glass-card p-8 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-3 font-semibold">Đang kết nối Firebase và tải dữ liệu...</p></div>';
+  await load();
+  renderHeader();
+  renderHome();
+  if(firebaseReady){
+    auth.onAuthStateChanged(async (user)=>{
+      if(user){
+        try{
+          currentUser=await getUserProfile(user); save(); renderHeader();
+          await loadExamsFromFirestore(); await loadSubmissionsFromFirestore();
+        }catch(err){console.warn(err)}
+      }else{currentUser=null; save(); renderHeader();}
+    });
+  }
+}
+bootstrap();
 </script>
 </body>
 </html>
