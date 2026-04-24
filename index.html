@@ -521,8 +521,110 @@ async function generateAutoExam(){await ensureQuestionBankReady();const topic=$(
 function renderClassManager(){if(!requireRole('teacher'))return;const rows=users.filter(u=>u.role==='student').map(u=>`<tr class="border-b"><td class="p-2">${safe(u.fullname||u.email)}</td><td>${safe(u.email||u.username)}</td><td><input class="border rounded-xl p-2" value="${safe(u.className||'Chưa phân lớp')}" onchange="updateStudentClass('${u.id}',this.value)"></td></tr>`).join('')||'<tr><td colspan="3" class="p-4">Chưa có học sinh.</td></tr>';$('mainView').innerHTML=`<div class="flex justify-between mb-5"><h2 class="text-3xl font-black">🏫 Quản lý lớp học</h2><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button></div><div class="glass-card p-5 mb-5"><div class="flex flex-wrap gap-2 mb-3">${classes.map(c=>`<span class="class-chip">${safe(c)}</span>`).join('')}</div><div class="flex gap-2"><input id="newClassName" class="border rounded-xl p-3 flex-1" placeholder="Thêm lớp"><button onclick="addClassName()" class="btn-primary text-white px-4 rounded-xl">Thêm</button></div></div><div class="glass-card p-5 overflow-x-auto"><table class="w-full text-sm"><tbody>${rows}</tbody></table></div>`}
 function addClassName(){const name=($('newClassName')?.value||'').trim();if(!name)return;if(!classes.includes(name))classes.push(name);save();renderClassManager();toast('Đã thêm lớp','ok')}
 async function updateStudentClass(userId,className){className=(className||'Chưa phân lớp').trim()||'Chưa phân lớp';const u=users.find(x=>String(x.id)===String(userId));if(u)u.className=className;if(!classes.includes(className))classes.push(className);save();if(firebaseReady){try{await db.collection('users').doc(String(userId)).set({className,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(err){toast('Chưa cập nhật được Firestore: '+fbError(err),'bad')}}toast('Đã cập nhật lớp','ok')}
-function renderTeacherDashboard(){if(!requireRole('teacher'))return;$('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><h2 class="text-3xl font-black">👩‍🏫 Bảng quản lý giáo viên</h2><div class="flex gap-2 flex-wrap"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">+ Tạo đề</button><button onclick="openAutoExamBuilder()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold">Tạo đề tự động</button><button onclick="renderClassManager()" class="btn-soft px-4 py-2 rounded-2xl">Lớp học</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl">Kho câu hỏi</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl">Đồng bộ cấu trúc đề</button><button onclick="exportCSV()" class="btn-soft px-4 py-2 rounded-2xl">Xuất Excel CSV</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl">Rules bảo mật</button><button onclick="exportData()" class="btn-soft px-4 py-2 rounded-2xl">Xuất JSON</button><button onclick="resetDemo()" class="bg-red-50 text-red-600 px-4 py-2 rounded-2xl">Reset</button></div></div>${teacherAnalyticsHTML()}<div class="grid lg:grid-cols-[1fr_.9fr] gap-5"><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Quản lý đề thi</h3><div class="space-y-3">${exams.map(e=>`<div class="p-4 rounded-2xl border flex justify-between gap-3"><div><b>${safe(e.title)}</b><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • ${e.duration||30} phút</p></div><div class="flex gap-2"><button onclick="openExamEditor(${e.id})" class="bg-amber-500 text-white px-3 py-1 rounded-xl">Sửa</button><button onclick="deleteExam(${e.id})" class="bg-red-600 text-white px-3 py-1 rounded-xl">Xóa</button></div></div>`).join('')}</div></section><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Điểm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${submissions.slice().reverse().map(s=>`<tr class="border-b"><td class="p-2">${safe(s.studentName)}</td><td>${safe(s.examTitle)}</td><td><b>${s.score}/${s.total}</b></td></tr>`).join('')||'<tr><td>Chưa có bài làm.</td></tr>'}</tbody></table></div></section></div>`}
-function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:30,level:'',description:'',questions:[]};const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${TOPICS.map(t=>`<option value="${t.id}" ${e.topicId==t.id?'selected':''}>${t.name}</option>`).join('')}</select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||30}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button><button onclick="openQuestionBankPicker()" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-folder-open"></i> Chọn từ kho</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;document.body.appendChild(m);window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));refreshEditorQuestions()}
+function renderTeacherDashboard(){if(!requireRole('teacher'))return;$('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><h2 class="text-3xl font-black">👩‍🏫 Bảng quản lý giáo viên</h2><div class="flex gap-2 flex-wrap"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">+ Tạo đề</button><button onclick="openAutoExamBuilder()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold">Tạo đề tự động</button><button onclick="renderClassManager()" class="btn-soft px-4 py-2 rounded-2xl">Lớp học</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl">Kho câu hỏi</button><button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập câu hỏi từ file</button><button onclick="downloadQuestionTemplateCSV()" class="btn-soft px-4 py-2 rounded-2xl"><i class="fa-solid fa-download"></i> File mẫu CSV</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl">Đồng bộ cấu trúc đề</button><button onclick="exportCSV()" class="btn-soft px-4 py-2 rounded-2xl">Xuất Excel CSV</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl">Rules bảo mật</button><button onclick="exportData()" class="btn-soft px-4 py-2 rounded-2xl">Xuất JSON</button><button onclick="resetDemo()" class="bg-red-50 text-red-600 px-4 py-2 rounded-2xl">Reset</button></div></div>${teacherAnalyticsHTML()}<div class="grid lg:grid-cols-[1fr_.9fr] gap-5"><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Quản lý đề thi</h3><div class="space-y-3">${exams.map(e=>`<div class="p-4 rounded-2xl border flex justify-between gap-3"><div><b>${safe(e.title)}</b><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • ${e.duration||30} phút</p></div><div class="flex gap-2"><button onclick="openExamEditor(${e.id})" class="bg-amber-500 text-white px-3 py-1 rounded-xl">Sửa</button><button onclick="deleteExam(${e.id})" class="bg-red-600 text-white px-3 py-1 rounded-xl">Xóa</button></div></div>`).join('')}</div></section><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Điểm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${submissions.slice().reverse().map(s=>`<tr class="border-b"><td class="p-2">${safe(s.studentName)}</td><td>${safe(s.examTitle)}</td><td><b>${s.score}/${s.total}</b></td></tr>`).join('')||'<tr><td>Chưa có bài làm.</td></tr>'}</tbody></table></div></section></div>`}
+
+function questionTemplateRows(){return [
+  ['type','topicId','level','text','optionA','optionB','optionC','optionD','answer','statementA','statementB','statementC','statementD','answerA','answerB','answerC','answerD','solution','imageUrl'],
+  ['mc','4','Nhận biết','Hàm số $y=x^3-3x$ đạt cực đại tại giá trị nào của $x$?','$x=-1$','$x=1$','$x=0$','$x=2$','A','','','','','','','','','Ta có $y\'=3x^2-3$. Đạo hàm đổi dấu từ $+$ sang $-$ tại $x=-1$.',''],
+  ['tf','4','Thông hiểu','Cho hàm số $y=x^3-3x+2$. Xét các khẳng định sau.','','','','','','$y\'=3x^2-3$','$y\'=0$ khi $x=-1,x=1$','$y\'<0$ trên $(-1;1)$','Giá trị cực đại bằng $4$','Đúng','Đúng','Đúng','Đúng','Tính đạo hàm và xét dấu trên các khoảng.',''],
+  ['short','5','Cơ bản','Tính $\\int_0^1 2x\,dx$.','','','','','1','','','','','','','','','Ta có $\\int_0^1 2x\,dx=x^2\\big|_0^1=1$.','']
+];}
+function csvEscape(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
+function downloadQuestionTemplateCSV(){
+  const csv=questionTemplateRows().map(r=>r.map(csvEscape).join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mau-nhap-cau-hoi-mathpro12.csv';a.click();URL.revokeObjectURL(a.href);
+}
+function downloadQuestionTemplateJSON(){
+  const sample={
+    note:'Có thể nhập file JSON theo mẫu này hoặc CSV. type: mc/tf/short; topicId: 1-8; answer của mc dùng A/B/C/D hoặc 0/1/2/3.',
+    questions:[
+      {type:'mc',topicId:4,level:'Nhận biết',text:'Hàm số $y=x^3-3x$ đạt cực đại tại giá trị nào của $x$?',options:['$x=-1$','$x=1$','$x=0$','$x=2$'],answer:'A',solution:'Ta có $y\'=3x^2-3$, đạo hàm đổi dấu từ $+$ sang $-$ tại $x=-1$.',imageUrl:''},
+      {type:'tf',topicId:4,level:'Thông hiểu',text:'Cho hàm số $y=x^3-3x+2$. Xét các khẳng định sau.',statements:['$y\'=3x^2-3$','$y\'=0$ khi $x=-1,x=1$','$y\'<0$ trên $(-1;1)$','Giá trị cực đại bằng $4$'],answer:[true,true,true,true],solution:'Tính đạo hàm và xét dấu.',imageUrl:''},
+      {type:'short',topicId:5,level:'Cơ bản',text:'Tính $\\int_0^1 2x\,dx$.',answer:'1',solution:'$\\int_0^1 2x\,dx=x^2\\big|_0^1=1$.',imageUrl:''}
+    ]
+  };
+  const blob=new Blob([JSON.stringify(sample,null,2)],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mau-nhap-cau-hoi-mathpro12.json';a.click();URL.revokeObjectURL(a.href);
+}
+function parseCSV(text){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i],n=text[i+1];
+    if(q&&c==='"'&&n==='"'){cell+='"';i++;continue}
+    if(c==='"'){q=!q;continue}
+    if(!q&&c===','){row.push(cell);cell='';continue}
+    if(!q&&(c==='\n'||c==='\r')){if(c==='\r'&&n==='\n')i++;row.push(cell);if(row.some(x=>String(x).trim()!==''))rows.push(row);row=[];cell='';continue}
+    cell+=c;
+  }
+  row.push(cell);if(row.some(x=>String(x).trim()!==''))rows.push(row);
+  return rows;
+}
+function truthyVN(v){v=norm(v);return ['true','1','dung','đung','đúng','yes','y','t'].includes(v)}
+function normalizeImportedQuestion(raw,idx=0){
+  const q={...raw};q.type=String(q.type||'mc').trim().toLowerCase();
+  if(!['mc','tf','short'].includes(q.type))q.type='mc';
+  q.id=String(q.id||('q'+uid()+idx));
+  q.topicId=Number(q.topicId||$('edTopic')?.value||4);
+  q.level=q.level||$('edLevel')?.value||'';
+  q.text=String(q.text||'').trim();
+  q.solution=String(q.solution||'').trim();
+  q.imageUrl=String(q.imageUrl||'').trim();
+  if(q.type==='mc'){
+    q.options=Array.isArray(q.options)?q.options:[q.optionA,q.optionB,q.optionC,q.optionD].map(x=>String(x||'').trim());
+    while(q.options.length<4)q.options.push(''); q.options=q.options.slice(0,4);
+    let a=q.answer; if(typeof a==='string'){const s=a.trim().toUpperCase();a='ABCD'.includes(s)?'ABCD'.indexOf(s):Number(s)}
+    q.answer=Number.isFinite(Number(a))?Number(a):0; if(q.answer>3)q.answer=Math.max(0,q.answer-1); if(q.answer<0||q.answer>3)q.answer=0;
+  }else if(q.type==='tf'){
+    q.statements=Array.isArray(q.statements)?q.statements:[q.statementA,q.statementB,q.statementC,q.statementD].map(x=>String(x||'').trim());
+    while(q.statements.length<4)q.statements.push(''); q.statements=q.statements.slice(0,4);
+    if(Array.isArray(q.answer))q.answer=q.answer.map(Boolean).slice(0,4); else q.answer=[q.answerA,q.answerB,q.answerC,q.answerD].map(truthyVN);
+    while(q.answer.length<4)q.answer.push(true);
+  }else q.answer=String(q.answer||'').trim();
+  if(!q.text)throw new Error('Dòng '+(idx+2)+' thiếu nội dung câu hỏi');
+  return q;
+}
+function questionsFromCSV(text){
+  const rows=parseCSV(text); if(rows.length<2)return [];
+  const headers=rows[0].map(h=>String(h).trim());
+  return rows.slice(1).map((r,idx)=>{const o={};headers.forEach((h,i)=>o[h]=r[i]??'');return normalizeImportedQuestion(o,idx);});
+}
+function questionsFromJSON(text){
+  const data=JSON.parse(text); const arr=Array.isArray(data)?data:(data.questions||[]);
+  return arr.map((q,idx)=>normalizeImportedQuestion(q,idx));
+}
+function openQuestionImportModal(target='bank'){
+  if(target==='editor'&&!window.editorQ)window.editorQ=[];
+  const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 z-[75] p-4 overflow-auto fade-in question-import-modal';
+  m.innerHTML=`<div class="glass-card max-w-3xl mx-auto p-6"><div class="flex justify-between gap-3"><div><h2 class="text-2xl font-black">📥 Nhập câu hỏi từ file</h2><p class="text-sm" style="color:var(--muted)">${target==='editor'?'Câu hỏi sẽ được đưa vào đề đang soạn.':'Câu hỏi sẽ được thêm vào kho câu hỏi.'}</p></div><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><button onclick="downloadQuestionTemplateCSV()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-csv"></i> Tải file mẫu CSV</button><button onclick="downloadQuestionTemplateJSON()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-code"></i> Tải file mẫu JSON</button></div><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Quy ước nhanh:</b> cột <b>type</b> dùng <b>mc</b>, <b>tf</b>, <b>short</b>; đáp án trắc nghiệm nhập A/B/C/D; đúng-sai nhập Đúng/Sai hoặc true/false; công thức Toán giữ dạng LaTeX giữa dấu $...$.</div><input id="questionImportFile" type="file" accept=".csv,.json,application/json,text/csv" class="mt-4 w-full border rounded-2xl p-3 bg-white"><div class="flex justify-end gap-3 mt-5"><button onclick="handleQuestionImport('${target}')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-check"></i> Nhập dữ liệu</button></div></div>`;
+  document.body.appendChild(m);
+}
+async function handleQuestionImport(target='bank'){
+  const input=$('questionImportFile'),file=input?.files?.[0]; if(!file)return toast('Thầy hãy chọn file CSV hoặc JSON','bad');
+  try{
+    const text=await file.text();
+    const imported=(file.name.toLowerCase().endsWith('.json')?questionsFromJSON(text):questionsFromCSV(text));
+    if(!imported.length)return toast('File chưa có câu hỏi hợp lệ','bad');
+    if(target==='editor'){
+      window.editorQ=window.editorQ||[];
+      imported.forEach((q,i)=>{q.id='q'+uid()+i;window.editorQ.push(q)});
+      refreshEditorQuestions();
+      document.querySelector('.question-import-modal')?.remove();
+      toast('Đã đưa '+imported.length+' câu vào đề đang soạn','ok');
+      return;
+    }
+    const now=new Date().toISOString();
+    imported.forEach((q,i)=>{q.id=String(q.id||('q'+uid()+i));q.status='published';q.sourceExamTitle='Nhập từ file';q.topicName=topicName(q.topicId);q.updatedAt=now;});
+    const byId={};questionBank.forEach(q=>byId[String(q.id)]=q);imported.forEach(q=>byId[String(q.id)]=q);questionBank=Object.values(byId);
+    localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+    if(firebaseReady){const batch=db.batch();imported.forEach(q=>batch.set(db.collection('questionBanks').doc(String(q.id)),{...q,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();}
+    document.querySelector('.question-import-modal')?.remove();
+    toast('Đã nhập '+imported.length+' câu vào kho câu hỏi','ok');
+    renderQuestionBank();
+  }catch(err){console.error(err);toast('Không nhập được file: '+(err?.message||err),'bad');}
+}
+
+function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:30,level:'',description:'',questions:[]};const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${TOPICS.map(t=>`<option value="${t.id}" ${e.topicId==t.id?'selected':''}>${t.name}</option>`).join('')}</select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||30}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button><button onclick="openQuestionBankPicker()" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-folder-open"></i> Chọn từ kho</button><button onclick="openQuestionImportModal('editor')" class="bg-emerald-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-file-import"></i> Nhập từ file</button><button onclick="downloadQuestionTemplateCSV()" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-download"></i> Mẫu CSV</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;document.body.appendChild(m);window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));refreshEditorQuestions()}
 
 async function ensureQuestionBankReady(){
   if(firebaseReady){try{await loadQuestionBankFromFirestore();}catch(err){console.warn('Không tải được questionBanks:',err)}}
