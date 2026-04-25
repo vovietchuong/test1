@@ -889,19 +889,329 @@ function exportCSV(){
 /* [Bước 1] Đã loại bỏ phiên bản cũ bị trùng của hàm renderStats; dùng phiên bản nâng cấp phía dưới. */
 
 
+
+function qBankTypeLabel(type){
+  return type==='mc'?'Trắc nghiệm A/B/C/D':type==='tf'?'Đúng/Sai':type==='short'?'Trả lời ngắn':'Tự luận';
+}
+function qBankStatusLabel(status){
+  return status==='draft'?'Nháp':status==='archived'?'Lưu trữ':'Đã xuất bản';
+}
+function qBankNormalizeList(){
+  if(!questionBank.length){
+    questionBank=questionBankFromLocalExams();
+  }
+  questionBank=questionBank.map(q=>({
+    ...q,
+    id:String(q.id||q.bankId||('q'+uid())),
+    topicId:q.topicId||'',
+    topicName:q.topicName||topicName(q.topicId),
+    status:q.status||'published',
+    level:q.level||q.difficulty||'',
+    tags:Array.isArray(q.tags)?q.tags:(String(q.tags||'').split(',').map(x=>x.trim()).filter(Boolean))
+  }));
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));
+}
+function qBankGetFilters(){
+  window.qBankFilters=window.qBankFilters||{search:'',topic:'all',type:'all',level:'all',status:'all'};
+  return window.qBankFilters;
+}
+function qBankUpdateFilter(key,val){
+  const f=qBankGetFilters();
+  f[key]=val;
+  renderQuestionBank();
+}
+function qBankFilteredItems(){
+  const f=qBankGetFilters();
+  const kw=norm(f.search||'');
+  return questionBank.filter(q=>{
+    const hay=norm([q.text,q.solution,q.topicName,q.level,(q.tags||[]).join(' '),q.sourceExamTitle,q.id].join(' '));
+    const okSearch=!kw||hay.includes(kw);
+    const okTopic=f.topic==='all'||String(q.topicId)===String(f.topic);
+    const okType=f.type==='all'||String(q.type)===String(f.type);
+    const okLevel=f.level==='all'||norm(q.level||'').includes(norm(f.level));
+    const okStatus=f.status==='all'||String(q.status||'published')===String(f.status);
+    return okSearch&&okTopic&&okType&&okLevel&&okStatus;
+  }).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+}
+function qBankAnswerText(q){
+  const a=q.answer;
+  if(q.type==='mc'){
+    if(typeof a==='number') return ['A','B','C','D','E','F'][a]||String(a);
+    return safe(a??'');
+  }
+  if(q.type==='tf'&&Array.isArray(a)) return a.map(x=>x?'Đ':'S').join(' - ');
+  return safe(a??'');
+}
+function qBankAnswerToEditor(q){
+  if(!q) return '';
+  if(q.type==='mc'){
+    if(typeof q.answer==='number') return ['A','B','C','D','E','F'][q.answer]||String(q.answer);
+    return q.answer??'';
+  }
+  if(q.type==='tf'&&Array.isArray(q.answer)) return q.answer.map(x=>x?'Đ':'S').join(', ');
+  return q.answer??'';
+}
+function qBankOptionsText(q){
+  return Array.isArray(q.options)?q.options.join('\n'):'';
+}
+function qBankStatementsText(q){
+  return Array.isArray(q.statements)?q.statements.join('\n'):'';
+}
+function qBankParseAnswer(type,raw){
+  raw=String(raw||'').trim();
+  if(type==='mc'){
+    const up=raw.toUpperCase();
+    if(['A','B','C','D','E','F'].includes(up)) return up.charCodeAt(0)-65;
+    if(/^\d+$/.test(raw)) return Math.max(0,Number(raw)-1);
+    return raw;
+  }
+  if(type==='tf'){
+    return raw.split(/[,\n;]/).map(x=>norm(x)).filter(Boolean).map(x=>['d','đ','true','t','1','dung','đung','dúng'].includes(x)||x.includes('true')||x.includes('dung'));
+  }
+  return raw;
+}
+function qBankCard(q,idx){
+  const options=q.type==='mc'&&Array.isArray(q.options)&&q.options.length?`<div class="mt-2 grid sm:grid-cols-2 gap-2 text-sm">${q.options.map((op,i)=>`<div class="option-card ${Number(q.answer)===i?'correct':''}"><b>${String.fromCharCode(65+i)}.</b> <span class="math-content">${op}</span></div>`).join('')}</div>`:'';
+  const statements=q.type==='tf'&&Array.isArray(q.statements)&&q.statements.length?`<div class="mt-2 space-y-2 text-sm">${q.statements.map((st,i)=>`<div class="option-card ${Array.isArray(q.answer)&&q.answer[i]?'correct':''}"><b>${String.fromCharCode(97+i)})</b> <span class="math-content">${st}</span></div>`).join('')}</div>`:'';
+  return `<article class="exam-admin-card slide-up">
+    <div class="flex flex-wrap justify-between gap-2">
+      <div class="flex flex-wrap gap-2">
+        <span class="mini-badge"><i class="fa-solid fa-hashtag"></i> ${idx+1}</span>
+        <span class="mini-badge">${qBankTypeLabel(q.type)}</span>
+        <span class="mini-badge">${safe(q.level||'Chưa phân mức')}</span>
+        <span class="mini-badge">${safe(qBankStatusLabel(q.status||'published'))}</span>
+      </div>
+      <span class="text-xs" style="color:var(--muted)">ID: ${safe(q.id)}</span>
+    </div>
+    <div class="mt-3 text-sm text-blue-700 font-bold">${safe(q.topicName||topicName(q.topicId)||'Chưa có chủ đề')}</div>
+    <div class="math-content mt-2 font-semibold">${q.text||''}</div>
+    ${options}
+    ${statements}
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs" style="color:var(--muted)">
+      <span>Đáp án: <b>${qBankAnswerText(q)||'Chưa nhập'}</b></span>
+      ${q.point?`<span>• Điểm: ${safe(q.point)}</span>`:''}
+      ${q.tags?.length?`<span>• Tags: ${q.tags.map(safe).join(', ')}</span>`:''}
+    </div>
+    <div class="mt-3 p-3 rounded-2xl bg-blue-50/70 text-sm ${q.solution?'':'hidden'}"><b>Lời giải:</b><div class="math-content">${q.solution||''}</div></div>
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button onclick="openQuestionEditorModal('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-pen"></i> Sửa</button>
+      <button onclick="duplicateQuestionBankItem('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-copy"></i> Nhân bản</button>
+      <button onclick="toggleQuestionStatus('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-toggle-on"></i> Đổi trạng thái</button>
+      <button onclick="deleteQuestionBankItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash"></i> Xóa</button>
+    </div>
+  </article>`;
+}
 function renderQuestionBank(){
   if(!requireRole('teacher'))return;
-  if(!questionBank.length){questionBank=questionBankFromLocalExams(); localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));}
-  const grouped=TOPICS.map(t=>({topic:t,items:questionBank.filter(q=>Number(q.topicId)===Number(t.id))}));
-  $('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🏦 Kho câu hỏi Firestore</h2><p style="color:var(--muted)">Bước 4: học sinh tải đề qua <b>examQuestions</b> + <b>questionBanks</b>, không phụ thuộc mảng questions cũ.</p></div><div class="flex gap-2"><button onclick="migrateAllQuestionsToBank()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold">Đồng bộ lên Firestore</button><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button></div></div><div class="grid md:grid-cols-4 gap-4 mb-5"><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.length}</p><p class="text-sm" style="color:var(--muted)">Tổng câu hỏi</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='mc').length}</p><p class="text-sm" style="color:var(--muted)">Trắc nghiệm</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='tf').length}</p><p class="text-sm" style="color:var(--muted)">Đúng/Sai</p></div><div class="glass-card p-5"><p class="text-3xl font-black">${questionBank.filter(q=>q.type==='short').length}</p><p class="text-sm" style="color:var(--muted)">Trả lời ngắn</p></div></div><div class="space-y-5">${grouped.map(g=>g.items.length?`<section class="glass-card p-5"><h3 class="font-black text-xl mb-3">${g.topic.name} <span class="text-sm font-normal" style="color:var(--muted)">(${g.items.length} câu)</span></h3><div class="space-y-3">${g.items.map((q,i)=>`<div class="p-3 rounded-2xl border bg-white/50"><div class="flex flex-wrap justify-between gap-2"><b>${i+1}. ${q.type==='mc'?'Trắc nghiệm':q.type==='tf'?'Đúng/Sai':'Trả lời ngắn'}</b><span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">${safe(q.level||'Chưa phân mức')}</span></div><div class="math-content mt-2">${q.text||''}</div><p class="text-xs mt-2" style="color:var(--muted)">Nguồn: ${safe(q.sourceExamTitle||'Đề hiện có')} • ID: ${safe(q.id)} ${q.difficulty?' • Độ khó: '+safe(q.difficulty):''} ${q.standard2018?' • CT2018: '+safe(q.standard2018):''}</p></div>`).join('')}</div></section>`:'').join('')}</div>`;
+  qBankNormalizeList();
+  const f=qBankGetFilters();
+  const items=qBankFilteredItems();
+  const total=questionBank.length;
+  const mc=questionBank.filter(q=>q.type==='mc').length;
+  const tf=questionBank.filter(q=>q.type==='tf').length;
+  const sh=questionBank.filter(q=>q.type==='short').length;
+  const draft=questionBank.filter(q=>(q.status||'published')==='draft').length;
+  $('mainView').innerHTML=`<div class="fade-in">
+    <div class="flex flex-wrap justify-between items-start gap-3 mb-5">
+      <div>
+        <span class="mini-badge"><i class="fa-solid fa-database"></i> Quản lý câu hỏi</span>
+        <h2 class="text-3xl md:text-4xl font-black mt-2">Ngân hàng câu hỏi chuyên nghiệp</h2>
+        <p style="color:var(--muted)">Tạo, sửa, lọc, nhân bản và đồng bộ câu hỏi lên Firestore. Học sinh không thấy đáp án/lời giải.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="openQuestionEditorModal()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo câu hỏi</button>
+        <button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập file</button>
+        <button onclick="openLatexImportModal('bank')" class="bg-cyan-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button>
+        <button onclick="migrateAllQuestionsToBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ</button>
+        <button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button>
+      </div>
+    </div>
+    <section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
+      ${analyticsCard('Tổng câu hỏi',total,'fa-circle-question','Trong kho')}
+      ${analyticsCard('Trắc nghiệm',mc,'fa-list-check','A/B/C/D')}
+      ${analyticsCard('Đúng/Sai',tf,'fa-toggle-on','4 mệnh đề')}
+      ${analyticsCard('Trả lời ngắn',sh,'fa-keyboard','Số hoặc biểu thức')}
+      ${analyticsCard('Câu nháp',draft,'fa-pen-ruler','Chưa xuất bản',draft?'amber':'green')}
+    </section>
+    <section class="glass-card p-5 mb-5">
+      <div class="grid lg:grid-cols-[1.4fr_.8fr_.7fr_.8fr_.7fr] gap-3">
+        <input value="${safe(f.search)}" oninput="qBankUpdateFilter('search',this.value)" class="exam-admin-input" placeholder="Tìm theo nội dung, lời giải, tag, mã câu...">
+        <select onchange="qBankUpdateFilter('topic',this.value)" class="exam-admin-input">
+          <option value="all">Tất cả chủ đề</option>${TOPICS.map(t=>`<option value="${t.id}" ${String(f.topic)===String(t.id)?'selected':''}>${safe(t.name)}</option>`).join('')}
+        </select>
+        <select onchange="qBankUpdateFilter('type',this.value)" class="exam-admin-input">
+          <option value="all">Tất cả dạng</option><option value="mc" ${f.type==='mc'?'selected':''}>Trắc nghiệm</option><option value="tf" ${f.type==='tf'?'selected':''}>Đúng/Sai</option><option value="short" ${f.type==='short'?'selected':''}>Trả lời ngắn</option>
+        </select>
+        <select onchange="qBankUpdateFilter('level',this.value)" class="exam-admin-input">
+          <option value="all">Tất cả mức độ</option>${['Nhận biết','Thông hiểu','Vận dụng','Vận dụng cao','Cơ bản','Tổng hợp'].map(x=>`<option ${f.level===x?'selected':''}>${x}</option>`).join('')}
+        </select>
+        <select onchange="qBankUpdateFilter('status',this.value)" class="exam-admin-input">
+          <option value="all">Trạng thái</option><option value="published" ${f.status==='published'?'selected':''}>Đã xuất bản</option><option value="draft" ${f.status==='draft'?'selected':''}>Nháp</option><option value="archived" ${f.status==='archived'?'selected':''}>Lưu trữ</option>
+        </select>
+      </div>
+      <div class="mt-3 flex flex-wrap justify-between gap-2 text-sm" style="color:var(--muted)">
+        <span>Đang hiển thị <b>${items.length}</b>/<b>${total}</b> câu hỏi.</span>
+        <button onclick="window.qBankFilters={search:'',topic:'all',type:'all',level:'all',status:'all'};renderQuestionBank()" class="text-blue-600 font-bold">Xóa bộ lọc</button>
+      </div>
+    </section>
+    <section class="grid xl:grid-cols-2 gap-4">${items.map(qBankCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Không có câu hỏi phù hợp bộ lọc.</div>'}</section>
+  </div>`;
   typeset();
+}
+function openQuestionEditorModal(id=''){
+  if(!requireRole('teacher'))return;
+  const q=questionBank.find(x=>String(x.id)===String(id))||{id:'',type:'mc',topicId:TOPICS[0]?.id||'',level:'Nhận biết',status:'published',point:1,tags:[]};
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6">
+    <div class="flex justify-between items-start gap-3 mb-4">
+      <div><h2 class="text-2xl font-black">${id?'Sửa câu hỏi':'Tạo câu hỏi mới'}</h2><p class="text-sm" style="color:var(--muted)">Nhập nội dung bằng LaTeX, ví dụ: $y=x^2$ hoặc \\(\\frac{1}{2}\\).</p></div>
+      <button onclick="this.closest('.fixed').remove()" class="text-3xl">&times;</button>
+    </div>
+    <div class="grid lg:grid-cols-[1fr_1fr] gap-4">
+      <section class="space-y-3">
+        <div class="grid md:grid-cols-2 gap-3">
+          <select id="qbeTopic" class="exam-admin-input">${TOPICS.map(t=>`<option value="${t.id}" ${String(q.topicId)===String(t.id)?'selected':''}>${safe(t.name)}</option>`).join('')}</select>
+          <select id="qbeType" onchange="qBankRefreshEditorHelp()" class="exam-admin-input"><option value="mc" ${q.type==='mc'?'selected':''}>Trắc nghiệm A/B/C/D</option><option value="tf" ${q.type==='tf'?'selected':''}>Đúng/Sai</option><option value="short" ${q.type==='short'?'selected':''}>Trả lời ngắn</option></select>
+          <select id="qbeLevel" class="exam-admin-input">${['Nhận biết','Thông hiểu','Vận dụng','Vận dụng cao','Cơ bản','Tổng hợp'].map(x=>`<option ${String(q.level)===x?'selected':''}>${x}</option>`).join('')}</select>
+          <select id="qbeStatus" class="exam-admin-input"><option value="published" ${q.status==='published'?'selected':''}>Đã xuất bản</option><option value="draft" ${q.status==='draft'?'selected':''}>Nháp</option><option value="archived" ${q.status==='archived'?'selected':''}>Lưu trữ</option></select>
+        </div>
+        <textarea id="qbeText" rows="5" class="exam-admin-input" placeholder="Nội dung câu hỏi">${safe(q.text||'')}</textarea>
+        <textarea id="qbeOptions" rows="4" class="exam-admin-input" placeholder="Mỗi phương án một dòng. Dùng cho trắc nghiệm.">${safe(qBankOptionsText(q))}</textarea>
+        <textarea id="qbeStatements" rows="4" class="exam-admin-input" placeholder="Mỗi mệnh đề một dòng. Dùng cho đúng/sai.">${safe(qBankStatementsText(q))}</textarea>
+        <div class="grid md:grid-cols-2 gap-3">
+          <input id="qbeAnswer" class="exam-admin-input" value="${safe(qBankAnswerToEditor(q))}" placeholder="Đáp án">
+          <input id="qbePoint" type="number" step="0.25" min="0" class="exam-admin-input" value="${safe(q.point||1)}" placeholder="Điểm">
+        </div>
+        <textarea id="qbeSolution" rows="4" class="exam-admin-input" placeholder="Lời giải chi tiết">${safe(q.solution||'')}</textarea>
+        <input id="qbeTags" class="exam-admin-input" value="${safe((q.tags||[]).join(', '))}" placeholder="Tag, ví dụ: đạo hàm, cực trị, vận dụng">
+      </section>
+      <section class="space-y-3">
+        <div id="qbeHelp" class="auto-check text-sm"></div>
+        <div class="glass-card p-4">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="font-black">Xem trước</h3>
+            <button onclick="qBankPreviewEditor()" class="btn-soft px-3 py-2 rounded-xl text-sm font-bold">Cập nhật preview</button>
+          </div>
+          <div id="qbePreview" class="math-content text-sm text-slate-700">Bấm “Cập nhật preview” để xem câu hỏi.</div>
+        </div>
+        <div class="p-4 rounded-2xl bg-amber-50 text-amber-800 text-sm">
+          <b>Lưu ý:</b> Đáp án trắc nghiệm nhập A/B/C/D. Đúng/Sai nhập dạng: Đ, S, Đ, S. Trả lời ngắn nhập đúng giá trị chuẩn.
+        </div>
+      </section>
+    </div>
+    <div class="mt-5 flex flex-wrap justify-end gap-2">
+      <button onclick="this.closest('.fixed').remove()" class="btn-soft px-5 py-3 rounded-2xl">Hủy</button>
+      <button onclick="qBankPreviewEditor()" class="bg-indigo-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Preview</button>
+      <button onclick="saveQuestionBankItem('${safe(q.id||'')}')" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-floppy-disk"></i> Lưu câu hỏi</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  qBankRefreshEditorHelp();
+  qBankPreviewEditor();
+}
+function qBankRefreshEditorHelp(){
+  const type=$('qbeType')?.value||'mc';
+  const h=$('qbeHelp'); if(!h)return;
+  h.innerHTML=type==='mc'
+    ? '<b>Trắc nghiệm:</b> nhập mỗi đáp án A/B/C/D ở một dòng. Ô đáp án nhập A, B, C hoặc D.'
+    : type==='tf'
+      ? '<b>Đúng/Sai:</b> nhập 4 mệnh đề ở 4 dòng. Ô đáp án nhập: Đ, S, Đ, S.'
+      : '<b>Trả lời ngắn:</b> không cần nhập phương án. Ô đáp án nhập số hoặc biểu thức chuẩn.';
+}
+function qBankPreviewEditor(){
+  const type=$('qbeType')?.value||'mc';
+  const text=$('qbeText')?.value||'';
+  const options=($('qbeOptions')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const statements=($('qbeStatements')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const ans=qBankParseAnswer(type,$('qbeAnswer')?.value||'');
+  const preview=$('qbePreview'); if(!preview)return;
+  preview.innerHTML=`<div class="font-bold">${text||'Chưa nhập nội dung câu hỏi.'}</div>`+
+    (type==='mc'?`<div class="mt-3 grid gap-2">${options.map((op,i)=>`<div class="option-card ${Number(ans)===i?'correct':''}"><b>${String.fromCharCode(65+i)}.</b> ${op}</div>`).join('')||'<p class="text-slate-500">Chưa nhập phương án.</p>'}</div>`:'')+
+    (type==='tf'?`<div class="mt-3 grid gap-2">${statements.map((st,i)=>`<div class="option-card ${Array.isArray(ans)&&ans[i]?'correct':''}"><b>${String.fromCharCode(97+i)})</b> ${st}</div>`).join('')||'<p class="text-slate-500">Chưa nhập mệnh đề.</p>'}</div>`:'')+
+    `<div class="mt-3 text-sm"><b>Đáp án:</b> ${safe($('qbeAnswer')?.value||'Chưa nhập')}</div>`;
+  typeset();
+}
+async function saveQuestionBankItem(id=''){
+  if(!requireRole('teacher'))return;
+  const type=$('qbeType')?.value||'mc';
+  const topicId=$('qbeTopic')?.value||'';
+  const options=($('qbeOptions')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const statements=($('qbeStatements')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const q={
+    ...(questionBank.find(x=>String(x.id)===String(id))||{}),
+    id:String(id||('q'+uid())),
+    type,
+    topicId,
+    topicName:topicName(topicId),
+    level:$('qbeLevel')?.value||'',
+    status:$('qbeStatus')?.value||'published',
+    text:($('qbeText')?.value||'').trim(),
+    answer:qBankParseAnswer(type,$('qbeAnswer')?.value||''),
+    solution:($('qbeSolution')?.value||'').trim(),
+    point:Number($('qbePoint')?.value||1),
+    tags:($('qbeTags')?.value||'').split(',').map(x=>x.trim()).filter(Boolean),
+    updatedAt:new Date().toISOString(),
+    createdBy:currentUser?.id||null
+  };
+  if(type==='mc') q.options=options;
+  if(type==='tf') q.statements=statements;
+  if(!q.text) return toast('Thầy chưa nhập nội dung câu hỏi','bad');
+  if(type==='mc'&&q.options.length<2) return toast('Câu trắc nghiệm cần ít nhất 2 phương án','bad');
+  if(type==='tf'&&q.statements.length<2) return toast('Câu đúng/sai cần nhập các mệnh đề','bad');
+  questionBank=questionBank.filter(x=>String(x.id)!==String(q.id));
+  questionBank.unshift(q);
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    try{
+      await db.collection('questionBanks').doc(String(q.id)).set({...q,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    }catch(err){toast('Đã lưu local nhưng chưa lưu Firestore: '+fbError(err),'bad');}
+  }
+  save();
+  document.querySelector('.fixed')?.remove();
+  renderQuestionBank();
+  toast('Đã lưu câu hỏi vào ngân hàng','ok');
+}
+async function duplicateQuestionBankItem(id){
+  const q=questionBank.find(x=>String(x.id)===String(id)); if(!q)return;
+  const copy={...JSON.parse(JSON.stringify(q)),id:'q'+uid(),status:'draft',updatedAt:new Date().toISOString(),sourceExamId:null,sourceExamTitle:'Nhân bản từ kho câu hỏi'};
+  questionBank.unshift(copy);
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    try{await db.collection('questionBanks').doc(String(copy.id)).set({...copy,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){toast('Chưa nhân bản lên Firestore: '+fbError(err),'bad');}
+  }
+  save(); renderQuestionBank(); toast('Đã nhân bản câu hỏi ở trạng thái nháp','ok');
+}
+async function toggleQuestionStatus(id){
+  const q=questionBank.find(x=>String(x.id)===String(id)); if(!q)return;
+  const next=(q.status||'published')==='published'?'draft':'published';
+  q.status=next; q.updatedAt=new Date().toISOString();
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    try{await db.collection('questionBanks').doc(String(id)).set({status:next,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){toast('Chưa đổi trạng thái trên Firestore: '+fbError(err),'bad');}
+  }
+  save(); renderQuestionBank(); toast('Đã đổi trạng thái câu hỏi','ok');
+}
+async function deleteQuestionBankItem(id){
+  if(!confirm('Xóa câu hỏi này khỏi ngân hàng? Các đề đang dùng câu này có thể bị thiếu nếu đã liên kết qua examQuestions.')) return;
+  questionBank=questionBank.filter(q=>String(q.id)!==String(id));
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    try{await db.collection('questionBanks').doc(String(id)).delete();}catch(err){toast('Chưa xóa được trên Firestore: '+fbError(err),'bad');}
+  }
+  save(); renderQuestionBank(); toast('Đã xóa câu hỏi','ok');
 }
 async function migrateAllQuestionsToBank(){
   if(!requireRole('teacher'))return;
-  try{for(const e of exams){await syncExamQuestionsToQuestionBank(e);} toast('Đã đồng bộ kho câu hỏi lên Firestore','ok'); renderQuestionBank();}
+  try{
+    for(const e of exams){await syncExamQuestionsToQuestionBank(e);}
+    await loadQuestionBankFromFirestore();
+    qBankNormalizeList();
+    toast('Đã đồng bộ kho câu hỏi lên Firestore','ok');
+    renderQuestionBank();
+  }
   catch(err){toast('Chưa đồng bộ được: '+fbError(err),'bad');}
 }
-
 
 
 const MATRIX_LEVELS=['Nhận biết','Thông hiểu','Vận dụng','Vận dụng cao'];
