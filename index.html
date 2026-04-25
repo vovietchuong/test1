@@ -107,6 +107,29 @@
     .unanswered-chip{display:inline-grid;place-items:center;min-width:2rem;height:2rem;border-radius:.7rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-weight:900;font-size:.85rem}
     html[data-theme="dark"] .unanswered-chip{background:rgba(217,119,6,.14);color:#fed7aa;border-color:rgba(251,191,36,.35)}
     @media(max-width:640px){.submit-summary-grid{grid-template-columns:1fr}.submit-modal-head{align-items:flex-start}.submit-modal{border-radius:1.1rem}}
+
+
+    /* ===== UI THI THẬT - BƯỚC 4: BẢNG KẾT QUẢ + PHÂN TÍCH SAU THI ===== */
+    .result-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1d4ed8 48%,#06b6d4);color:white;border-radius:1.75rem;padding:1.5rem;border:1px solid rgba(255,255,255,.16);box-shadow:0 28px 80px -35px rgba(2,6,23,.72)}
+    .result-hero:before{content:"";position:absolute;inset:-40% -10% auto auto;width:22rem;height:22rem;border-radius:999px;background:rgba(255,255,255,.12);filter:blur(2px)}
+    .result-hero>*{position:relative;z-index:1}
+    .score-ring{width:9.5rem;height:9.5rem;border-radius:999px;display:grid;place-items:center;background:conic-gradient(#22c55e var(--p),rgba(255,255,255,.18) 0);box-shadow:inset 0 0 0 12px rgba(15,23,42,.35),0 18px 45px rgba(0,0,0,.24)}
+    .score-ring-inner{width:6.8rem;height:6.8rem;border-radius:999px;background:rgba(15,23,42,.84);display:grid;place-items:center;text-align:center;border:1px solid rgba(255,255,255,.12)}
+    .result-kpi{background:var(--card);border:1px solid var(--line);border-radius:1.25rem;padding:1rem;box-shadow:0 18px 44px -30px rgba(2,6,23,.45)}
+    .result-kpi b{display:block;font-size:1.85rem;line-height:1.05;color:var(--brand)}
+    .result-breakdown-row{display:grid;grid-template-columns:minmax(110px,1fr) 3fr auto;gap:.75rem;align-items:center;padding:.75rem;border-radius:1rem;border:1px solid var(--line);background:rgba(255,255,255,.48)}
+    html[data-theme="dark"] .result-breakdown-row{background:rgba(15,23,42,.45)}
+    .result-bar{height:.72rem;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden;border:1px solid rgba(148,163,184,.14)}
+    .result-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#06b6d4,#22c55e)}
+    .review-filter-bar{position:sticky;top:5rem;z-index:18;background:var(--card);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:1.25rem;padding:.9rem;box-shadow:0 18px 40px -30px rgba(2,6,23,.45)}
+    .review-card{border-left:5px solid rgba(148,163,184,.45)}
+    .review-card.correct-review{border-left-color:#16a34a;background:linear-gradient(90deg,rgba(22,163,74,.08),transparent 24%),var(--card)}
+    .review-card.wrong-review{border-left-color:#dc2626;background:linear-gradient(90deg,rgba(220,38,38,.08),transparent 24%),var(--card)}
+    .answer-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .65rem;border-radius:999px;font-size:.78rem;font-weight:900;border:1px solid var(--line);background:rgba(148,163,184,.11)}
+    .answer-pill.good{color:#15803d;background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.28)}
+    .answer-pill.bad{color:#dc2626;background:rgba(220,38,38,.10);border-color:rgba(220,38,38,.25)}
+    .topic-performance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem}
+    @media(max-width:640px){.result-hero{padding:1rem}.score-ring{width:7.8rem;height:7.8rem}.score-ring-inner{width:5.7rem;height:5.7rem}.result-breakdown-row{grid-template-columns:1fr}.review-filter-bar{position:relative;top:auto}}
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
   </style>
 </head>
@@ -789,9 +812,57 @@ async function submitExam(auto=false){
   }
   clearInterval(examTimer);disableAntiCheat();clearExamProgress();renderResult(sub,auto);
 }
-function renderResult(sub,auto){setExamFocusMode(false);$('mainView').innerHTML=`<div class="glass-card p-7 text-center"><h2 class="text-3xl font-black">${auto?'Hết giờ - ':''}Kết quả bài làm</h2><p class="text-6xl font-black text-blue-600 my-4">${sub.score}/${sub.total}</p><p class="text-xl">Tỷ lệ đúng: <b>${sub.percent}%</b></p><p class="mt-2 text-sm ${sub.warnings>=3?'text-red-600':'text-slate-500'}">Cảnh báo gian lận: <b>${sub.warnings||0}</b>${sub.warnings>=3?' - bài làm cần giáo viên xem xét':''}</p><p class="text-xs text-slate-500 mt-1">Mã phiên thi: <b>${safe(sub.sessionId||'local')}</b></p><div class="flex justify-center gap-3 mt-5"><button onclick="renderReview()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold">Xem đáp án & lời giải</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Về kho đề</button></div></div>`}
-function renderReview(){setExamFocusMode(false);const e=selectedExam;examReview=true;$('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">Đáp án và lời giải</h2><div class="space-y-5">${e.questions.map((q,i)=>{const k=examAnswerKey[q.id]||q;return `<section class="glass-card p-5"><div class="font-bold math-content">Câu ${i+1}. ${q.text}</div>${imagePreviewHTML(q)}<div class="mt-3 text-sm"><b>Đáp án:</b> ${answerText({...q,...k})}</div><div class="mt-2 math-content"><b>Lời giải:</b> ${k.solution||'Chưa có lời giải.'}</div></section>`}).join('')}</div>`;typeset()}
+function questionResultDetail(q,sub=window.lastExamSubmission){
+  return (sub?.details||[]).find(d=>String(d.qid)===String(q.id))||{answer:examAnswers[q.id]??null,ok:false};
+}
+function studentAnswerText(q,answer){
+  if(answer===undefined||answer===null||answer==='') return '<span class="text-slate-500">Chưa trả lời</span>';
+  if(q.type==='mc') return (Number.isInteger(Number(answer))&&q.options?.[Number(answer)]!==undefined)?`${'ABCD'[Number(answer)]}. ${q.options[Number(answer)]}`:safe(answer);
+  if(q.type==='tf'&&Array.isArray(answer)) return answer.map((v,i)=>`${String.fromCharCode(97+i)}) ${v===true?'Đúng':v===false?'Sai':'Chưa chọn'}`).join('; ');
+  return safe(answer);
+}
 function answerText(q){if(q.type==='mc')return 'ABCD'[q.answer]+'. '+q.options[q.answer]; if(q.type==='tf')return q.answer.map((v,i)=>`${String.fromCharCode(97+i)}) ${v?'Đúng':'Sai'}`).join('; '); return q.answer}
+function resultLevelText(percent){
+  if(percent>=90) return {title:'Xuất sắc',note:'Nắm rất chắc kiến thức, có thể chuyển sang luyện đề tốc độ và vận dụng cao.',icon:'fa-trophy'};
+  if(percent>=75) return {title:'Tốt',note:'Nền tảng khá chắc. Nên xem lại các câu sai để tránh mất điểm đáng tiếc.',icon:'fa-medal'};
+  if(percent>=50) return {title:'Đạt yêu cầu',note:'Cần luyện lại các dạng còn sai và bổ sung công thức trọng tâm.',icon:'fa-chart-line'};
+  return {title:'Cần củng cố',note:'Nên quay lại bài giảng nền tảng trước khi luyện đề tiếp.',icon:'fa-seedling'};
+}
+function resultBreakdown(sub){
+  const byType={mc:{label:'Trắc nghiệm',done:0,total:0},tf:{label:'Đúng/Sai',done:0,total:0},short:{label:'Trả lời ngắn',done:0,total:0},essay:{label:'Tự luận',done:0,total:0}};
+  const byTopic={};
+  (selectedExam?.questions||[]).forEach(q=>{
+    const d=questionResultDetail(q,sub), key=q.type||'mc';
+    if(!byType[key]) byType[key]={label:key,done:0,total:0};
+    byType[key].total++; if(d.ok) byType[key].done++;
+    const t=topicName(q.topicId||selectedExam.topicId);
+    if(!byTopic[t]) byTopic[t]={done:0,total:0};
+    byTopic[t].total++; if(d.ok) byTopic[t].done++;
+  });
+  return {byType:Object.values(byType).filter(x=>x.total),byTopic};
+}
+function resultBarHTML(label,done,total){
+  const pct=total?Math.round(done*100/total):0;
+  return `<div class="result-breakdown-row"><b>${safe(label)}</b><div><div class="result-bar"><div class="result-bar-fill" style="width:${pct}%"></div></div></div><span class="font-black text-sm">${done}/${total} • ${pct}%</span></div>`;
+}
+function renderResult(sub,auto){
+  setExamFocusMode(false); window.lastExamSubmission=sub;
+  const level=resultLevelText(sub.percent||0), wrong=Math.max((sub.total||0)-(sub.score||0),0), bd=resultBreakdown(sub);
+  $('mainView').innerHTML=`<div class="space-y-5 fade-in"><section class="result-hero"><div class="flex flex-wrap items-center justify-between gap-6"><div><div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-sm font-bold mb-3"><i class="fa-solid ${level.icon}"></i> ${auto?'Tự động nộp bài khi hết giờ':'Đã nộp bài thành công'}</div><h2 class="text-3xl md:text-4xl font-black">Kết quả bài thi</h2><p class="mt-2 text-blue-100 max-w-2xl">${safe(level.note)}</p><p class="text-xs text-blue-100 mt-3">Mã phiên thi: <b>${safe(sub.sessionId||'local')}</b> • ${safe(sub.date||new Date().toLocaleString('vi-VN'))}</p></div><div class="score-ring" style="--p:${sub.percent||0}%"><div class="score-ring-inner"><div><p class="text-3xl font-black">${sub.percent||0}%</p><p class="text-xs text-blue-100 font-bold">${safe(level.title)}</p></div></div></div></div></section><section class="grid md:grid-cols-4 gap-4"><div class="result-kpi"><b>${sub.score}/${sub.total}</b><span class="text-sm" style="color:var(--muted)">Điểm câu đúng</span></div><div class="result-kpi"><b class="text-green-600">${sub.score}</b><span class="text-sm" style="color:var(--muted)">Câu đúng</span></div><div class="result-kpi"><b class="text-red-600">${wrong}</b><span class="text-sm" style="color:var(--muted)">Câu sai/chưa đúng</span></div><div class="result-kpi"><b class="${sub.warnings>=3?'text-red-600':'text-amber-600'}">${sub.warnings||0}</b><span class="text-sm" style="color:var(--muted)">Cảnh báo</span></div></section><section class="grid lg:grid-cols-[1fr_.9fr] gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-4"><i class="fa-solid fa-chart-simple text-blue-600"></i> Phân tích theo phần thi</h3><div class="space-y-3">${bd.byType.map(x=>resultBarHTML(x.label,x.done,x.total)).join('')}</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-4"><i class="fa-solid fa-layer-group text-blue-600"></i> Phân tích theo chủ đề</h3><div class="topic-performance-grid">${Object.entries(bd.byTopic).map(([k,v])=>resultBarHTML(k,v.done,v.total)).join('')}</div></div></section><div class="flex flex-wrap justify-center gap-3 no-print"><button onclick="renderReview('all')" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-magnifying-glass-chart"></i> Xem bài làm chi tiết</button><button onclick="renderReview('wrong')" class="bg-red-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Xem câu sai</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Về kho đề</button></div></div>`;
+  typeset();
+}
+function reviewFilterButton(label,filter,current,icon){
+  return `<button onclick="renderReview('${filter}')" class="px-4 py-2 rounded-2xl font-bold ${filter===current?'tab-active':'btn-soft'}"><i class="fa-solid ${icon}"></i> ${label}</button>`;
+}
+function renderReview(filter='all'){
+  setExamFocusMode(false); const e=selectedExam; examReview=true; const sub=window.lastExamSubmission||null;
+  let items=(e.questions||[]).map((q,i)=>({q,i,detail:questionResultDetail(q,sub)}));
+  if(filter==='wrong') items=items.filter(x=>!x.detail.ok);
+  if(filter==='correct') items=items.filter(x=>x.detail.ok);
+  const correct=(e.questions||[]).filter(q=>questionResultDetail(q,sub).ok).length;
+  $('mainView').innerHTML=`<div class="space-y-5 fade-in"><div class="review-filter-bar no-print"><div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-2xl font-black">Đáp án, lời giải và bài làm</h2><p class="text-sm" style="color:var(--muted)">Đúng ${correct}/${e.questions.length} câu. Có thể lọc nhanh câu đúng hoặc câu sai.</p></div><div class="flex flex-wrap gap-2">${reviewFilterButton('Tất cả','all',filter,'fa-list')} ${reviewFilterButton('Câu sai','wrong',filter,'fa-circle-xmark')} ${reviewFilterButton('Câu đúng','correct',filter,'fa-circle-check')}</div></div></div><div class="space-y-5">${items.map(({q,i,detail})=>{const k=examAnswerKey[q.id]||q;return `<section class="glass-card p-5 review-card ${detail.ok?'correct-review':'wrong-review'}"><div class="flex flex-wrap items-start justify-between gap-3"><div class="font-bold math-content">Câu ${i+1}. ${q.text}</div><span class="answer-pill ${detail.ok?'good':'bad'}"><i class="fa-solid ${detail.ok?'fa-check':'fa-xmark'}"></i> ${detail.ok?'Đúng':'Chưa đúng'}</span></div>${imagePreviewHTML(q)}<div class="grid md:grid-cols-2 gap-3 mt-4"><div class="p-3 rounded-2xl border bg-white/50"><b class="block mb-1">Bài làm của học sinh</b><div class="math-content">${studentAnswerText(q,detail.answer)}</div></div><div class="p-3 rounded-2xl border bg-white/50"><b class="block mb-1">Đáp án đúng</b><div class="math-content">${answerText({...q,...k})}</div></div></div><div class="mt-3 p-3 rounded-2xl bg-blue-50/70 border border-blue-100 math-content"><b>Lời giải:</b> ${k.solution||'Chưa có lời giải.'}</div></section>`}).join('')||'<div class="glass-card p-8 text-center text-slate-500">Không có câu phù hợp với bộ lọc này.</div>'}</div><div class="flex justify-center gap-3 no-print"><button onclick="renderResult(window.lastExamSubmission||{score:correct,total:e.questions.length,percent:Math.round(correct*100/e.questions.length),warnings:examWarnings})" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-arrow-left"></i> Quay lại kết quả</button><button onclick="renderExamsPublic()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold">Về kho đề</button></div></div>`;
+  typeset();
+}
 /* [Bước 1] Đã loại bỏ phiên bản cũ bị trùng của hàm teacherAnalyticsHTML; dùng phiên bản nâng cấp phía dưới. */
 
 function exportCSV(){
