@@ -93,14 +93,14 @@ const TOPICS=[
  {id:7,name:'Thống kê và xác suất',icon:'fa-dice',color:'amber'},
  {id:8,name:'Chuyên đề vận dụng cao',icon:'fa-star',color:'fuchsia'}
 ];
-let currentUser=null, users=[], exams=[], submissions=[], questionBank=[], classes=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false;
+let currentUser=null, users=[], exams=[], submissions=[], questionBank=[], classes=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false, examSessionId=null, examSubmitted=false, lastSessionSyncAt=0;
 let firebaseReady = !!(window.firebase && window.auth && window.db);
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
 const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
 const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com'];
 const TEACHER_REGISTER_CODE='CHUONG2026';
-const SECURITY_VERSION='step-1-hardening-2026-04-25';
+const SECURITY_VERSION='step-2-exam-session-2026-04-25';
 function isSeedTeacherEmail(email=''){
   return TEACHER_EMAILS.includes(String(email).toLowerCase().trim());
 }
@@ -445,13 +445,46 @@ function sanitizeExamForStudent(exam){
 }
 function prepareExamInstance(exam){
   const copy=JSON.parse(JSON.stringify(exam)); copy.originalId=String(exam.id); copy.instanceId=String(uid());
-  copy.questions=shuffleArray(copy.questions).map(q=>{ if(q.type==='mc'&&Array.isArray(q.options)){const pairs=q.options.map((text,idx)=>({text,idx}));const sh=shuffleArray(pairs);q.options=sh.map(x=>x.text);q.answer=sh.findIndex(x=>x.idx===Number(q.answer));} return q;});
+  copy.questions=shuffleArray(copy.questions||[]).map(q=>{ if(q.type==='mc'&&Array.isArray(q.options)){const pairs=q.options.map((text,idx)=>({text,idx}));const sh=shuffleArray(pairs);q.options=sh.map(x=>x.text);q.answer=sh.findIndex(x=>x.idx===Number(q.answer));} return q;});
   examAnswerKey=buildAnswerKey(copy);
   return currentUser?.role==='student'?sanitizeExamForStudent(copy):copy;
 }
+function buildAnswerKeyForPublicExam(publicExam, fullExam){
+  const byId={}; (fullExam?.questions||[]).forEach(q=>{byId[String(q.id)]=q; if(q.sourceQuestionId)byId[String(q.sourceQuestionId)]=q;});
+  const key={};
+  (publicExam?.questions||[]).forEach(q=>{
+    const raw=byId[String(q.sourceQuestionId||q.id)]||byId[String(q.id)]||q;
+    let answer=JSON.parse(JSON.stringify(raw.answer??null));
+    if(q.type==='mc'&&Array.isArray(q.options)&&Array.isArray(raw.options)){
+      const correctText=raw.options[Number(raw.answer)];
+      answer=q.options.findIndex(o=>String(o)===String(correctText));
+    }
+    key[q.id]={type:q.type,answer,solution:raw.solution||'',options:q.options||raw.options||[],statements:q.statements||raw.statements||[]};
+  });
+  return key;
+}
 function progressKey(examId=selectedExam?.originalId||selectedExam?.id){if(!currentUser||currentUser.role!=='student'||!examId)return null;return `mathpro12_progress_${currentUser.id}_${examId}`}
-function saveExamProgress(){const key=progressKey();if(!key||!selectedExam||examReview)return;localStorage.setItem(key,JSON.stringify({exam:safeExamForProgress(selectedExam),answers:examAnswers,remain:examRemain,warnings:examWarnings,startedAt:examStartedAt||new Date().toISOString(),savedAt:new Date().toISOString()}))}
+function progressPayload(){return {exam:safeExamForProgress(selectedExam),answers:examAnswers,remain:examRemain,warnings:examWarnings,startedAt:examStartedAt||new Date().toISOString(),sessionId:examSessionId,status:examSubmitted?'submitted':'in_progress',savedAt:new Date().toISOString()}}
+function saveExamProgress(){const key=progressKey();if(!key||!selectedExam||examReview||examSubmitted)return;const payload=progressPayload();localStorage.setItem(key,JSON.stringify(payload));syncExamSession(false)}
 function clearExamProgress(){const key=progressKey();if(key)localStorage.removeItem(key)}
+async function createExamSession(exam){
+  if(!firebaseReady||currentUser?.role!=='student'||!exam?.id) return null;
+  const id=String(uid()); examSessionId=id;
+  const dueAt=new Date(Date.now()+Number(examRemain||0)*1000).toISOString();
+  const session={id,studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',examId:String(exam.originalId||exam.id),examTitle:exam.title,examInstanceId:exam.instanceId||null,status:'in_progress',answers:{},warnings:0,startedAt:examStartedAt||new Date().toISOString(),dueAt,remain:examRemain,questionCount:(exam.questions||[]).length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{await db.collection('examSessions').doc(id).set(session,{merge:true}); lastSessionSyncAt=Date.now(); return id;}catch(err){toast('Chưa tạo được phiên thi Firestore: '+fbError(err),'bad'); return null;}
+}
+async function syncExamSession(force=false){
+  if(!firebaseReady||currentUser?.role!=='student'||!examSessionId||!selectedExam) return;
+  const now=Date.now(); if(!force&&now-lastSessionSyncAt<8000) return;
+  lastSessionSyncAt=now;
+  const data={answers:examAnswers,warnings:examWarnings,remain:examRemain,status:examSubmitted?'submitted':'in_progress',savedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{await db.collection('examSessions').doc(examSessionId).set(data,{merge:true});}catch(err){console.warn('Không đồng bộ phiên thi:',err)}
+}
+async function finishExamSession(sub,auto=false){
+  if(!firebaseReady||currentUser?.role!=='student'||!examSessionId) return;
+  try{await db.collection('examSessions').doc(examSessionId).set({status:'submitted',submittedAt:firebase.firestore.FieldValue.serverTimestamp(),autoSubmitted:!!auto,resultId:sub.id,score:sub.score,total:sub.total,percent:sub.percent,warnings:sub.warnings,answers:examAnswers,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){console.warn('Không cập nhật trạng thái phiên thi:',err)}
+}
 function enableAntiCheat(){examAntiCheatLocked=true;document.body.classList.add('exam-lock');try{document.documentElement.requestFullscreen?.()}catch(e){}}
 function disableAntiCheat(){examAntiCheatLocked=false;document.body.classList.remove('exam-lock');try{document.exitFullscreen?.()}catch(e){}}
 function antiCheatWarning(reason='Rời khỏi màn hình thi'){
@@ -527,29 +560,35 @@ async function startExam(id){
   const av=getExamAvailability(base);
   if(currentUser?.role==='student'&&!av.ok){toast(av.reason||'Chưa thể làm đề này','bad');renderExamsPublic();return;}
   const key=progressKey(id), saved=key?JSON.parse(localStorage.getItem(key)||'null'):null;
-  if(saved?.exam && saved?.remain>0){
+  examSubmitted=false; examReview=false; examSessionId=null; lastSessionSyncAt=0;
+  if(saved?.exam && saved?.remain>0 && saved.status!=='submitted'){
     selectedExam=saved.exam;
     examAnswers=saved.answers||{};
     examRemain=saved.remain;
     examWarnings=saved.warnings||0;
     examStartedAt=saved.startedAt||new Date().toISOString();
-    // Không lưu đáp án trong localStorage. Khi khôi phục, tải lại đáp án tạm từ questionBanks/examQuestions để chấm.
+    examSessionId=saved.sessionId||null;
     const fullExam=await loadExamFromQuestionBank(base);
-    prepareExamInstance(fullExam);
-    selectedExam=saved.exam;
+    examAnswerKey=buildAnswerKeyForPublicExam(selectedExam,fullExam);
+    if(!examSessionId) await createExamSession(selectedExam);
     toast('Đã khôi phục bài đang làm trước đó','ok');
   }
   else{
-    $('mainView').innerHTML='<div class="glass-card p-8 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-3 font-semibold">Đang tải đề từ kho câu hỏi...</p></div>';
+    $('mainView').innerHTML='<div class="glass-card p-8 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-3 font-semibold">Đang tạo phiên thi an toàn...</p></div>';
     const fullExam=await loadExamFromQuestionBank(base);
     selectedExam=prepareExamInstance(fullExam);
-    examAnswers={};examReview=false;examRemain=(selectedExam.duration||30)*60; examWarnings=0; examStartedAt=new Date().toISOString();
+    examAnswers={}; examRemain=(selectedExam.duration||30)*60; examWarnings=0; examStartedAt=new Date().toISOString();
+    if(currentUser?.role==='student') await createExamSession(selectedExam);
+    saveExamProgress();
   }
   renderExamRoom();
-  if(currentUser?.role==='student'){enableAntiCheat();clearInterval(examTimer);examTimer=setInterval(()=>{examRemain--;saveExamProgress();updateTimer(); if(examRemain<=0){clearInterval(examTimer);submitExam(true)}},1000)}
+  if(currentUser?.role==='student'){
+    enableAntiCheat();clearInterval(examTimer);
+    examTimer=setInterval(()=>{examRemain--;saveExamProgress();updateTimer(); if(examRemain<=0){clearInterval(examTimer);submitExam(true)}},1000)
+  }
 }
 function updateTimer(){const t=$('timerBox'); if(t)t.textContent=`${String(Math.floor(examRemain/60)).padStart(2,'0')}:${String(examRemain%60).padStart(2,'0')}`}
-function renderExamRoom(){const e=selectedExam;$('mainView').innerHTML=`<div class="glass-card p-5 mb-5 sticky top-20 z-20"><div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-2xl font-black">${safe(e.title)}</h2><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''} ${currentUser?.role==='student'?`<span class="mini-badge ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> Rời tab: ${examWarnings}</span>`:''}</p></div><div class="flex gap-2 items-center"><span id="timerBox" class="px-4 py-2 rounded-2xl bg-slate-900 text-white font-mono">--:--</span><button onclick="submitExam(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold">Nộp bài</button><button onclick="renderExamsPublic()" class="btn-soft px-4 py-2 rounded-2xl">Thoát</button></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-4 mb-5 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ thi an toàn:</b> hệ thống ghi nhận rời tab, thoát toàn màn hình, chuột phải, copy/paste và phím tắt. Từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div>`;updateTimer();typeset()}
+function renderExamRoom(){const e=selectedExam;$('mainView').innerHTML=`<div class="glass-card p-5 mb-5 sticky top-20 z-20"><div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-2xl font-black">${safe(e.title)}</h2><p class="text-sm" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${examSessionId?`<span class="mini-badge"><i class="fa-solid fa-fingerprint"></i> Phiên thi: ${safe(String(examSessionId).slice(-6))}</span>`:''} ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''} ${currentUser?.role==='student'?`<span class="mini-badge ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> Rời tab: ${examWarnings}</span>`:''}</p></div><div class="flex gap-2 items-center"><span id="timerBox" class="px-4 py-2 rounded-2xl bg-slate-900 text-white font-mono">--:--</span><button onclick="submitExam(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold">Nộp bài</button><button onclick="renderExamsPublic()" class="btn-soft px-4 py-2 rounded-2xl">Thoát</button></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-4 mb-5 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ thi an toàn:</b> hệ thống ghi nhận rời tab, thoát toàn màn hình, chuột phải, copy/paste và phím tắt. Từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div>`;updateTimer();typeset()}
 
 function zoomImage(src){const m=document.createElement('div');m.className='fixed inset-0 bg-black/80 z-[90] grid place-items-center p-4 fade-in';m.innerHTML=`<button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-5 text-white text-3xl">&times;</button><img src="${src}" class="max-w-[96vw] max-h-[90vh] rounded-2xl bg-white object-contain">`;document.body.appendChild(m)}
 function imagePreviewHTML(q){return q?.imageUrl?`<div class="my-3"><img src="${safe(q.imageUrl)}" onclick="zoomImage('${safe(q.imageUrl)}')" class="question-image" alt="Hình minh họa câu hỏi"></div>`:''}
@@ -561,8 +600,10 @@ function renderQuestion(q,i){const saved=examAnswers[q.id];let body=''; if(q.typ
 function setTF(qid,idx,val){if(!examAnswers[qid])examAnswers[qid]=[];examAnswers[qid][idx]=val;saveExamProgress()}
 function norm(x){return String(x??'').trim().replace(',','.').replace(/\s+/g,'').toLowerCase()}
 async function submitExam(auto=false){
-  if(!selectedExam)return;
+  if(!selectedExam||examSubmitted)return;
   if(!currentUser){showLoginModal();toast('Thầy/các em cần đăng nhập học sinh để lưu điểm.','info');return}
+  examSubmitted=true;
+  await syncExamSession(true);
   let score=0,details=[];
   selectedExam.questions.forEach(q=>{
     const key=examAnswerKey[q.id]||q;
@@ -572,17 +613,17 @@ async function submitExam(auto=false){
     if(q.type==='short')ok=norm(a)===norm(key.answer);
     if(ok)score++; details.push({qid:q.id,answer:a??null,ok});
   });
-  const sub={id:String(uid()),studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',examId:String(selectedExam.originalId||selectedExam.id),examInstanceId:selectedExam.instanceId||null,examTitle:selectedExam.title,score,total:selectedExam.questions.length,percent:Math.round(score*100/selectedExam.questions.length),warnings:examWarnings,startedAt:examStartedAt,date:new Date().toLocaleString('vi-VN'),details,createdAt:new Date().toISOString()};
+  const sub={id:String(uid()),studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',examId:String(selectedExam.originalId||selectedExam.id),examInstanceId:selectedExam.instanceId||null,sessionId:examSessionId||null,examTitle:selectedExam.title,score,total:selectedExam.questions.length,percent:Math.round(score*100/selectedExam.questions.length),warnings:examWarnings,autoSubmitted:!!auto,startedAt:examStartedAt,submittedAt:new Date().toISOString(),date:new Date().toLocaleString('vi-VN'),details,createdAt:new Date().toISOString()};
   if(currentUser.role==='student'){
     submissions.unshift(sub); save();
     if(firebaseReady){
-      try{ await db.collection('examResults').doc(sub.id).set({...sub,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); }
+      try{ await db.collection('examResults').doc(sub.id).set({...sub,createdAt:firebase.firestore.FieldValue.serverTimestamp(),submittedAt:firebase.firestore.FieldValue.serverTimestamp()}); await finishExamSession(sub,auto); }
       catch(err){ toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad'); }
     }
   }
   clearInterval(examTimer);disableAntiCheat();clearExamProgress();renderResult(sub,auto);
 }
-function renderResult(sub,auto){$('mainView').innerHTML=`<div class="glass-card p-7 text-center"><h2 class="text-3xl font-black">${auto?'Hết giờ - ':''}Kết quả bài làm</h2><p class="text-6xl font-black text-blue-600 my-4">${sub.score}/${sub.total}</p><p class="text-xl">Tỷ lệ đúng: <b>${sub.percent}%</b></p><p class="mt-2 text-sm ${sub.warnings>=3?'text-red-600':'text-slate-500'}">Cảnh báo gian lận: <b>${sub.warnings||0}</b>${sub.warnings>=3?' - bài làm cần giáo viên xem xét':''}</p><div class="flex justify-center gap-3 mt-5"><button onclick="renderReview()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold">Xem đáp án & lời giải</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Về kho đề</button></div></div>`}
+function renderResult(sub,auto){$('mainView').innerHTML=`<div class="glass-card p-7 text-center"><h2 class="text-3xl font-black">${auto?'Hết giờ - ':''}Kết quả bài làm</h2><p class="text-6xl font-black text-blue-600 my-4">${sub.score}/${sub.total}</p><p class="text-xl">Tỷ lệ đúng: <b>${sub.percent}%</b></p><p class="mt-2 text-sm ${sub.warnings>=3?'text-red-600':'text-slate-500'}">Cảnh báo gian lận: <b>${sub.warnings||0}</b>${sub.warnings>=3?' - bài làm cần giáo viên xem xét':''}</p><p class="text-xs text-slate-500 mt-1">Mã phiên thi: <b>${safe(sub.sessionId||'local')}</b></p><div class="flex justify-center gap-3 mt-5"><button onclick="renderReview()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold">Xem đáp án & lời giải</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Về kho đề</button></div></div>`}
 function renderReview(){const e=selectedExam;examReview=true;$('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">Đáp án và lời giải</h2><div class="space-y-5">${e.questions.map((q,i)=>{const k=examAnswerKey[q.id]||q;return `<section class="glass-card p-5"><div class="font-bold math-content">Câu ${i+1}. ${q.text}</div>${imagePreviewHTML(q)}<div class="mt-3 text-sm"><b>Đáp án:</b> ${answerText({...q,...k})}</div><div class="mt-2 math-content"><b>Lời giải:</b> ${k.solution||'Chưa có lời giải.'}</div></section>`}).join('')}</div>`;typeset()}
 function answerText(q){if(q.type==='mc')return 'ABCD'[q.answer]+'. '+q.options[q.answer]; if(q.type==='tf')return q.answer.map((v,i)=>`${String.fromCharCode(97+i)}) ${v?'Đúng':'Sai'}`).join('; '); return q.answer}
 /* [Bước 1] Đã loại bỏ phiên bản cũ bị trùng của hàm teacherAnalyticsHTML; dùng phiên bản nâng cấp phía dưới. */
