@@ -764,8 +764,84 @@ async function questionsFromExcel(file,collectErrors=false){
   return rows.slice(1).filter(r=>r.some(x=>String(x).trim()!=='')).map((r,idx)=>{const o={};headers.forEach((h,i)=>o[h]=r[i]??'');return normalizeImportedQuestion(o,idx,collectErrors);});
 }
 
-function cleanPdfTextForMathPro(text=''){
-  return String(text||'')
+
+function convertUnicodeMathToLatex(text=''){
+  const sup={'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁺':'+','⁻':'-','ⁿ':'n'};
+  const sub={'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9','₊':'+','₋':'-'};
+  let out='', i=0, raw=String(text||'');
+  while(i<raw.length){
+    const ch=raw[i];
+    if(sup[ch]){let v=''; while(i<raw.length&&sup[raw[i]]){v+=sup[raw[i]]; i++;} out+='^{'+v+'}'; continue;}
+    if(sub[ch]){let v=''; while(i<raw.length&&sub[raw[i]]){v+=sub[raw[i]]; i++;} out+='_{'+v+'}'; continue;}
+    out+=ch; i++;
+  }
+  return out;
+}
+function protectDollarMath(text='',fn=x=>x){
+  const parts=String(text||'').split(/(\$[^$]*\$|\\\([^]*?\\\)|\\\[[^]*?\\\])/g);
+  return parts.map(part=>/^\$[^$]*\$$/.test(part)||/^\\\([^]*?\\\)$/.test(part)||/^\\\[[^]*?\\\]$/.test(part)?part:fn(part)).join('');
+}
+function normalizeMathOCRText(text=''){
+  let s=convertUnicodeMathToLatex(String(text||''));
+  s=s
+    .replace(/[−–—]/g,'-')
+    .replace(/[×∙·]/g,'\\cdot ')
+    .replace(/[÷]/g,':')
+    .replace(/≤/g,'\\le ')
+    .replace(/≥/g,'\\ge ')
+    .replace(/≠/g,'\\ne ')
+    .replace(/≈/g,'\\approx ')
+    .replace(/∈/g,'\\in ')
+    .replace(/∉/g,'\\notin ')
+    .replace(/∞/g,'\\infty ')
+    .replace(/π/g,'\\pi ')
+    .replace(/α/g,'\\alpha ')
+    .replace(/β/g,'\\beta ')
+    .replace(/γ/g,'\\gamma ')
+    .replace(/Δ/g,'\\Delta ')
+    .replace(/∑/g,'\\sum ')
+    .replace(/∫/g,'\\int ')
+    .replace(/∂/g,'\\partial ')
+    .replace(/√\s*\(([^()]+)\)/g,'\\sqrt{$1}')
+    .replace(/√\s*([A-Za-z0-9]+(?:\s*[+\-]\s*[A-Za-z0-9]+)?)/g,'\\sqrt{$1}')
+    .replace(/\b(sin|cos|tan|cot|ln|log)\s*([A-Za-z])/gi,'\\$1 $2')
+    .replace(/\blim\s*([A-Za-z])\s*[-→>]\s*([^\s,.;]+)/gi,'\\lim_{$1\\to $2}')
+    .replace(/\b([A-Za-z])\s*\^\s*([0-9A-Za-z]+)\b/g,'$1^{$2}')
+    .replace(/\b([A-Za-z])\s*_\s*([0-9A-Za-z]+)\b/g,'$1_{$2}')
+    .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'\\frac{$1}{$2}')
+    .replace(/\b([A-Za-z])\s*\/\s*([A-Za-z])\b/g,'\\frac{$1}{$2}')
+    .replace(/\bR\b/g,'\\mathbb{R}')
+    .replace(/\bN\b/g,'\\mathbb{N}')
+    .replace(/\bZ\b/g,'\\mathbb{Z}')
+    .replace(/\bQ\b/g,'\\mathbb{Q}');
+  return s.replace(/\\(sin|cos|tan|cot|ln|log)\b/g,m=>m.toLowerCase()).replace(/\s{2,}/g,' ');
+}
+function hasMathSignal(segment=''){
+  return /\\(frac|sqrt|int|lim|sin|cos|tan|cot|ln|log|le|ge|ne|infty|pi|mathbb)|[=^_]|[+*/]|≤|≥|≠|≈/.test(segment);
+}
+function autoWrapMathForMathJax(text=''){
+  return protectDollarMath(text,plain=>{
+    let s=plain;
+    s=s.replace(/(\\(?:frac|sqrt|int|lim|sin|cos|tan|cot|ln|log|le|ge|ne|infty|pi|mathbb|Delta)[^\n,;:]*)/g,(m)=>`$${m.trim()}$`);
+    s=s.replace(/\b([A-Za-z](?:\([A-Za-z]\))?\s*=\s*[^\n,;:]+)/g,(m)=>hasMathSignal(m)?`$${m.trim()}$`:m);
+    s=s.replace(/\b([A-Za-z0-9()]+(?:\^\{[^}]+\}|_\{[^}]+\})[^\n,;:]*)/g,(m)=>hasMathSignal(m)?`$${m.trim()}$`:m);
+    return s.replace(/\$\s*\$/g,'');
+  });
+}
+function improvePdfMathText(text='',autoWrap=true){
+  const normalized=protectDollarMath(text,part=>normalizeMathOCRText(part));
+  return autoWrap?autoWrapMathForMathJax(normalized):normalized;
+}
+function normalizeImportedMathQuestion(q,autoWrap=true){
+  if(!q)return q;
+  ['text','solution'].forEach(k=>{if(q[k])q[k]=improvePdfMathText(q[k],autoWrap);});
+  if(Array.isArray(q.options))q.options=q.options.map(x=>improvePdfMathText(x,autoWrap));
+  if(Array.isArray(q.statements))q.statements=q.statements.map(x=>improvePdfMathText(x,autoWrap));
+  return q;
+}
+
+function cleanPdfTextForMathPro(text='',autoMath=true){
+  let s=String(text||'')
     .replace(/\u00a0/g,' ')
     .replace(/[\t ]+/g,' ')
     .replace(/\r/g,'\n')
@@ -776,8 +852,9 @@ function cleanPdfTextForMathPro(text=''){
     .replace(/(Đáp\s*án|Lời\s*giải|Hướng\s*dẫn\s*giải|Giải)\s*[:：]/gi,'\n$1:')
     .replace(/\n{3,}/g,'\n\n')
     .trim();
+  return autoMath?improvePdfMathText(s,true):s;
 }
-async function extractTextFromPDFFile(file){
+async function extractTextFromPDFFile(file,autoMath=true){
   if(!window.pdfjsLib)throw new Error('Chưa tải được thư viện PDF.js. Thầy hãy kiểm tra kết nối mạng rồi tải lại trang.');
   const buf=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:buf}).promise;
@@ -795,9 +872,9 @@ async function extractTextFromPDFFile(file){
     const lines=rows.map(r=>r.items.sort((a,b)=>a.x-b.x).map(it=>it.str).join(' ').trim()).filter(Boolean);
     pages.push(lines.join('\n'));
   }
-  return cleanPdfTextForMathPro(pages.join('\n\n'));
+  return cleanPdfTextForMathPro(pages.join('\n\n'),autoMath);
 }
-async function extractTextFromPDFByOCR(file,onProgress){
+async function extractTextFromPDFByOCR(file,onProgress,autoMath=true){
   if(!window.pdfjsLib)throw new Error('Chưa tải được PDF.js để đọc trang PDF.');
   if(!window.Tesseract)throw new Error('Chưa tải được Tesseract.js để OCR PDF scan.');
   const buf=await file.arrayBuffer();
@@ -815,16 +892,16 @@ async function extractTextFromPDFByOCR(file,onProgress){
     const result=await Tesseract.recognize(dataUrl,'vie+eng',{logger:m=>{if(onProgress&&m.status)onProgress(`OCR trang ${i}/${pdf.numPages}: ${m.status} ${m.progress?Math.round(m.progress*100)+'%':''}`)}});
     out.push(result?.data?.text||'');
   }
-  return cleanPdfTextForMathPro(out.join('\n\n'));
+  return cleanPdfTextForMathPro(out.join('\n\n'),autoMath);
 }
-async function extractPDFSmart(file,mode='auto',onProgress){
-  if(mode==='ocr')return await extractTextFromPDFByOCR(file,onProgress);
-  const text=await extractTextFromPDFFile(file);
+async function extractPDFSmart(file,mode='auto',onProgress,autoMath=true){
+  if(mode==='ocr')return await extractTextFromPDFByOCR(file,onProgress,autoMath);
+  const text=await extractTextFromPDFFile(file,autoMath);
   if(mode==='text')return text;
   const compact=text.replace(/\s/g,'');
   if(compact.length<120 && window.Tesseract){
     if(onProgress)onProgress('PDF giống bản scan, tự chuyển sang OCR...');
-    return await extractTextFromPDFByOCR(file,onProgress);
+    return await extractTextFromPDFByOCR(file,onProgress,autoMath);
   }
   return text;
 }
@@ -877,7 +954,8 @@ function detectTFStatements(body=''){
 }
 function parsePdfBlocksToQuestions(text,opts={}){
   const topicId=Number(opts.topicId||4), level=opts.level||'PDF import', source=opts.source||'PDF';
-  const cleaned=cleanPdfTextForMathPro(text);
+  const autoMath=opts.autoMath!==false;
+  const cleaned=cleanPdfTextForMathPro(text,autoMath);
   const chunks=cleaned.split(/(?=\b(?:Câu|Bài)\s*\d+\s*[:.)])/gi).map(x=>x.trim()).filter(x=>/^\b(?:Câu|Bài)\s*\d+/i.test(x));
   const items=[];
   chunks.forEach((block,idx)=>{
@@ -895,26 +973,26 @@ function parsePdfBlocksToQuestions(text,opts={}){
         options.push(removeAnswerMarks(b.slice(start,end).trim()));
       }
       const ans=parseAnswerFromBlock(block,'mc');
-      items.push(normalizeImportedQuestion({type:'mc',topicId,level,text:textPart||('Câu '+(idx+1)+' từ PDF'),optionA:options[0],optionB:options[1],optionC:options[2],optionD:options[3],answer:Number.isFinite(ans)?ans:0,solution:split.solution,tags:'pdf-import',sourceExamTitle:source,standard2018:opts.standard2018||'',difficulty:opts.difficulty||''},idx,true));
+      items.push(normalizeImportedMathQuestion(normalizeImportedQuestion({type:'mc',topicId,level,text:textPart||('Câu '+(idx+1)+' từ PDF'),optionA:options[0],optionB:options[1],optionC:options[2],optionD:options[3],answer:Number.isFinite(ans)?ans:0,solution:split.solution,tags:'pdf-import',sourceExamTitle:source,standard2018:opts.standard2018||'',difficulty:opts.difficulty||''},idx,true),autoMath));
       if(!Number.isFinite(ans))items[items.length-1]._errors.push('Chưa nhận dạng được đáp án A/B/C/D');
       return;
     }
     const tf=detectTFStatements(b);
     if(tf && /đúng|sai|true|false|Đáp\s*án/i.test(block)){
       const ans=parseAnswerFromBlock(block,'tf');
-      items.push(normalizeImportedQuestion({type:'tf',topicId,level,text:removeAnswerMarks(tf.text)||('Câu đúng/sai '+(idx+1)),statementA:tf.statements[0],statementB:tf.statements[1],statementC:tf.statements[2],statementD:tf.statements[3],answer:Array.isArray(ans)?ans:[true,true,true,true],solution:split.solution,tags:'pdf-import',sourceExamTitle:source,standard2018:opts.standard2018||'',difficulty:opts.difficulty||''},idx,true));
+      items.push(normalizeImportedMathQuestion(normalizeImportedQuestion({type:'tf',topicId,level,text:removeAnswerMarks(tf.text)||('Câu đúng/sai '+(idx+1)),statementA:tf.statements[0],statementB:tf.statements[1],statementC:tf.statements[2],statementD:tf.statements[3],answer:Array.isArray(ans)?ans:[true,true,true,true],solution:split.solution,tags:'pdf-import',sourceExamTitle:source,standard2018:opts.standard2018||'',difficulty:opts.difficulty||''},idx,true),autoMath));
       if(!Array.isArray(ans))items[items.length-1]._errors.push('Chưa nhận dạng được đáp án đúng/sai');
       return;
     }
     const shortAns=parseAnswerFromBlock(block,'short');
-    items.push(normalizeImportedQuestion({type:'short',topicId,level,text:removeAnswerMarks(b),answer:shortAns,solution:split.solution,tags:'pdf-import;can-kiem-tra',sourceExamTitle:source,standard2018:opts.standard2018||'',difficulty:opts.difficulty||''},idx,true));
+    items.push(normalizeImportedMathQuestion(normalizeImportedQuestion({type:'short',topicId,level,text:removeAnswerMarks(b),answer:shortAns,solution:split.solution,tags:'pdf-import;can-kiem-tra',sourceExamTitle:source,standard2018:opts.standard2018||'',difficulty:opts.difficulty||''},idx,true),autoMath));
   });
   return items;
 }
 function openPDFImportModal(){
   if(!requireRole('teacher'))return;
   const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in pdf-import-modal';
-  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex flex-wrap justify-between gap-3 items-start"><div><h2 class="text-2xl md:text-3xl font-black">📄 Nhập kho luyện đề từ PDF - Bản nâng cao</h2><p class="text-sm mt-1" style="color:var(--muted)">Hỗ trợ PDF text, PDF scan bằng OCR, nhận dạng đáp án, lời giải, câu A/B/C/D, đúng/sai và trả lời ngắn.</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none">&times;</button></div><section class="grid md:grid-cols-6 gap-3 mt-5"><input id="pdfImportFile" type="file" accept=".pdf,application/pdf" class="border rounded-xl p-3 bg-white md:col-span-2"><select id="pdfImportMode" class="border rounded-xl p-3 bg-white"><option value="auto" selected>Tự động</option><option value="text">PDF text</option><option value="ocr">OCR scan</option></select><select id="pdfImportTopic" class="border rounded-xl p-3 bg-white">${TOPICS.map(t=>`<option value="${t.id}">${safe(t.name)}</option>`).join('')}</select><select id="pdfImportLevel" class="border rounded-xl p-3 bg-white"><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option selected>PDF import</option></select><input id="pdfImportDifficulty" type="number" min="1" max="10" class="border rounded-xl p-3" placeholder="Độ khó 1-10"></section><section class="grid md:grid-cols-[1fr_250px] gap-3 mt-3"><input id="pdfImportStandard" class="border rounded-xl p-3" placeholder="Chuẩn CT 2018 / ghi chú, có thể để trống"><button onclick="previewPDFImport()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Đọc & tách câu</button></section><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Mẫu đọc tốt nhất:</b> Câu 1 ... A. ... B. ... C. ... D. ... Đáp án: B. Có thể thêm <b>Lời giải:</b> ở cuối mỗi câu. Với PDF scan, chọn chế độ <b>OCR scan</b>.</div><div id="pdfImportProgress" class="mt-3 text-sm" style="color:var(--muted)"></div><div id="pdfImportPreview" class="mt-4"><p class="text-sm text-slate-500">Chọn file PDF rồi bấm “Đọc & tách câu”.</p></div><div class="flex flex-wrap justify-end gap-3 mt-5"><button onclick="copyPdfExtractedText()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-copy"></i> Copy text PDF</button><button onclick="downloadPdfExtractedText()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-lines"></i> Tải text</button><button onclick="handlePDFImport()" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-database"></i> Lưu câu hợp lệ vào kho</button></div></div>`;
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex flex-wrap justify-between gap-3 items-start"><div><h2 class="text-2xl md:text-3xl font-black">📄 Nhập kho luyện đề từ PDF - Bản nâng cao</h2><p class="text-sm mt-1" style="color:var(--muted)">Hỗ trợ PDF text, PDF scan bằng OCR, nhận dạng đáp án, lời giải, câu A/B/C/D, đúng/sai và trả lời ngắn.</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none">&times;</button></div><section class="grid md:grid-cols-6 gap-3 mt-5"><input id="pdfImportFile" type="file" accept=".pdf,application/pdf" class="border rounded-xl p-3 bg-white md:col-span-2"><select id="pdfImportMode" class="border rounded-xl p-3 bg-white"><option value="auto" selected>Tự động</option><option value="text">PDF text</option><option value="ocr">OCR scan</option></select><select id="pdfImportTopic" class="border rounded-xl p-3 bg-white">${TOPICS.map(t=>`<option value="${t.id}">${safe(t.name)}</option>`).join('')}</select><select id="pdfImportLevel" class="border rounded-xl p-3 bg-white"><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option selected>PDF import</option></select><input id="pdfImportDifficulty" type="number" min="1" max="10" class="border rounded-xl p-3" placeholder="Độ khó 1-10"></section><section class="grid md:grid-cols-[1fr_250px] gap-3 mt-3"><input id="pdfImportStandard" class="border rounded-xl p-3" placeholder="Chuẩn CT 2018 / ghi chú, có thể để trống"><button onclick="previewPDFImport()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Đọc & tách câu</button></section><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Mẫu đọc tốt nhất:</b> Câu 1 ... A. ... B. ... C. ... D. ... Đáp án: B. Có thể thêm <b>Lời giải:</b> ở cuối mỗi câu. Với PDF scan, chọn chế độ <b>OCR scan</b>.<label class="flex items-center gap-2 mt-3 font-semibold text-blue-700"><input id="pdfAutoMath" type="checkbox" checked> Chuẩn hóa công thức toán sang LaTeX/MathJax</label><p class="text-xs mt-2" style="color:var(--muted)">Tự sửa các lỗi: 1/2 → \\frac{1}{2}, √x → \\sqrt{x}, ≤/≥, ∫, π, x², sinx, cosx, chỉ số dưới...</p></div><div id="pdfImportProgress" class="mt-3 text-sm" style="color:var(--muted)"></div><div id="pdfImportPreview" class="mt-4"><p class="text-sm text-slate-500">Chọn file PDF rồi bấm “Đọc & tách câu”.</p></div><div class="flex flex-wrap justify-end gap-3 mt-5"><button onclick="copyPdfExtractedText()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-copy"></i> Copy text PDF</button><button onclick="downloadPdfExtractedText()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-lines"></i> Tải text</button><button onclick="handlePDFImport()" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-database"></i> Lưu câu hợp lệ vào kho</button></div></div>`;
   document.body.appendChild(m);
 }
 function renderPDFImportPreview(items=[],rawText=''){
@@ -929,8 +1007,9 @@ async function previewPDFImport(){
   if(progress)progress.textContent='Đang chuẩn bị đọc file PDF...';
   try{
     const mode=$('pdfImportMode')?.value||'auto';
-    const text=await extractPDFSmart(file,mode,msg=>{if(progress)progress.textContent=msg;});
-    const items=parsePdfBlocksToQuestions(text,{topicId:$('pdfImportTopic')?.value,level:$('pdfImportLevel')?.value,source:file.name,standard2018:$('pdfImportStandard')?.value,difficulty:$('pdfImportDifficulty')?.value});
+    const autoMath=$('pdfAutoMath')?.checked!==false;
+    const text=await extractPDFSmart(file,mode,msg=>{if(progress)progress.textContent=msg;},autoMath);
+    const items=parsePdfBlocksToQuestions(text,{topicId:$('pdfImportTopic')?.value,level:$('pdfImportLevel')?.value,source:file.name,standard2018:$('pdfImportStandard')?.value,difficulty:$('pdfImportDifficulty')?.value,autoMath});
     renderPDFImportPreview(items,text);
     if(progress)progress.textContent=`Đã trích xuất ${text.length.toLocaleString('vi-VN')} ký tự và tách ${items.length} câu.`;
     toast('Đã đọc PDF và tách được '+items.length+' câu','ok');
