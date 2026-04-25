@@ -911,8 +911,41 @@ function qBankNormalizeList(){
   }));
   localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));
 }
+function qBankDuplicateKey(q){
+  // Chuẩn hóa nội dung để phát hiện câu trùng: bỏ HTML, bỏ khoảng trắng thừa, chuẩn hóa LaTeX cơ bản.
+  const base=String(q?.text||'')
+    .replace(/<[^>]*>/g,' ')
+    .replace(/\\\(|\\\)|\\\[|\\\]/g,' ')
+    .replace(/\$+/g,' ')
+    .replace(/\\left|\\right/g,'')
+    .replace(/[{}]/g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  return norm(base);
+}
+function qBankDuplicateGroups(){
+  const map={};
+  questionBank.forEach(q=>{
+    const key=qBankDuplicateKey(q);
+    if(!key || key.length<12) return;
+    (map[key]=map[key]||[]).push(q);
+  });
+  return Object.values(map).filter(g=>g.length>1).sort((a,b)=>b.length-a.length);
+}
+function qBankDuplicateIds(){
+  const ids={};
+  qBankDuplicateGroups().forEach((g,gi)=>g.forEach(q=>{ids[String(q.id)]={group:gi+1,count:g.length,key:qBankDuplicateKey(q)};}));
+  return ids;
+}
+function qBankDuplicateStats(){
+  const groups=qBankDuplicateGroups();
+  const duplicateQuestions=groups.reduce((s,g)=>s+g.length,0);
+  const removable=groups.reduce((s,g)=>s+Math.max(0,g.length-1),0);
+  return {groups,groupCount:groups.length,duplicateQuestions,removable};
+}
 function qBankGetFilters(){
-  window.qBankFilters=window.qBankFilters||{search:'',topic:'all',type:'all',level:'all',status:'all'};
+  window.qBankFilters=window.qBankFilters||{search:'',topic:'all',type:'all',level:'all',status:'all',duplicate:'all'};
+  if(!('duplicate' in window.qBankFilters)) window.qBankFilters.duplicate='all';
   return window.qBankFilters;
 }
 function qBankUpdateFilter(key,val){
@@ -923,6 +956,7 @@ function qBankUpdateFilter(key,val){
 function qBankFilteredItems(){
   const f=qBankGetFilters();
   const kw=norm(f.search||'');
+  const duplicateMap=qBankDuplicateIds();
   return questionBank.filter(q=>{
     const hay=norm([q.text,q.solution,q.topicName,q.level,(q.tags||[]).join(' '),q.sourceExamTitle,q.id].join(' '));
     const okSearch=!kw||hay.includes(kw);
@@ -930,8 +964,17 @@ function qBankFilteredItems(){
     const okType=f.type==='all'||String(q.type)===String(f.type);
     const okLevel=f.level==='all'||norm(q.level||'').includes(norm(f.level));
     const okStatus=f.status==='all'||String(q.status||'published')===String(f.status);
-    return okSearch&&okTopic&&okType&&okLevel&&okStatus;
-  }).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+    const isDup=!!duplicateMap[String(q.id)];
+    const okDuplicate=f.duplicate==='all'||(f.duplicate==='duplicated'&&isDup)||(f.duplicate==='unique'&&!isDup);
+    return okSearch&&okTopic&&okType&&okLevel&&okStatus&&okDuplicate;
+  }).sort((a,b)=>{
+    if(f.duplicate==='duplicated'){
+      const da=duplicateMap[String(a.id)]?.group||9999;
+      const db=duplicateMap[String(b.id)]?.group||9999;
+      if(da!==db) return da-db;
+    }
+    return String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));
+  });
 }
 function qBankAnswerText(q){
   const a=q.answer;
@@ -971,15 +1014,18 @@ function qBankParseAnswer(type,raw){
   return raw;
 }
 function qBankCard(q,idx){
+  const duplicateInfo=(window.qBankDuplicateMap||{})[String(q.id)];
+  const duplicateBadge=duplicateInfo?`<span class="mini-badge" style="background:rgba(220,38,38,.10);color:#dc2626"><i class="fa-solid fa-copy"></i> Trùng nhóm ${duplicateInfo.group} (${duplicateInfo.count} câu)</span>`:'';
   const options=q.type==='mc'&&Array.isArray(q.options)&&q.options.length?`<div class="mt-2 grid sm:grid-cols-2 gap-2 text-sm">${q.options.map((op,i)=>`<div class="option-card ${Number(q.answer)===i?'correct':''}"><b>${String.fromCharCode(65+i)}.</b> <span class="math-content">${op}</span></div>`).join('')}</div>`:'';
   const statements=q.type==='tf'&&Array.isArray(q.statements)&&q.statements.length?`<div class="mt-2 space-y-2 text-sm">${q.statements.map((st,i)=>`<div class="option-card ${Array.isArray(q.answer)&&q.answer[i]?'correct':''}"><b>${String.fromCharCode(97+i)})</b> <span class="math-content">${st}</span></div>`).join('')}</div>`:'';
-  return `<article class="exam-admin-card slide-up">
+  return `<article class="exam-admin-card slide-up ${duplicateInfo?'ring-2 ring-red-100':''}">
     <div class="flex flex-wrap justify-between gap-2">
       <div class="flex flex-wrap gap-2">
         <span class="mini-badge"><i class="fa-solid fa-hashtag"></i> ${idx+1}</span>
         <span class="mini-badge">${qBankTypeLabel(q.type)}</span>
         <span class="mini-badge">${safe(q.level||'Chưa phân mức')}</span>
         <span class="mini-badge">${safe(qBankStatusLabel(q.status||'published'))}</span>
+        ${duplicateBadge}
       </div>
       <span class="text-xs" style="color:var(--muted)">ID: ${safe(q.id)}</span>
     </div>
@@ -1011,6 +1057,8 @@ function renderQuestionBank(){
   const tf=questionBank.filter(q=>q.type==='tf').length;
   const sh=questionBank.filter(q=>q.type==='short').length;
   const draft=questionBank.filter(q=>(q.status||'published')==='draft').length;
+  const dupStats=qBankDuplicateStats();
+  window.qBankDuplicateMap=qBankDuplicateIds();
   $('mainView').innerHTML=`<div class="fade-in">
     <div class="flex flex-wrap justify-between items-start gap-3 mb-5">
       <div>
@@ -1026,15 +1074,16 @@ function renderQuestionBank(){
         <button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button>
       </div>
     </div>
-    <section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
+    <section class="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-5">
       ${analyticsCard('Tổng câu hỏi',total,'fa-circle-question','Trong kho')}
       ${analyticsCard('Trắc nghiệm',mc,'fa-list-check','A/B/C/D')}
       ${analyticsCard('Đúng/Sai',tf,'fa-toggle-on','4 mệnh đề')}
       ${analyticsCard('Trả lời ngắn',sh,'fa-keyboard','Số hoặc biểu thức')}
       ${analyticsCard('Câu nháp',draft,'fa-pen-ruler','Chưa xuất bản',draft?'amber':'green')}
+      ${analyticsCard('Nhóm trùng',dupStats.groupCount,'fa-copy',dupStats.removable+' câu có thể gộp/xóa',dupStats.groupCount?'red':'green')}
     </section>
     <section class="glass-card p-5 mb-5">
-      <div class="grid lg:grid-cols-[1.4fr_.8fr_.7fr_.8fr_.7fr] gap-3">
+      <div class="grid lg:grid-cols-[1.4fr_.8fr_.7fr_.8fr_.7fr_.8fr] gap-3">
         <input value="${safe(f.search)}" oninput="qBankUpdateFilter('search',this.value)" class="exam-admin-input" placeholder="Tìm theo nội dung, lời giải, tag, mã câu...">
         <select onchange="qBankUpdateFilter('topic',this.value)" class="exam-admin-input">
           <option value="all">Tất cả chủ đề</option>${TOPICS.map(t=>`<option value="${t.id}" ${String(f.topic)===String(t.id)?'selected':''}>${safe(t.name)}</option>`).join('')}
@@ -1048,16 +1097,101 @@ function renderQuestionBank(){
         <select onchange="qBankUpdateFilter('status',this.value)" class="exam-admin-input">
           <option value="all">Trạng thái</option><option value="published" ${f.status==='published'?'selected':''}>Đã xuất bản</option><option value="draft" ${f.status==='draft'?'selected':''}>Nháp</option><option value="archived" ${f.status==='archived'?'selected':''}>Lưu trữ</option>
         </select>
+        <select onchange="qBankUpdateFilter('duplicate',this.value)" class="exam-admin-input">
+          <option value="all" ${f.duplicate==='all'?'selected':''}>Tất cả câu</option>
+          <option value="duplicated" ${f.duplicate==='duplicated'?'selected':''}>Chỉ câu bị trùng</option>
+          <option value="unique" ${f.duplicate==='unique'?'selected':''}>Chỉ câu không trùng</option>
+        </select>
       </div>
       <div class="mt-3 flex flex-wrap justify-between gap-2 text-sm" style="color:var(--muted)">
-        <span>Đang hiển thị <b>${items.length}</b>/<b>${total}</b> câu hỏi.</span>
-        <button onclick="window.qBankFilters={search:'',topic:'all',type:'all',level:'all',status:'all'};renderQuestionBank()" class="text-blue-600 font-bold">Xóa bộ lọc</button>
+        <span>Đang hiển thị <b>${items.length}</b>/<b>${total}</b> câu hỏi. ${dupStats.groupCount?`Phát hiện <b class="text-red-600">${dupStats.groupCount}</b> nhóm trùng, <b class="text-red-600">${dupStats.removable}</b> câu có thể rà soát/xóa.`:'Không phát hiện câu trùng rõ ràng.'}</span>
+        <div class="flex flex-wrap gap-3">
+          <button onclick="qBankShowDuplicateOnly()" class="text-red-600 font-bold"><i class="fa-solid fa-copy"></i> Xem câu trùng</button>
+          <button onclick="qBankOpenDuplicateReport()" class="text-amber-600 font-bold"><i class="fa-solid fa-magnifying-glass"></i> Báo cáo trùng</button>
+          <button onclick="window.qBankFilters={search:'',topic:'all',type:'all',level:'all',status:'all',duplicate:'all'};renderQuestionBank()" class="text-blue-600 font-bold">Xóa bộ lọc</button>
+        </div>
       </div>
     </section>
     <section class="grid xl:grid-cols-2 gap-4">${items.map(qBankCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Không có câu hỏi phù hợp bộ lọc.</div>'}</section>
   </div>`;
   typeset();
 }
+
+function qBankShowDuplicateOnly(){
+  const f=qBankGetFilters();
+  f.duplicate='duplicated';
+  renderQuestionBank();
+}
+function qBankOpenDuplicateReport(){
+  if(!requireRole('teacher'))return;
+  qBankNormalizeList();
+  const groups=qBankDuplicateGroups();
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6">
+    <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-black">🔎 Báo cáo câu hỏi bị trùng</h2>
+        <p class="text-sm" style="color:var(--muted)">Hệ thống so sánh theo nội dung câu hỏi sau khi chuẩn hóa LaTeX/khoảng trắng. Thầy nên xem trước rồi mới xóa.</p>
+      </div>
+      <button onclick="this.closest('.fixed').remove()" class="text-3xl">&times;</button>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-3 mb-4">
+      ${analyticsCard('Nhóm trùng',groups.length,'fa-copy','Nhóm có từ 2 câu')}
+      ${analyticsCard('Tổng câu trong nhóm',groups.reduce((s,g)=>s+g.length,0),'fa-layer-group','Bao gồm bản giữ lại')}
+      ${analyticsCard('Có thể xóa/gộp',groups.reduce((s,g)=>s+Math.max(0,g.length-1),0),'fa-trash-can','Nếu mỗi nhóm giữ 1 câu',groups.length?'red':'green')}
+    </div>
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button onclick="qBankMarkDuplicateCopiesDraft()" class="bg-amber-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-pen-ruler"></i> Chuyển bản trùng sang nháp</button>
+      <button onclick="qBankDeleteDuplicateCopies()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa bản trùng, giữ bản mới nhất</button>
+      <button onclick="qBankShowDuplicateOnly();this.closest('.fixed').remove()" class="btn-soft px-4 py-2 rounded-2xl font-bold">Lọc trên trang chính</button>
+    </div>
+    <div class="space-y-4">${groups.map((g,gi)=>qBankDuplicateGroupHTML(g,gi)).join('')||'<div class="p-8 text-center text-slate-500">Không phát hiện câu hỏi bị trùng.</div>'}</div>
+  </div>`;
+  document.body.appendChild(m);
+  typeset();
+}
+function qBankDuplicateGroupHTML(group,gi){
+  const sorted=[...group].sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  return `<section class="exam-admin-card border-red-200">
+    <div class="flex flex-wrap justify-between gap-2 mb-3">
+      <h3 class="font-black text-red-600">Nhóm trùng ${gi+1} • ${group.length} câu</h3>
+      <span class="text-xs" style="color:var(--muted)">Nên giữ câu đầu tiên nếu là bản mới nhất/đầy đủ nhất</span>
+    </div>
+    <div class="space-y-2">${sorted.map((q,i)=>`<div class="p-3 rounded-2xl border ${i===0?'bg-green-50 border-green-200':'bg-red-50 border-red-200'}">
+      <div class="flex flex-wrap justify-between gap-2"><b>${i===0?'Bản nên giữ':'Bản trùng cần rà soát'}</b><span class="text-xs">ID: ${safe(q.id)}</span></div>
+      <div class="math-content mt-2">${q.text||''}</div>
+      <div class="mt-2 flex flex-wrap gap-2 text-xs" style="color:var(--muted)"><span>${safe(qBankTypeLabel(q.type))}</span><span>• ${safe(q.topicName||topicName(q.topicId)||'Chưa chủ đề')}</span><span>• ${safe(q.level||'Chưa mức độ')}</span><span>• ${safe(q.status||'published')}</span></div>
+      <div class="mt-2 flex flex-wrap gap-2"><button onclick="openQuestionEditorModal('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-pen"></i> Sửa</button>${i>0?`<button onclick="deleteQuestionBankItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash"></i> Xóa bản này</button>`:''}</div>
+    </div>`).join('')}</div>
+  </section>`;
+}
+async function qBankMarkDuplicateCopiesDraft(){
+  if(!confirm('Chuyển các bản trùng trong mỗi nhóm sang trạng thái nháp, giữ bản mới nhất ở trạng thái hiện tại?')) return;
+  const groups=qBankDuplicateGroups();
+  const ids=[];
+  groups.forEach(g=>[...g].sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))).slice(1).forEach(q=>ids.push(String(q.id))));
+  questionBank.forEach(q=>{if(ids.includes(String(q.id))){q.status='draft';q.updatedAt=new Date().toISOString();}});
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    try{let batch=db.batch();ids.forEach(id=>batch.set(db.collection('questionBanks').doc(id),{status:'draft',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();}catch(err){toast('Đã đổi local, chưa đồng bộ Firestore: '+fbError(err),'bad');}
+  }
+  save();document.querySelector('.fixed')?.remove();renderQuestionBank();toast('Đã chuyển các bản trùng sang nháp','ok');
+}
+async function qBankDeleteDuplicateCopies(){
+  if(!confirm('Xóa tự động các bản trùng, mỗi nhóm chỉ giữ lại bản mới nhất? Thao tác này nên dùng sau khi thầy đã xem báo cáo.')) return;
+  const groups=qBankDuplicateGroups();
+  const ids=[];
+  groups.forEach(g=>[...g].sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))).slice(1).forEach(q=>ids.push(String(q.id))));
+  if(!ids.length) return toast('Không có bản trùng để xóa','info');
+  questionBank=questionBank.filter(q=>!ids.includes(String(q.id)));
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){
+    try{let batch=db.batch();ids.forEach(id=>batch.delete(db.collection('questionBanks').doc(id)));await batch.commit();}catch(err){toast('Đã xóa local, chưa xóa Firestore: '+fbError(err),'bad');}
+  }
+  save();document.querySelector('.fixed')?.remove();renderQuestionBank();toast('Đã xóa '+ids.length+' bản câu hỏi trùng','ok');
+}
+
 function openQuestionEditorModal(id=''){
   if(!requireRole('teacher'))return;
   const q=questionBank.find(x=>String(x.id)===String(id))||{id:'',type:'mc',topicId:TOPICS[0]?.id||'',level:'Nhận biết',status:'published',point:1,tags:[]};
