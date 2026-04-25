@@ -98,19 +98,17 @@ let firebaseReady = !!(window.firebase && window.auth && window.db);
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
 const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
-const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com'];
-const TEACHER_REGISTER_CODE='CHUONG2026';
+const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com','admin@mathpro12.edu.vn'];
 const SECURITY_VERSION='step-2-exam-session-2026-04-25';
 function isSeedTeacherEmail(email=''){
   return TEACHER_EMAILS.includes(String(email).toLowerCase().trim());
 }
-function detectRegisterRole(email='', requestedRole='student', teacherCode=''){
+function detectRegisterRole(email='', requestedRole='student'){
   email=String(email).toLowerCase().trim();
-  // Bước 1: không tự phong giáo viên chỉ vì email chứa gv/teacher/admin.
-  // Giáo viên chỉ được cấp quyền bằng email mẫu đã duyệt hoặc mã giáo viên.
-  const autoTeacher=isSeedTeacherEmail(email);
-  const codeTeacher=requestedRole==='teacher' && String(teacherCode).trim()===TEACHER_REGISTER_CODE;
-  return (autoTeacher || codeTeacher) ? 'teacher' : 'student';
+  // Bước 3: bỏ mã giáo viên. Người đăng ký mới mặc định là học sinh.
+  // Chỉ email có trong danh sách duyệt sẵn mới được tạo trực tiếp vai trò giáo viên.
+  if(requestedRole==='teacher' && isSeedTeacherEmail(email)) return 'teacher';
+  return 'student';
 }
 function isTeacherUser(user=currentUser){
   return !!user && user.role==='teacher';
@@ -530,17 +528,16 @@ async function doLogin(){
   }
 }
 function quickLogin(u,p){$('loginU').value=u;$('loginP').value=p;doLogin()}
-function showRegister(){document.querySelector('.fixed')?.remove();const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký tài khoản</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Chọn vai trò. Giáo viên cần mã xác nhận.</p><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập, ví dụ: gvtoan@gmail.com"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu ít nhất 6 ký tự"><input id="regClass" class="w-full px-4 py-3 rounded-2xl border" placeholder="Lớp, ví dụ: 12A1"><select id="regRole" onchange="document.getElementById('teacherCodeWrap').style.display=this.value==='teacher'?'block':'none'" class="w-full px-4 py-3 rounded-2xl border bg-white"><option value="student">Học sinh</option><option value="teacher">Giáo viên</option></select><div id="teacherCodeWrap" style="display:none"><input id="regTeacherCode" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mã giáo viên: CHUONG2026"><p class="text-xs mt-1" style="color:var(--muted)">Email có chữ gv/giaovien cũng tự nhận giáo viên.</p></div><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
+function showRegister(){document.querySelector('.fixed')?.remove();const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký tài khoản</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Tài khoản mới mặc định là học sinh. Giáo viên được tài khoản giáo viên hiện có cấp quyền trong mục Quản lý người dùng.</p><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập, ví dụ: hs12a1@gmail.com"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu ít nhất 6 ký tự"><input id="regClass" class="w-full px-4 py-3 rounded-2xl border" placeholder="Lớp, ví dụ: 12A1"><select id="regRole" class="w-full px-4 py-3 rounded-2xl border bg-white"><option value="student">Học sinh</option><option value="teacher">Giáo viên đã được duyệt email</option></select><p class="text-xs" style="color:var(--muted)">Không dùng mã giáo viên. Nếu email chưa được duyệt sẵn, tài khoản sẽ được tạo là học sinh và có thể được cấp quyền sau.</p><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
 async function doRegister(){
   const email=emailFromLogin($('regU').value.trim()), password=$('regP').value, fullname=$('regName').value.trim()||email, className=($('regClass')?.value||'Chưa phân lớp').trim()||'Chưa phân lớp';
   const requestedRole=$('regRole')?.value||'student';
-  const teacherCode=$('regTeacherCode')?.value||'';
   if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
   if(password.length<6) return toast('Mật khẩu Firebase cần ít nhất 6 ký tự','bad');
-  if(requestedRole==='teacher' && detectRegisterRole(email,requestedRole,teacherCode)!=='teacher') return toast('Mã giáo viên chưa đúng. Hãy nhập mã giáo viên hợp lệ.','bad');
+  if(requestedRole==='teacher' && detectRegisterRole(email,requestedRole)!=='teacher') toast('Email này chưa được duyệt giáo viên, hệ thống sẽ tạo tài khoản học sinh. Giáo viên hiện có có thể cấp quyền sau.','info');
   try{
     const cred=await auth.createUserWithEmailAndPassword(email,password);
-    const role=detectRegisterRole(email,requestedRole,teacherCode);
+    const role=detectRegisterRole(email,requestedRole);
     if(className&&!classes.includes(className)){classes.push(className); localStorage.setItem('mathpro12_classes',JSON.stringify(classes));}
     const profile={id:cred.user.uid,email,username:email,fullname,role,className,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     await db.collection('users').doc(cred.user.uid).set(profile,{merge:true});
@@ -1674,6 +1671,67 @@ function teacherAnalyticsHTML(){
   const weakCount=students.filter(u=>{const a=arr.filter(s=>String(s.studentId)===String(u.id));return a.length && avgOf(a)<50;}).length;
   return `<section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">${analyticsCard('Lượt nộp',arr.length,'fa-paper-plane','Theo bộ lọc hiện tại')}${analyticsCard('Điểm TB',avg+'%','fa-chart-line','Toàn bộ lượt nộp',avg>=70?'green':avg>=50?'amber':'red')}${analyticsCard('Tỷ lệ tham gia',completion+'%','fa-user-check',`${activeIds.size}/${students.length} học sinh`)}${analyticsCard('Cần hỗ trợ',weakCount,'fa-triangle-exclamation','Điểm TB dưới 50%',weakCount?'red':'green')}${analyticsCard('Cảnh báo',warnings,'fa-shield-halved','Rời tab/toàn màn hình',warnings?'amber':'green')}</section><section class="grid xl:grid-cols-3 gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Hiệu quả theo lớp</h3>${classPerformanceHTML(arr)}</div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Hiệu quả theo đề</h3>${examPerformanceHTML(arr)}</div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Xu hướng điểm theo ngày</h3>${weeklyTrendHTML(arr)}</div></section><section class="grid xl:grid-cols-[1fr_.95fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Câu hỏi sai nhiều</h3>${difficultQuestionsHTML(arr)}</div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Học sinh cần theo dõi</h3>${riskStudentsHTML(arr)}</div></section>`;
 }
+function userRoleBadge(role){
+  return role==='teacher'
+    ? '<span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">Giáo viên</span>'
+    : '<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Học sinh</span>';
+}
+function buildUserRows(list){
+  return list.map(u=>{
+    const isMe=String(u.id)===String(currentUser?.id);
+    const role=String(u.role||'student');
+    const classSelect=role==='student'
+      ? `<select onchange="updateStudentClass('${safe(u.id)}',this.value)" class="border rounded-xl px-3 py-2 bg-white">${classes.map(c=>`<option value="${safe(c)}" ${String(u.className||'Chưa phân lớp')===String(c)?'selected':''}>${safe(c)}</option>`).join('')}</select>`
+      : '<span class="text-sm" style="color:var(--muted)">Không áp dụng</span>';
+    const roleBtn=role==='teacher'
+      ? `<button ${isMe?'disabled':''} onclick="updateUserRole('${safe(u.id)}','student')" class="${isMe?'bg-slate-200 text-slate-500 cursor-not-allowed':'bg-amber-600 text-white'} px-3 py-2 rounded-xl font-bold"><i class="fa-solid fa-arrow-down"></i> Hạ xuống HS</button>`
+      : `<button onclick="updateUserRole('${safe(u.id)}','teacher')" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-bold"><i class="fa-solid fa-chalkboard-user"></i> Cấp giáo viên</button>`;
+    return `<tr class="border-b hover:bg-blue-50/50">
+      <td class="p-3"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-2xl btn-primary text-white grid place-items-center font-black">${safe(String(u.fullname||u.email||'U').trim()[0]||'U')}</div><div><b>${safe(u.fullname||u.email||'Người dùng')}</b>${isMe?'<span class="ml-2 mini-badge">Tài khoản hiện tại</span>':''}<p class="text-xs" style="color:var(--muted)">${safe(u.email||u.username||'')}</p></div></div></td>
+      <td class="p-3">${userRoleBadge(role)}</td>
+      <td class="p-3">${classSelect}</td>
+      <td class="p-3 text-xs" style="color:var(--muted)">${safe(u.createdAt?.toDate?u.createdAt.toDate().toLocaleString('vi-VN'):(u.createdAt||''))}</td>
+      <td class="p-3"><div class="flex flex-wrap gap-2">${roleBtn}${role==='student'?`<button onclick="renderStudentDetail('${safe(u.id)}')" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-eye"></i> Điểm</button>`:''}</div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="5" class="p-6 text-center text-slate-500">Chưa có người dùng phù hợp.</td></tr>';
+}
+async function renderUserManager(){
+  if(!requireRole('teacher'))return;
+  await refreshUsersFromFirestore();
+  const teachers=users.filter(u=>u.role==='teacher').length;
+  const students=users.filter(u=>u.role!=='teacher').length;
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-user-shield"></i> Bước 3</span><h2 class="text-3xl md:text-4xl font-black mt-2">Quản lý người dùng & phân quyền</h2><p style="color:var(--muted)">Không dùng mã giáo viên. Giáo viên hiện có có thể cấp hoặc hạ quyền trực tiếp cho tài khoản đã đăng ký.</p></div><div class="flex gap-2 flex-wrap"><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl"><i class="fa-solid fa-arrow-left"></i> Dashboard</button><button onclick="refreshUsersFromFirestore().then(()=>renderUserManager())" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Tải lại users</button></div></div>
+  <section class="grid sm:grid-cols-3 gap-4 mb-5"><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Tổng tài khoản</p><p class="text-3xl font-black">${users.length}</p></div><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Giáo viên</p><p class="text-3xl font-black text-indigo-600">${teachers}</p></div><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Học sinh</p><p class="text-3xl font-black text-green-600">${students}</p></div></section>
+  <section class="glass-card p-5"><div class="grid lg:grid-cols-[1fr_180px] gap-3 mb-4"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input id="userSearch" oninput="applyUserFilters()" class="w-full pl-11 pr-4 py-3 rounded-2xl border bg-white/80" placeholder="Tìm tên, email, lớp..."></div><select id="userRoleFilter" onchange="applyUserFilters()" class="px-4 py-3 rounded-2xl border bg-white"><option value="all">Tất cả vai trò</option><option value="teacher">Giáo viên</option><option value="student">Học sinh</option></select></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Người dùng</th><th class="p-3">Vai trò</th><th class="p-3">Lớp</th><th class="p-3">Ngày tạo</th><th class="p-3">Hành động</th></tr></thead><tbody id="userTableBody">${buildUserRows(users)}</tbody></table></div></section></div>`;
+}
+function applyUserFilters(){
+  let list=[...users];
+  const q=norm($('userSearch')?.value||''), role=$('userRoleFilter')?.value||'all';
+  if(q) list=list.filter(u=>norm((u.fullname||'')+' '+(u.email||u.username||'')+' '+(u.className||'')).includes(q));
+  if(role==='teacher') list=list.filter(u=>u.role==='teacher');
+  if(role==='student') list=list.filter(u=>u.role!=='teacher');
+  list.sort((a,b)=>String(a.role||'student').localeCompare(String(b.role||'student')) || String(a.fullname||a.email||'').localeCompare(String(b.fullname||b.email||''),'vi'));
+  const body=$('userTableBody'); if(body) body.innerHTML=buildUserRows(list);
+}
+async function updateUserRole(userId,newRole){
+  if(!requireRole('teacher'))return;
+  newRole=newRole==='teacher'?'teacher':'student';
+  if(String(userId)===String(currentUser?.id) && newRole!=='teacher') return toast('Không thể tự hạ quyền tài khoản đang đăng nhập','bad');
+  const u=users.find(x=>String(x.id)===String(userId));
+  if(!u) return toast('Không tìm thấy người dùng','bad');
+  const ok=confirm(`${newRole==='teacher'?'Cấp quyền giáo viên cho':'Hạ quyền về học sinh cho'} ${u.fullname||u.email}?`);
+  if(!ok) return;
+  u.role=newRole;
+  if(newRole==='student' && !u.className) u.className='Chưa phân lớp';
+  save();
+  if(firebaseReady){
+    try{await db.collection('users').doc(String(userId)).set({role:newRole,className:u.className||'Chưa phân lớp',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+    catch(err){toast('Chưa cập nhật được Firestore: '+fbError(err),'bad');}
+  }
+  toast(newRole==='teacher'?'Đã cấp quyền giáo viên':'Đã hạ quyền về học sinh','ok');
+  renderUserManager();
+}
+
 function renderTeacherDashboard(){
   if(!requireRole('teacher'))return;
   const totalStudents=users.filter(u=>u.role==='student').length;
@@ -1683,7 +1741,7 @@ function renderTeacherDashboard(){
   const actionBtn=(text,icon,fn,cls='btn-soft')=>`<button onclick="${fn}" class="${cls} px-4 py-3 rounded-2xl font-bold text-left flex items-center justify-between gap-3"><span><i class="fa-solid ${icon} mr-2"></i>${text}</span><i class="fa-solid fa-chevron-right text-xs opacity-60"></i></button>`;
   const examRows=exams.slice(0,8).map(e=>{e=normalizeExamAccess(e);const status=e.isPublished===false?'<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Nháp</span>':'<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Đã xuất bản</span>';return `<tr class="border-b"><td class="p-3"><b>${safe(e.title)}</b><p class="text-xs" style="color:var(--muted)">${safe(topicName(e.topicId))}</p></td><td class="p-3">${(e.questions||[]).length||e.questionCount||0}</td><td class="p-3">${status}</td><td class="p-3 text-xs" style="color:var(--muted)">${safe(examScheduleText(e))}</td></tr>`}).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có đề.</td></tr>';
   const recentRows=analyticsFilteredSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
-  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Bước 3</span><h2 class="text-3xl md:text-4xl font-black mt-2">Thống kê và phân tích học tập</h2><p style="color:var(--muted)">Lọc dữ liệu, phân tích học tập và nhập ngân hàng câu hỏi từ CSV/Excel/PDF/LaTeX.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}</section>${teacherAnalyticsHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="font-black text-xl">Danh sách đề thi</h3><button onclick="openExamEditor()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th><th class="p-3">Lịch giao</th></tr></thead><tbody>${examRows}</tbody></table></div></section></div>`;
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Bước 3</span><h2 class="text-3xl md:text-4xl font-black mt-2">Thống kê và phân tích học tập</h2><p style="color:var(--muted)">Lọc dữ liệu, phân tích học tập và nhập ngân hàng câu hỏi từ CSV/Excel/PDF/LaTeX.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}</section>${teacherAnalyticsHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Quản lý người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="font-black text-xl">Danh sách đề thi</h3><button onclick="openExamEditor()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th><th class="p-3">Lịch giao</th></tr></thead><tbody>${examRows}</tbody></table></div></section></div>`;
   typeset();
 }
 function renderStats(){
