@@ -1092,6 +1092,122 @@ async function generateAutoExam(){
   }catch(err){toast('Đã tạo đề local, chưa đồng bộ Firestore: '+fbError(err),'bad')}
   document.querySelector('.auto-builder-modal')?.remove();renderTeacherDashboard();toast('Đã tạo đề tự động. Thầy có thể mở đề để kiểm tra trước khi xuất bản.','ok')
 }
+
+
+// ===== GIAI ĐOẠN 7 - BƯỚC 2: LUYỆN THEO ĐIỂM YẾU HỌC SINH =====
+function findExamByIdLoose(id){return exams.find(e=>String(e.id)===String(id)||String(e.originalId)===String(id));}
+function findQuestionInExam(exam,qid){return (exam?.questions||[]).find(q=>String(q.id)===String(qid)||String(q.sourceQuestionId)===String(qid));}
+function weakTopicName(topicId){return topicName(topicId||8);}
+function studentWeaknessProfile(studentId){
+  const student=users.find(u=>String(u.id)===String(studentId))||{};
+  const attempts=submissions.filter(s=>String(s.studentId)===String(studentId));
+  const topicMap={};
+  let total=0, wrong=0;
+  attempts.forEach(sub=>{
+    const exam=findExamByIdLoose(sub.examId);
+    (sub.details||[]).forEach(d=>{
+      total++;
+      const q=findQuestionInExam(exam,d.qid)||{};
+      const topicId=String(q.topicId||exam?.topicId||8);
+      if(!topicMap[topicId])topicMap[topicId]={topicId,total:0,wrong:0,examples:[]};
+      topicMap[topicId].total++;
+      if(!d.ok){
+        wrong++;
+        topicMap[topicId].wrong++;
+        if(topicMap[topicId].examples.length<3)topicMap[topicId].examples.push(q.text||d.qid||'Câu sai');
+      }
+    });
+  });
+  const topics=Object.values(topicMap).map(x=>({...x,rate:x.total?Math.round(x.wrong*100/x.total):0,name:weakTopicName(x.topicId)})).sort((a,b)=>b.rate-a.rate||b.wrong-a.wrong);
+  const avg=attempts.length?Math.round(attempts.reduce((a,b)=>a+(Number(b.percent)||0),0)/attempts.length):0;
+  return {student,attempts,total,wrong,avg,topics,main:topics.find(t=>t.wrong>0)||topics[0]||null};
+}
+function allStudentWeaknessProfiles(){
+  return users.filter(u=>u.role==='student').map(u=>studentWeaknessProfile(u.id)).filter(p=>p.attempts.length).sort((a,b)=>(b.main?.rate||0)-(a.main?.rate||0)||a.avg-b.avg);
+}
+function questionPoolForWeakness(topicIds=[],level='all'){
+  const ids=topicIds.map(String);
+  return questionBank.filter(q=>{
+    const okTopic=!ids.length||ids.includes(String(q.topicId||8));
+    const okLevel=level==='all'||String(q.level||'').toLowerCase().includes(String(level).toLowerCase());
+    return okTopic&&okLevel;
+  });
+}
+function weaknessTrainingPanelHTML(){
+  const profiles=allStudentWeaknessProfiles();
+  const urgent=profiles.filter(p=>(p.main?.rate||0)>=50||p.avg<50).slice(0,6);
+  const rows=urgent.map(p=>'<tr class="border-b"><td class="p-3"><b>'+safe(p.student.fullname||p.student.email||'Học sinh')+'</b><p class="text-xs" style="color:var(--muted)">'+safe(p.student.className||'Chưa phân lớp')+' • '+p.attempts.length+' lượt làm</p></td><td class="p-3"><b>'+safe(p.main?.name||'Chưa rõ')+'</b><p class="text-xs" style="color:var(--muted)">Sai '+(p.main?.wrong||0)+'/'+(p.main?.total||0)+' câu</p></td><td class="p-3"><b class="'+(p.avg<50?'text-red-600':p.avg<70?'text-amber-600':'text-green-600')+'">'+p.avg+'%</b></td><td class="p-3"><button onclick="openWeaknessExamBuilder(\''+safe(String(p.student.id))+'\')" class="btn-soft px-3 py-2 rounded-xl font-bold text-xs"><i class="fa-solid fa-bullseye"></i> Tạo đề ôn</button></td></tr>').join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa đủ dữ liệu điểm yếu. Cần học sinh nộp bài trước.</td></tr>';
+  return '<section class="grid xl:grid-cols-[.9fr_1.1fr] gap-5 mb-5"><div class="glass-card p-5"><span class="mini-badge"><i class="fa-solid fa-brain"></i> Giai đoạn 7 - Bước 2</span><h3 class="font-black text-xl mt-2">Luyện theo điểm yếu học sinh</h3><p class="text-sm mt-1" style="color:var(--muted)">Hệ thống đọc kết quả đã nộp, xác định chủ đề sai nhiều và tạo đề ôn riêng cho từng học sinh/lớp.</p><div class="grid grid-cols-3 gap-3 mt-4"><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+profiles.length+'</p><p class="text-xs" style="color:var(--muted)">Có dữ liệu</p></div><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+urgent.length+'</p><p class="text-xs" style="color:var(--muted)">Cần hỗ trợ</p></div><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+questionBank.length+'</p><p class="text-xs" style="color:var(--muted)">Câu trong kho</p></div></div><button onclick="openWeaknessExamBuilder()" class="mt-4 w-full bg-fuchsia-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-bullseye"></i> Tạo đề theo điểm yếu</button><p class="text-xs mt-3" style="color:var(--muted)">Phù hợp để giao đề phụ đạo cá nhân hoặc luyện lại theo nhóm học sinh yếu cùng chủ đề.</p></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Học sinh cần ôn tập ưu tiên</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Chủ đề yếu nhất</th><th class="p-3">TB</th><th class="p-3">Tạo đề</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></section>';
+}
+function weaknessStudentOptions(selected=''){
+  const ps=allStudentWeaknessProfiles();
+  return '<option value="all">Tạo đề cho lớp/nhóm, không chọn cá nhân</option>'+ps.map(p=>'<option value="'+safe(String(p.student.id))+'" '+(String(selected)===String(p.student.id)?'selected':'')+'>'+safe(p.student.fullname||p.student.email)+' - yếu: '+safe(p.main?.name||'chưa rõ')+'</option>').join('');
+}
+function renderWeaknessSuggestion(studentId=''){
+  const box=$('weakSuggestion'); if(!box)return;
+  const sid=studentId||$('weakStudent')?.value||'all';
+  if(sid==='all'){
+    box.innerHTML='<div class="auto-check"><b>Chế độ nhóm/lớp:</b> Thầy chọn thủ công các chủ đề yếu cần luyện. Hệ thống sẽ lấy câu từ kho theo các chủ đề đó.</div>';
+    return;
+  }
+  const p=studentWeaknessProfile(sid);
+  const chips=(p.topics||[]).slice(0,5).map(t=>'<label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white/70"><input type="checkbox" class="weakTopicCheck" value="'+safe(String(t.topicId))+'" checked> '+safe(t.name)+' <span class="text-xs text-red-600 font-bold">'+t.rate+'%</span></label>').join('')||'<span class="text-sm text-slate-500">Chưa phát hiện chủ đề yếu.</span>';
+  box.innerHTML='<div class="auto-check"><div class="flex flex-wrap justify-between gap-2"><b>Phân tích cho '+safe(p.student.fullname||p.student.email||'học sinh')+'</b><span class="mini-badge">TB '+p.avg+'%</span></div><p class="text-sm mt-2" style="color:var(--muted)">Chọn các chủ đề muốn hệ thống tạo đề ôn riêng:</p><div class="flex flex-wrap gap-2 mt-3">'+chips+'</div></div>';
+}
+function selectedWeakTopicIds(){
+  const checked=Array.from(document.querySelectorAll('.weakTopicCheck:checked')).map(x=>x.value);
+  if(checked.length)return checked;
+  const manual=$('weakTopic')?.value||'all';
+  return manual==='all'?[]:[manual];
+}
+function openWeaknessExamBuilder(studentId=''){
+  if(!requireRole('teacher'))return;
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 z-[80] p-4 overflow-auto fade-in weakness-builder-modal';
+  m.innerHTML='<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex flex-wrap justify-between gap-3 items-start"><div><h2 class="text-2xl md:text-3xl font-black">🎯 Tạo đề ôn theo điểm yếu</h2><p class="text-sm mt-1" style="color:var(--muted)">Giai đoạn 7 - Bước 2: cá nhân hóa đề luyện dựa trên kết quả làm bài của học sinh.</p></div><button onclick="this.closest(\'.fixed\').remove()" class="text-3xl leading-none">&times;</button></div><section class="grid md:grid-cols-3 gap-3 mt-5"><input id="weakTitle" class="border rounded-xl p-3" placeholder="Tên đề, ví dụ: Đề ôn điểm yếu số 1"><select id="weakStudent" onchange="renderWeaknessSuggestion(this.value)" class="border rounded-xl p-3 bg-white">'+weaknessStudentOptions(studentId)+'</select><select id="weakClass" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả lớp</option>'+classes.map(c=>'<option value="'+safe(c)+'">'+safe(c)+'</option>').join('')+'</select><select id="weakTopic" onchange="renderWeaknessSuggestion(\'all\')" class="border rounded-xl p-3 bg-white"><option value="all">Tự chọn theo phân tích / tất cả chủ đề</option>'+TOPICS.map(t=>'<option value="'+t.id+'">'+safe(t.name)+'</option>').join('')+'</select><select id="weakLevel" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả mức độ</option><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option>Cơ bản</option><option>Tổng hợp</option></select><input id="weakCount" type="number" min="1" value="12" class="border rounded-xl p-3" placeholder="Số câu cần tạo"><input id="weakDuration" type="number" min="5" value="35" class="border rounded-xl p-3" placeholder="Thời gian phút"><select id="weakPublished" class="border rounded-xl p-3 bg-white"><option value="false" selected>Lưu nháp để kiểm tra</option><option value="true">Xuất bản ngay</option></select><input id="weakAttempts" type="number" min="0" value="1" class="border rounded-xl p-3" placeholder="Số lượt làm"></section><div id="weakSuggestion" class="mt-4"></div><div id="weakPreview" class="mt-4 text-sm"></div><div class="flex flex-wrap justify-end gap-3 mt-5"><button onclick="previewWeaknessExam()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Kiểm tra kho</button><button onclick="generateWeaknessExam()" class="bg-fuchsia-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo đề ôn</button></div></div>';
+  document.body.appendChild(m);
+  renderWeaknessSuggestion(studentId||$('weakStudent')?.value||'all');
+  previewWeaknessExam();
+}
+function previewWeaknessExam(){
+  const box=$('weakPreview'); if(!box)return;
+  const topicIds=selectedWeakTopicIds();
+  const level=$('weakLevel')?.value||'all';
+  const count=Number($('weakCount')?.value||0);
+  const pool=questionPoolForWeakness(topicIds,level);
+  const byType={mc:pool.filter(q=>q.type==='mc').length,tf:pool.filter(q=>q.type==='tf').length,short:pool.filter(q=>q.type==='short').length};
+  const ok=pool.length>=count&&count>0;
+  box.innerHTML='<div class="auto-check"><div class="flex flex-wrap justify-between gap-3"><b><i class="fa-solid fa-database"></i> Kho câu phù hợp</b><span class="px-3 py-1 rounded-full '+(ok?'bg-green-100 text-green-700':'bg-red-100 text-red-700')+' font-bold">'+(ok?'Đủ câu để tạo đề':'Chưa đủ câu')+'</span></div><div class="grid md:grid-cols-4 gap-3 mt-3"><div class="p-3 rounded-2xl bg-white/70 border"><b>'+pool.length+'</b><br><span class="text-xs">Tổng câu phù hợp</span></div><div class="p-3 rounded-2xl bg-white/70 border"><b>'+byType.mc+'</b><br><span class="text-xs">A/B/C/D</span></div><div class="p-3 rounded-2xl bg-white/70 border"><b>'+byType.tf+'</b><br><span class="text-xs">Đúng/Sai</span></div><div class="p-3 rounded-2xl bg-white/70 border"><b>'+byType.short+'</b><br><span class="text-xs">Trả lời ngắn</span></div></div><p class="text-xs mt-3" style="color:var(--muted)">Cần tạo '+count+' câu. Nếu chưa đủ, thầy nhập thêm câu cho chủ đề yếu hoặc giảm số câu.</p></div>';
+}
+async function generateWeaknessExam(){
+  if(!requireRole('teacher'))return;
+  await ensureQuestionBankReady();
+  const topicIds=selectedWeakTopicIds();
+  const level=$('weakLevel')?.value||'all';
+  const count=Number($('weakCount')?.value||0);
+  const pool=questionPoolForWeakness(topicIds,level);
+  if(count<=0)return toast('Số câu phải lớn hơn 0','bad');
+  if(pool.length<count){previewWeaknessExam();return toast('Kho câu hỏi chưa đủ để tạo đề ôn điểm yếu','bad');}
+  const sid=$('weakStudent')?.value||'all';
+  const stu=sid==='all'?null:users.find(u=>String(u.id)===String(sid));
+  const picked=shuffleArray(pool).slice(0,count).map((q,i)=>cleanAutoQuestion(q,i));
+  const docId=String(uid());
+  const classTarget=$('weakClass')?.value||'all';
+  const classIds=classTarget==='all'?(stu?.className?[stu.className]:[]): [classTarget];
+  const title=($('weakTitle')?.value||'').trim()||('Đề ôn điểm yếu '+(stu?.fullname||'nhóm')+' - '+new Date().toLocaleDateString('vi-VN'));
+  const data={id:docId,title,topicId:topicIds.length===1?Number(topicIds[0]):8,duration:Number($('weakDuration')?.value||35),level:level==='all'?'Theo điểm yếu':level,description:'Đề được tạo tự động để luyện lại các chủ đề học sinh đang yếu.',classTarget,classIds,targetStudentId:stu?.id||null,targetStudentName:stu?.fullname||null,isPublished:($('weakPublished')?.value==='true'),maxAttempts:Number($('weakAttempts')?.value||1),questions:picked,autoGenerated:true,weaknessGenerated:true,weaknessConfig:{studentId:sid,topicIds,level,count},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  exams.unshift(data);save();
+  try{
+    if(firebaseReady){
+      await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,questionCount:data.questions.length,usesQuestionBank:true,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      await syncExamStructureToFirestore(data);
+    }else{await syncExamQuestionsToQuestionBank(data);}
+  }catch(err){toast('Đã tạo đề local, chưa đồng bộ Firestore: '+fbError(err),'bad');}
+  document.querySelector('.weakness-builder-modal')?.remove();
+  renderTeacherDashboard();
+  toast('Đã tạo đề ôn theo điểm yếu. Thầy có thể kiểm tra rồi xuất bản.','ok');
+}
+
 /* [Bước 1] Đã loại bỏ phiên bản cũ bị trùng của hàm renderClassManager; dùng phiên bản nâng cấp phía dưới. */
 
 /* [Bước 1] Đã loại bỏ phiên bản cũ bị trùng của hàm addClassName; dùng phiên bản nâng cấp phía dưới. */
@@ -2281,7 +2397,7 @@ function renderTeacherDashboard(){
   const actionBtn=(text,icon,fn,cls='btn-soft')=>`<button onclick="${fn}" class="${cls} px-4 py-3 rounded-2xl font-bold text-left flex items-center justify-between gap-3"><span><i class="fa-solid ${icon} mr-2"></i>${text}</span><i class="fa-solid fa-chevron-right text-xs opacity-60"></i></button>`;
   const examRows=exams.slice(0,8).map(e=>{e=normalizeExamAccess(e);const status=e.isPublished===false?'<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Nháp</span>':'<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Đã xuất bản</span>';return `<tr class="border-b"><td class="p-3"><b>${safe(e.title)}</b><p class="text-xs" style="color:var(--muted)">${safe(topicName(e.topicId))}</p></td><td class="p-3">${(e.questions||[]).length||e.questionCount||0}</td><td class="p-3">${status}</td><td class="p-3 text-xs" style="color:var(--muted)">${safe(examScheduleText(e))}</td></tr>`}).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có đề.</td></tr>';
   const recentRows=analyticsFilteredSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
-  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Giai đoạn 7</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm phân tích & can thiệp học tập</h2><p style="color:var(--muted)">Theo dõi chất lượng lớp, phát hiện học sinh cần hỗ trợ, phân tích chủ đề yếu và xuất báo cáo.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="font-black text-xl">Danh sách đề thi</h3><button onclick="openExamEditor()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th><th class="p-3">Lịch giao</th></tr></thead><tbody>${examRows}</tbody></table></div></section></div>`;
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Giai đoạn 7</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm phân tích & can thiệp học tập</h2><p style="color:var(--muted)">Theo dõi chất lượng lớp, phát hiện học sinh cần hỗ trợ, phân tích chủ đề yếu và xuất báo cáo.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="font-black text-xl">Danh sách đề thi</h3><button onclick="openExamEditor()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th><th class="p-3">Lịch giao</th></tr></thead><tbody>${examRows}</tbody></table></div></section></div>`;
   typeset();
 }
 function renderStats(){
