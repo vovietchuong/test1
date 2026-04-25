@@ -890,6 +890,75 @@ function exportCSV(){
 
 
 
+
+function qBankExportValue(v){
+  if(Array.isArray(v)) return v.map(x=>typeof x==='boolean'?(x?'Đúng':'Sai'):String(x??'')).join('; ');
+  if(v&&typeof v==='object') return JSON.stringify(v);
+  return v??'';
+}
+function qBankRowForExcel(q){
+  const options=Array.isArray(q.options)?q.options:[];
+  const statements=Array.isArray(q.statements)?q.statements:[];
+  const tfAnswer=Array.isArray(q.answer)?q.answer:[];
+  let answer=q.answer;
+  if(q.type==='mc') answer=typeof q.answer==='number'?(['A','B','C','D','E','F'][q.answer]||q.answer):q.answer;
+  if(q.type==='tf') answer=tfAnswer.map(x=>x?'Đúng':'Sai').join('; ');
+  return {
+    id:q.id||'', type:q.type||'mc', topicId:q.topicId||'', topicName:q.topicName||topicName(q.topicId)||'',
+    level:q.level||'', difficulty:q.difficulty||'', standard2018:q.standard2018||q.standard||q.yccd||'',
+    status:q.status||'published', point:q.point||1, text:q.text||'',
+    optionA:options[0]||'', optionB:options[1]||'', optionC:options[2]||'', optionD:options[3]||'', answer:answer??'',
+    statementA:statements[0]||'', statementB:statements[1]||'', statementC:statements[2]||'', statementD:statements[3]||'',
+    answerA:tfAnswer.length?(tfAnswer[0]?'Đúng':'Sai'):'', answerB:tfAnswer.length?(tfAnswer[1]?'Đúng':'Sai'):'', answerC:tfAnswer.length?(tfAnswer[2]?'Đúng':'Sai'):'', answerD:tfAnswer.length?(tfAnswer[3]?'Đúng':'Sai'):'',
+    solution:q.solution||'', imageUrl:q.imageUrl||'', tags:Array.isArray(q.tags)?q.tags.join('; '):(q.tags||''),
+    sourceExamTitle:q.sourceExamTitle||'', updatedAt:q.updatedAt||''
+  };
+}
+function exportQuestionBankExcel(onlyFiltered=false){
+  if(!requireRole('teacher'))return;
+  qBankNormalizeList();
+  const items=onlyFiltered?qBankFilteredItems():questionBank;
+  if(!items.length)return toast('Không có câu hỏi để xuất Excel','bad');
+  const rows=items.map(qBankRowForExcel);
+  const stamp=new Date().toISOString().slice(0,10);
+  if(window.XLSX){
+    const headers=['id','type','topicId','topicName','level','difficulty','standard2018','status','point','text','optionA','optionB','optionC','optionD','answer','statementA','statementB','statementC','statementD','answerA','answerB','answerC','answerD','solution','imageUrl','tags','sourceExamTitle','updatedAt'];
+    const ws=XLSX.utils.json_to_sheet(rows,{header:headers});
+    ws['!cols']=[{wch:18},{wch:10},{wch:8},{wch:28},{wch:16},{wch:10},{wch:20},{wch:12},{wch:8},{wch:58},{wch:20},{wch:20},{wch:20},{wch:20},{wch:14},{wch:32},{wch:32},{wch:32},{wch:32},{wch:10},{wch:10},{wch:10},{wch:10},{wch:60},{wch:24},{wch:24},{wch:28},{wch:22}];
+    const guide=XLSX.utils.aoa_to_sheet([
+      ['HƯỚNG DẪN ĐỒNG BỘ NGÂN HÀNG CÂU HỎI'],
+      ['id','Giữ nguyên id để cập nhật câu hỏi cũ. Để trống hoặc đổi id để tạo câu hỏi mới.'],
+      ['type','mc = trắc nghiệm, tf = đúng/sai, short = trả lời ngắn.'],
+      ['status','published = xuất bản, draft = nháp, archived = lưu trữ.'],
+      ['answer','Với mc nhập A/B/C/D; với short nhập đáp án. Với tf có thể dùng answerA-D.'],
+      ['Đồng bộ','Sau khi chỉnh Excel, vào Ngân hàng câu hỏi > Nhập/đồng bộ Excel > chọn file > Duyệt & lưu.']
+    ]);
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Ngan hang cau hoi');XLSX.utils.book_append_sheet(wb,guide,'Huong dan dong bo');
+    XLSX.writeFile(wb,`ngan-hang-cau-hoi-mathpro12-${onlyFiltered?'bo-loc-':''}${stamp}.xlsx`);
+  }else{
+    const headers=Object.keys(rows[0]);
+    const csv=[headers,...rows.map(r=>headers.map(h=>qBankExportValue(r[h])))].map(r=>r.map(csvEscape).join(',')).join('\n');
+    const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ngan-hang-cau-hoi-mathpro12-${stamp}.csv`;a.click();URL.revokeObjectURL(a.href);
+    toast('Chưa tải được thư viện Excel, đã xuất CSV thay thế','info');
+  }
+  toast(`Đã xuất ${items.length} câu hỏi ra file Excel`,'ok');
+}
+async function syncQuestionBankToFirestore(){
+  if(!requireRole('teacher'))return;
+  qBankNormalizeList();
+  if(!firebaseReady)return toast('Firebase chưa sẵn sàng, dữ liệu đã lưu local nhưng chưa đồng bộ cloud','bad');
+  try{
+    let batch=db.batch(),count=0;
+    for(const q of questionBank){
+      batch.set(db.collection('questionBanks').doc(String(q.id)),{...q,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdBy:q.createdBy||currentUser?.id||null},{merge:true});
+      count++; if(count%450===0){await batch.commit();batch=db.batch();}
+    }
+    await batch.commit(); await loadQuestionBankFromFirestore(); renderQuestionBank();
+    toast(`Đã đồng bộ ${count} câu hỏi lên Firestore`,'ok');
+  }catch(err){toast('Chưa đồng bộ được Firestore: '+fbError(err),'bad');}
+}
+
 function qBankTypeLabel(type){
   return type==='mc'?'Trắc nghiệm A/B/C/D':type==='tf'?'Đúng/Sai':type==='short'?'Trả lời ngắn':'Tự luận';
 }
@@ -1068,9 +1137,11 @@ function renderQuestionBank(){
       </div>
       <div class="flex flex-wrap gap-2">
         <button onclick="openQuestionEditorModal()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo câu hỏi</button>
-        <button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập file</button>
+        <button onclick="exportQuestionBankExcel(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Xuất Excel</button>
+        <button onclick="exportQuestionBankExcel(true)" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-filter"></i> Xuất theo lọc</button>
+        <button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập/đồng bộ Excel</button>
         <button onclick="openLatexImportModal('bank')" class="bg-cyan-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button>
-        <button onclick="migrateAllQuestionsToBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ</button>
+        <button onclick="syncQuestionBankToFirestore()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ Firestore</button>
         <button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button>
       </div>
     </div>
@@ -1678,10 +1749,10 @@ async function generateWeaknessExam(){
 
 
 function questionTemplateRows(){return [
-  ['type','topicId','level','difficulty','standard2018','text','optionA','optionB','optionC','optionD','answer','statementA','statementB','statementC','statementD','answerA','answerB','answerC','answerD','solution','imageUrl','tags'],
-  ['mc','4','Nhận biết','2','12-YCCĐ-HS-01','Hàm số $y=x^3-3x$ đạt cực đại tại giá trị nào của $x$?','$x=-1$','$x=1$','$x=0$','$x=2$','A','','','','','','','','','Ta có $y\'=3x^2-3$. Đạo hàm đổi dấu từ $+$ sang $-$ tại $x=-1$.','','đạo hàm;cực trị'],
-  ['tf','4','Thông hiểu','4','12-YCCĐ-HS-02','Cho hàm số $y=x^3-3x+2$. Xét các khẳng định sau.','','','','','','$y\'=3x^2-3$','$y\'=0$ khi $x=-1,x=1$','$y\'<0$ trên $(-1;1)$','Giá trị cực đại bằng $4$','Đúng','Đúng','Đúng','Đúng','Tính đạo hàm và xét dấu trên các khoảng.','','đúng sai;hàm số'],
-  ['short','5','Cơ bản','3','12-YCCĐ-TICH-PHAN-01','Tính $\\int_0^1 2x\,dx$.','','','','','1','','','','','','','','','Ta có $\\int_0^1 2x\,dx=x^2\\big|_0^1=1$.','','tích phân']
+  ['id','type','topicId','level','difficulty','standard2018','status','point','text','optionA','optionB','optionC','optionD','answer','statementA','statementB','statementC','statementD','answerA','answerB','answerC','answerD','solution','imageUrl','tags'],
+  ['','mc','4','Nhận biết','2','12-YCCĐ-HS-01','published','1','Hàm số $y=x^3-3x$ đạt cực đại tại giá trị nào của $x$?','$x=-1$','$x=1$','$x=0$','$x=2$','A','','','','','','','','','Ta có $y\'=3x^2-3$. Đạo hàm đổi dấu từ $+$ sang $-$ tại $x=-1$.','','đạo hàm;cực trị'],
+  ['','tf','4','Thông hiểu','4','12-YCCĐ-HS-02','published','1','Cho hàm số $y=x^3-3x+2$. Xét các khẳng định sau.','','','','','','$y\'=3x^2-3$','$y\'=0$ khi $x=-1,x=1$','$y\'<0$ trên $(-1;1)$','Giá trị cực đại bằng $4$','Đúng','Đúng','Đúng','Đúng','Tính đạo hàm và xét dấu trên các khoảng.','','đúng sai;hàm số'],
+  ['','short','5','Cơ bản','3','12-YCCĐ-TICH-PHAN-01','published','1','Tính $\\int_0^1 2x\,dx$.','','','','','1','','','','','','','','','Ta có $\\int_0^1 2x\,dx=x^2\\big|_0^1=1$.','','tích phân']
 ];}
 function csvEscape(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
 function downloadQuestionTemplateCSV(){
@@ -1693,15 +1764,18 @@ function downloadQuestionTemplateExcel(){
   if(!window.XLSX){downloadQuestionTemplateCSV();toast('Chưa tải được thư viện Excel, em đã tải mẫu CSV thay thế.','info');return;}
   const rows=questionTemplateRows();
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:10},{wch:8},{wch:16},{wch:10},{wch:18},{wch:56},{wch:18},{wch:18},{wch:18},{wch:18},{wch:10},{wch:30},{wch:30},{wch:30},{wch:30},{wch:10},{wch:10},{wch:10},{wch:10},{wch:55},{wch:22},{wch:22}];
+  ws['!cols']=[{wch:18},{wch:10},{wch:8},{wch:16},{wch:10},{wch:18},{wch:12},{wch:8},{wch:56},{wch:18},{wch:18},{wch:18},{wch:18},{wch:10},{wch:30},{wch:30},{wch:30},{wch:30},{wch:10},{wch:10},{wch:10},{wch:10},{wch:55},{wch:22},{wch:22}];
   const guide=XLSX.utils.aoa_to_sheet([
     ['HƯỚNG DẪN NHẬP CÂU HỎI MATHPRO 12 - GIAI ĐOẠN 5'],
+    ['id','Giữ nguyên id nếu muốn cập nhật câu hỏi cũ khi nhập lại Excel; để trống để tạo mới.'],
     ['type','mc = trắc nghiệm A/B/C/D; tf = đúng/sai; short = trả lời ngắn'],
     ['topicId','1 đến 8 theo danh mục chủ đề trên trang web. Bỏ trống thì hệ thống tự đoán theo nội dung.'],
     ['level','Nhận biết, Thông hiểu, Vận dụng, Vận dụng cao hoặc mức độ riêng của thầy.'],
     ['difficulty','Thang 1-10, dùng để lọc và phân tích sau này.'],
     ['standard2018','Mã yêu cầu cần đạt/chủ đề theo Chương trình GDPT 2018, có thể để trống.'],
     ['answer','Với mc nhập A/B/C/D hoặc 0-3/1-4; với short nhập đáp án ngắn.'],
+    ['status','published = xuất bản, draft = nháp, archived = lưu trữ.'],
+    ['point','Điểm của câu hỏi, có thể để 1.'],
     ['answerA-D','Với tf nhập Đúng/Sai hoặc true/false.'],
     ['tags','Các thẻ cách nhau bằng dấu ; ví dụ: đạo hàm;cực trị;nhận biết']
   ]);
@@ -1743,7 +1817,7 @@ function normalizeImportedQuestion(raw,idx=0,collectErrors=false){
   if(!['mc','tf','short'].includes(q.type)){errors.push('Sai type, chỉ nhận mc/tf/short');q.type='mc';}
   q.id=String(q.id||('q'+uid()+idx)); q.text=String(q.text||'').trim();
   q.topicId=Number(q.topicId||0); if(!q.topicId||q.topicId<1||q.topicId>8)q.topicId=guessTopicIdFromText(q.text);
-  q.level=String(q.level||$('edLevel')?.value||'').trim(); q.solution=String(q.solution||'').trim(); q.imageUrl=String(q.imageUrl||'').trim(); q.tags=String(q.tags||'').trim(); q.difficulty=Number(q.difficulty||0)||null; q.standard2018=String(q.standard2018||q.standard||q.yccd||'').trim();
+  q.level=String(q.level||$('edLevel')?.value||'').trim(); q.solution=String(q.solution||'').trim(); q.imageUrl=String(q.imageUrl||'').trim(); q.tags=String(q.tags||'').trim(); q.difficulty=Number(q.difficulty||0)||null; q.standard2018=String(q.standard2018||q.standard||q.yccd||'').trim(); q.status=String(q.status||'published').trim()||'published'; if(!['published','draft','archived'].includes(q.status)) q.status='published'; q.point=Number(q.point||1)||1;
   if(q.type==='mc'){
     q.options=Array.isArray(q.options)?q.options:[q.optionA,q.optionB,q.optionC,q.optionD].map(x=>String(x||'').trim());
     while(q.options.length<4)q.options.push(''); q.options=q.options.slice(0,4);
@@ -2044,7 +2118,7 @@ async function previewQuestionImport(){const input=$('questionImportFile'),file=
 function openQuestionImportModal(target='bank'){
   if(target==='editor'&&!window.editorQ)window.editorQ=[]; window.questionImportPreviewItems=[]; window.questionImportTarget=target;
   const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 z-[75] p-4 overflow-auto fade-in question-import-modal';
-  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between gap-3"><div><h2 class="text-2xl font-black">📥 Nhập câu hỏi từ file - Giai đoạn 5</h2><p class="text-sm" style="color:var(--muted)">${target==='editor'?'Câu hỏi hợp lệ sẽ được đưa vào đề đang soạn.':'Câu hỏi hợp lệ sẽ được thêm vào kho câu hỏi questionBanks.'}</p></div><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-3 gap-3 mt-4"><button onclick="downloadQuestionTemplateCSV()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-csv"></i> Mẫu CSV</button><button onclick="downloadQuestionTemplateExcel()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Mẫu Excel</button><button onclick="downloadQuestionTemplateJSON()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-code"></i> Mẫu JSON</button></div><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Quy ước:</b> type = <b>mc</b>, <b>tf</b>, <b>short</b>. Nếu bỏ trống topicId, hệ thống tự đoán chủ đề từ nội dung. Dòng lỗi sẽ được báo rõ trước khi lưu.</div><input id="questionImportFile" type="file" accept=".csv,.json,.xlsx,.xls,application/json,text/csv" onchange="previewQuestionImport()" class="mt-4 w-full border rounded-2xl p-3 bg-white"><div id="questionImportPreview" class="mt-4"><p class="text-sm text-slate-500">Chọn file để xem trước dữ liệu.</p></div><div class="flex justify-end gap-3 mt-5"><button onclick="previewQuestionImport()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem trước</button><button onclick="handleQuestionImport('${target}')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-check"></i> Duyệt & lưu</button></div></div>`;
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between gap-3"><div><h2 class="text-2xl font-black">📥 Nhập câu hỏi từ file - Giai đoạn 5</h2><p class="text-sm" style="color:var(--muted)">${target==='editor'?'Câu hỏi hợp lệ sẽ được đưa vào đề đang soạn.':'Câu hỏi hợp lệ sẽ được thêm vào kho câu hỏi questionBanks.'}</p></div><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-3 gap-3 mt-4"><button onclick="downloadQuestionTemplateCSV()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-csv"></i> Mẫu CSV</button><button onclick="downloadQuestionTemplateExcel()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Mẫu Excel</button><button onclick="downloadQuestionTemplateJSON()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-code"></i> Mẫu JSON</button></div><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Quy ước:</b> type = <b>mc</b>, <b>tf</b>, <b>short</b>. Nếu file có cột <b>id</b> trùng với câu cũ thì hệ thống cập nhật câu đó; nếu id mới/trống thì tạo câu mới. Dòng lỗi sẽ được báo rõ trước khi lưu.</div><input id="questionImportFile" type="file" accept=".csv,.json,.xlsx,.xls,application/json,text/csv" onchange="previewQuestionImport()" class="mt-4 w-full border rounded-2xl p-3 bg-white"><div id="questionImportPreview" class="mt-4"><p class="text-sm text-slate-500">Chọn file để xem trước dữ liệu.</p></div><div class="flex justify-end gap-3 mt-5"><button onclick="previewQuestionImport()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem trước</button><button onclick="handleQuestionImport('${target}')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-check"></i> Duyệt & lưu</button></div></div>`;
   document.body.appendChild(m);
 }
 async function handleQuestionImport(target='bank'){
@@ -2054,10 +2128,10 @@ async function handleQuestionImport(target='bank'){
     const valid=imported.filter(q=>!q._errors?.length).map(q=>{const c={...q};delete c._errors;delete c._row;return c;}); const bad=imported.length-valid.length;
     if(!valid.length){renderQuestionImportPreview(imported);return toast('File chưa có câu hỏi hợp lệ. Thầy xem bảng lỗi để sửa.','bad');}
     if(target==='editor'){window.editorQ=window.editorQ||[]; valid.forEach((q,i)=>{q.id='q'+uid()+i;window.editorQ.push(q)}); refreshEditorQuestions(); document.querySelector('.question-import-modal')?.remove(); toast(`Đã đưa ${valid.length} câu vào đề đang soạn${bad?`, bỏ qua ${bad} dòng lỗi`:''}`,'ok'); return;}
-    const now=new Date().toISOString(); valid.forEach((q,i)=>{q.id=String(q.id||('q'+uid()+i));q.status='published';q.sourceExamTitle='Nhập từ file';q.topicName=topicName(q.topicId);q.updatedAt=now;});
+    const now=new Date().toISOString(); valid.forEach((q,i)=>{q.id=String(q.id||('q'+uid()+i));q.status=q.status||'published';q.sourceExamTitle=q.sourceExamTitle||'Nhập từ file';q.topicName=topicName(q.topicId);q.updatedAt=now;});
     const byId={};questionBank.forEach(q=>byId[String(q.id)]=q);valid.forEach(q=>byId[String(q.id)]=q);questionBank=Object.values(byId); localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));
     if(firebaseReady){let batch=db.batch(),count=0;for(const q of valid){batch.set(db.collection('questionBanks').doc(String(q.id)),{...q,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});count++;if(count%450===0){await batch.commit();batch=db.batch();}}await batch.commit();}
-    document.querySelector('.question-import-modal')?.remove(); toast(`Đã nhập ${valid.length} câu vào kho câu hỏi${bad?`, bỏ qua ${bad} dòng lỗi`:''}`,'ok'); renderQuestionBank();
+    document.querySelector('.question-import-modal')?.remove(); toast(`Đã nhập/cập nhật ${valid.length} câu vào kho câu hỏi${bad?`, bỏ qua ${bad} dòng lỗi`:''}`,'ok'); renderQuestionBank();
   }catch(err){console.error(err);toast('Không nhập được file: '+(err?.message||err),'bad');}
 }
 
