@@ -1865,13 +1865,104 @@ service cloud.firestore {
 
 function exportData(){const blob=new Blob([JSON.stringify({users,classes,exams,questionBank,submissions},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mathpro12-data.json';a.click()}
 function resetDemo(){if(confirm('Khôi phục dữ liệu mẫu?')){localStorage.removeItem('mathpro12_users');localStorage.removeItem('mathpro12_exams');localStorage.removeItem('mathpro12_submissions');localStorage.removeItem('mathpro12_user');localStorage.removeItem('mathpro12_classes');bootstrap()}}
-document.addEventListener('visibilitychange',()=>{if(document.hidden)antiCheatWarning('Rời tab hoặc thu nhỏ trình duyệt')});
-document.addEventListener('fullscreenchange',()=>{if(examAntiCheatLocked&&!document.fullscreenElement)antiCheatWarning('Thoát toàn màn hình')});
-document.addEventListener('contextmenu',e=>{if(examAntiCheatLocked){e.preventDefault();antiCheatWarning('Mở chuột phải')}});
-document.addEventListener('copy',e=>{if(examAntiCheatLocked){e.preventDefault();antiCheatWarning('Copy nội dung đề')}});
-document.addEventListener('paste',e=>{if(examAntiCheatLocked){e.preventDefault();antiCheatWarning('Dán nội dung vào bài')}});
-document.addEventListener('keydown',e=>{if(examAntiCheatLocked&&((e.ctrlKey&&['c','v','u','s','p'].includes(e.key.toLowerCase()))||e.key==='F12')){e.preventDefault();antiCheatWarning('Dùng phím tắt bị khóa')}});
-window.addEventListener('beforeunload',e=>{if(examAntiCheatLocked&&selectedExam&&examRemain>0){e.preventDefault();e.returnValue='Bài thi đang làm chưa nộp.'}});
+/* ===== ANTI-CHEAT NÂNG CAO: TAB / COPY / DEVTOOLS =====
+   Chỉ kích hoạt khi học sinh đang làm bài, không ảnh hưởng giáo viên khi quản lý đề. */
+let devtoolsWarnings = 0;
+let lastAntiCheatReason = '';
+let lastAntiCheatAt = 0;
+
+function isStudentInExam(){
+  return !!(selectedExam && currentUser?.role === 'student' && examRemain > 0 && !examSubmitted);
+}
+
+function safeAntiCheatWarning(reason){
+  if(!isStudentInExam()) return;
+  const now = Date.now();
+  // Tránh cộng quá nhiều cảnh báo do cùng một hành động sinh nhiều event liên tiếp.
+  if(reason === lastAntiCheatReason && now - lastAntiCheatAt < 1800) return;
+  lastAntiCheatReason = reason;
+  lastAntiCheatAt = now;
+  antiCheatWarning(reason);
+}
+
+// 1. Chống rời tab / mở tab khác / thu nhỏ cửa sổ
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) safeAntiCheatWarning('Học sinh rời khỏi tab làm bài');
+});
+window.addEventListener('blur',()=>{
+  safeAntiCheatWarning('Cửa sổ làm bài bị mất focus');
+});
+
+// 2. Chống thoát toàn màn hình; tự yêu cầu quay lại fullscreen
+document.addEventListener('fullscreenchange',()=>{
+  if(isStudentInExam() && examAntiCheatLocked && !document.fullscreenElement){
+    safeAntiCheatWarning('Thoát khỏi chế độ toàn màn hình');
+    setTimeout(()=>{
+      if(isStudentInExam() && !document.fullscreenElement){
+        try{document.documentElement.requestFullscreen?.()}catch(e){}
+      }
+    },350);
+  }
+});
+
+// 3. Chống copy / cut / paste / chọn tất cả / chuột phải
+['copy','cut','paste'].forEach(evt=>{
+  document.addEventListener(evt,e=>{
+    if(isStudentInExam()){
+      e.preventDefault();
+      safeAntiCheatWarning('Thao tác sao chép, cắt hoặc dán bị chặn');
+    }
+  });
+});
+document.addEventListener('contextmenu',e=>{
+  if(isStudentInExam()){
+    e.preventDefault();
+    safeAntiCheatWarning('Chuột phải bị chặn trong phòng thi');
+  }
+});
+document.addEventListener('selectstart',e=>{
+  if(isStudentInExam()){
+    e.preventDefault();
+  }
+});
+
+// 4. Chống phím tắt thường dùng để mở DevTools, xem mã nguồn, lưu/in/copy/paste
+document.addEventListener('keydown',e=>{
+  if(!isStudentInExam()) return;
+  const key = String(e.key || '').toLowerCase();
+  const blocked =
+    e.key === 'F12' ||
+    (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(key)) ||
+    (e.metaKey && e.altKey && ['i','j','c'].includes(key)) ||
+    ((e.ctrlKey || e.metaKey) && ['u','s','p','c','v','x','a'].includes(key));
+  if(blocked){
+    e.preventDefault();
+    safeAntiCheatWarning('Phím tắt không được phép trong phòng thi');
+  }
+});
+
+// 5. Phát hiện DevTools mức cơ bản qua chênh lệch kích thước cửa sổ
+setInterval(()=>{
+  if(!isStudentInExam()) return;
+  const widthDiff = Math.abs(window.outerWidth - window.innerWidth);
+  const heightDiff = Math.abs(window.outerHeight - window.innerHeight);
+  if(widthDiff > 160 || heightDiff > 160){
+    devtoolsWarnings++;
+    if(devtoolsWarnings <= 5){
+      safeAntiCheatWarning('Nghi ngờ mở DevTools');
+    }
+  }else{
+    devtoolsWarnings = Math.max(0, devtoolsWarnings - 1);
+  }
+},1500);
+
+// 6. Cảnh báo khi đóng/tải lại trang trong lúc làm bài
+window.addEventListener('beforeunload',e=>{
+  if(isStudentInExam()){
+    e.preventDefault();
+    e.returnValue='Bài thi đang làm chưa nộp.';
+  }
+});
 
 
 /* =========================
