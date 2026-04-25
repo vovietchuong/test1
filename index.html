@@ -201,7 +201,7 @@ const TOPICS=[
  {id:7,name:'Thống kê và xác suất',icon:'fa-dice',color:'amber'},
  {id:8,name:'Chuyên đề vận dụng cao',icon:'fa-star',color:'fuchsia'}
 ];
-let currentUser=null, users=[], exams=[], submissions=[], questionBank=[], classes=[], auditLogs=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false, examSessionId=null, examSubmitted=false, lastSessionSyncAt=0;
+let currentUser=null, users=[], exams=[], submissions=[], questionBank=[], deletedQuestionBank=[], classes=[], auditLogs=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false, examSessionId=null, examSubmitted=false, lastSessionSyncAt=0;
 let firebaseReady = !!(window.firebase && window.auth && window.db);
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
@@ -448,6 +448,7 @@ function save(){
   localStorage.setItem('mathpro12_users',JSON.stringify(users));
   localStorage.setItem('mathpro12_exams',JSON.stringify(examsForLocalStorage()));
   localStorage.setItem('mathpro12_submissions',JSON.stringify(submissions));
+  localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank||[]));
   localStorage.setItem('mathpro12_classes',JSON.stringify(classes));
   localStorage.setItem('mathpro12_auditLogs',JSON.stringify(auditLogs.slice(0,300)));
   localStorage.setItem('mathpro12_user',JSON.stringify(currentUser));
@@ -465,6 +466,7 @@ async function load(){
   classes=JSON.parse(localStorage.getItem('mathpro12_classes')||'null')||['12A1','12A2','12A3'];
   auditLogs=JSON.parse(localStorage.getItem('mathpro12_auditLogs')||'[]');
   questionBank=JSON.parse(localStorage.getItem('mathpro12_questionBank')||'[]');
+  deletedQuestionBank=JSON.parse(localStorage.getItem('mathpro12_deletedQuestionBank')||'[]');
   try{ await loadExamsFromFirestore(); await loadQuestionBankFromFirestore(); await loadSubmissionsFromFirestore(); }catch(err){console.warn('Không tải được Firestore, dùng dữ liệu local:',err)}
   if(!questionBank.length){questionBank=questionBankFromLocalExams(); localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));}
   save();
@@ -1014,6 +1016,10 @@ async function clearAllQuestionBankNow(){
   const clearLinks=!!$('clearQuestionBankLinks')?.checked;
   const oldCount=questionBank.length;
   try{
+    const now=new Date().toISOString();
+    const movingToTrash=questionBank.map(q=>({...JSON.parse(JSON.stringify(q)),deletedAt:now,deletedBy:currentUser?.email||currentUser?.username||'',deleteReason:'Xóa toàn bộ kho'}));
+    deletedQuestionBank=[...movingToTrash,...(deletedQuestionBank||[])];
+    localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank));
     questionBank=[];
     localStorage.setItem('mathpro12_questionBank',JSON.stringify([]));
     localStorage.removeItem('mathpro12_questionBank_backup');
@@ -1033,6 +1039,80 @@ async function clearAllQuestionBankNow(){
     toast('Đã xóa local, nhưng có lỗi khi xóa Firestore: '+fbError(err),'bad');
     save(); renderQuestionBank();
   }
+}
+
+
+
+/* ===== SAO LƯU & KHÔI PHỤC TOÀN HỆ THỐNG - BẢN AN TOÀN ===== */
+function systemBackupLocalPayload(){
+  return {
+    version:'mathpro12-system-backup-v1',
+    exportedAt:new Date().toISOString(),
+    exportedBy:currentUser?{id:currentUser.id,email:currentUser.email||currentUser.username||'',fullname:currentUser.fullname||'',role:currentUser.role||''}:null,
+    app:{securityVersion:SECURITY_VERSION,totalQuestions:questionBank.length,totalDeletedQuestions:(deletedQuestionBank||[]).length,totalExams:exams.length,totalUsers:users.length,totalSubmissions:submissions.length,totalClasses:classes.length},
+    data:{questionBank:JSON.parse(JSON.stringify(questionBank||[])),deletedQuestionBank:JSON.parse(JSON.stringify(deletedQuestionBank||[])),questionVersions:qVersionList(),exams:JSON.parse(JSON.stringify(exams||[])),submissions:JSON.parse(JSON.stringify(submissions||[])),classes:JSON.parse(JSON.stringify(classes||[])),users:JSON.parse(JSON.stringify(users||[])),auditLogs:JSON.parse(JSON.stringify(auditLogs||[]))}
+  };
+}
+async function readFirestoreCollectionSafe(collectionName,limit=5000){
+  if(!firebaseReady) return [];
+  try{const snap=await db.collection(collectionName).limit(limit).get();return snap.docs.map(d=>({id:d.id,...d.data()}));}
+  catch(err){console.warn('Không đọc được collection '+collectionName,err);return [];}
+}
+function downloadJSONFile(obj,filename){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},300);
+}
+async function exportFullSystemBackup(){
+  if(!requireRole('teacher'))return;
+  qBankNormalizeList();
+  const payload=systemBackupLocalPayload();
+  if(firebaseReady){
+    toast('Đang gom dữ liệu Firestore để sao lưu...','info');
+    payload.firestore={questionBanks:await readFirestoreCollectionSafe('questionBanks'),examQuestions:await readFirestoreCollectionSafe('examQuestions'),exams:await readFirestoreCollectionSafe('exams'),examResults:await readFirestoreCollectionSafe('examResults'),examSessions:await readFirestoreCollectionSafe('examSessions'),users:await readFirestoreCollectionSafe('users')};
+    payload.app.firestoreIncluded=true;
+  }else{payload.app.firestoreIncluded=false;}
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  downloadJSONFile(payload,`mathpro12-sao-luu-toan-he-thong-${stamp}.json`);
+  auditLogs.unshift({id:uid(),action:'export-system-backup',user:currentUser?.email||currentUser?.username||'',at:new Date().toISOString(),questions:questionBank.length,exams:exams.length});
+  save();toast('Đã xuất file sao lưu toàn hệ thống','ok');
+}
+function openSystemRestoreModal(){
+  if(!requireRole('teacher'))return;
+  const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[95] grid place-items-center p-4 fade-in';
+  m.innerHTML=`<div class="glass-card w-full max-w-3xl p-6 relative">
+    <button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button>
+    <div class="flex items-start gap-3"><div class="w-12 h-12 rounded-2xl bg-blue-600 text-white grid place-items-center"><i class="fa-solid fa-rotate-left"></i></div><div><h2 class="text-2xl font-black">Khôi phục dữ liệu từ file sao lưu</h2><p class="text-sm mt-1" style="color:var(--muted)">Chọn file JSON đã xuất từ hệ thống. Có thể khôi phục local và tùy chọn đồng bộ lại Firestore.</p></div></div>
+    <div class="mt-4 p-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm text-amber-800"><b>Khuyến nghị:</b> Trước khi khôi phục, thầy nên bấm <b>Xuất sao lưu hiện tại</b>. Khi khôi phục và ghi lên Firestore, dữ liệu trùng <b>id</b> sẽ được cập nhật.</div>
+    <input id="systemRestoreFile" type="file" accept=".json,application/json" onchange="previewSystemRestoreFile()" class="mt-4 w-full border rounded-2xl p-3 bg-white">
+    <div id="systemRestorePreview" class="mt-4 text-sm" style="color:var(--muted)">Chưa chọn file sao lưu.</div>
+    <div class="grid md:grid-cols-2 gap-3 mt-4"><label class="flex items-start gap-2 p-3 rounded-2xl border bg-white/60 text-sm"><input id="restoreOverwriteLocal" type="checkbox" checked class="mt-1"><span>Khôi phục vào bộ nhớ web hiện tại <b>(localStorage)</b></span></label><label class="flex items-start gap-2 p-3 rounded-2xl border bg-white/60 text-sm"><input id="restoreToFirestore" type="checkbox" class="mt-1"><span>Đồng bộ dữ liệu khôi phục lên <b>Firestore</b></span></label></div>
+    <div class="mt-4"><label class="block text-sm font-bold mb-2">Nhập chính xác: <span class="text-red-600">KHOI PHUC</span></label><input id="systemRestoreConfirm" class="w-full px-4 py-3 rounded-2xl border" placeholder="KHOI PHUC"></div>
+    <div class="flex flex-wrap justify-end gap-3 mt-5"><button onclick="exportFullSystemBackup()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Xuất sao lưu hiện tại</button><button onclick="this.closest('.fixed').remove()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Hủy</button><button onclick="restoreFullSystemBackupNow()" class="bg-blue-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-upload"></i> Khôi phục</button></div>
+  </div>`;document.body.appendChild(m);
+}
+function readSelectedSystemBackupFile(){
+  return new Promise((resolve,reject)=>{const file=$('systemRestoreFile')?.files?.[0];if(!file)return reject(new Error('Chưa chọn file sao lưu'));const reader=new FileReader();reader.onload=()=>{try{resolve(JSON.parse(reader.result));}catch(e){reject(new Error('File sao lưu không đúng định dạng JSON'));}};reader.onerror=()=>reject(new Error('Không đọc được file'));reader.readAsText(file,'utf-8');});
+}
+async function previewSystemRestoreFile(){
+  try{const payload=await readSelectedSystemBackupFile();const data=payload.data||{};const fs=payload.firestore||{};$('systemRestorePreview').innerHTML=`<div class="grid sm:grid-cols-3 gap-3"><div class="p-3 rounded-2xl border bg-white/60"><b>${(data.questionBank||fs.questionBanks||[]).length}</b><br><span>Câu hỏi</span></div><div class="p-3 rounded-2xl border bg-white/60"><b>${(data.exams||fs.exams||[]).length}</b><br><span>Đề thi</span></div><div class="p-3 rounded-2xl border bg-white/60"><b>${(data.submissions||fs.examResults||[]).length}</b><br><span>Kết quả</span></div></div><p class="mt-2">Ngày xuất: <b>${safe(payload.exportedAt||'Không rõ')}</b> • Phiên bản: <b>${safe(payload.version||'Không rõ')}</b></p>`;}
+  catch(err){$('systemRestorePreview').innerHTML=`<span class="text-red-600">${safe(err.message)}</span>`;}
+}
+async function batchSetCollection(collectionName,items){
+  if(!firebaseReady||!Array.isArray(items)) return 0;
+  let batch=db.batch(),count=0;
+  for(const item of items){const id=String(item.id||uid());batch.set(db.collection(collectionName).doc(id),{...item,id,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});count++;if(count%450===0){await batch.commit();batch=db.batch();}}
+  await batch.commit();return count;
+}
+async function restoreFullSystemBackupNow(){
+  if(!requireRole('teacher'))return;
+  const confirm=String($('systemRestoreConfirm')?.value||'').trim().toUpperCase();
+  if(confirm!=='KHOI PHUC') return toast('Thầy cần nhập đúng chữ KHOI PHUC để xác nhận','bad');
+  try{
+    const payload=await readSelectedSystemBackupFile();const data=payload.data||{};const fs=payload.firestore||{};const useLocal=!!$('restoreOverwriteLocal')?.checked;const useFirestore=!!$('restoreToFirestore')?.checked;
+    if(useLocal){questionBank=Array.isArray(data.questionBank)?data.questionBank:(Array.isArray(fs.questionBanks)?fs.questionBanks:questionBank);deletedQuestionBank=Array.isArray(data.deletedQuestionBank)?data.deletedQuestionBank:deletedQuestionBank;if(Array.isArray(data.questionVersions))saveQVersionList(data.questionVersions);exams=Array.isArray(data.exams)?data.exams:(Array.isArray(fs.exams)?fs.exams:exams);submissions=Array.isArray(data.submissions)?data.submissions:(Array.isArray(fs.examResults)?fs.examResults:submissions);classes=Array.isArray(data.classes)?data.classes:classes;users=Array.isArray(data.users)?data.users:(Array.isArray(fs.users)?fs.users:users);auditLogs=[{id:uid(),action:'restore-system-backup-local',user:currentUser?.email||currentUser?.username||'',at:new Date().toISOString(),sourceExportedAt:payload.exportedAt||''},...(Array.isArray(data.auditLogs)?data.auditLogs:auditLogs)].slice(0,500);save();}
+    if(useFirestore){if(!firebaseReady)return toast('Firebase chưa sẵn sàng nên chưa thể khôi phục lên Firestore','bad');const qb=Array.isArray(fs.questionBanks)?fs.questionBanks:(data.questionBank||[]);const ex=Array.isArray(fs.exams)?fs.exams:(data.exams||[]);const er=Array.isArray(fs.examResults)?fs.examResults:(data.submissions||[]);const us=Array.isArray(fs.users)?fs.users:(data.users||[]);const eq=Array.isArray(fs.examQuestions)?fs.examQuestions:[];await batchSetCollection('questionBanks',qb);await batchSetCollection('exams',ex);await batchSetCollection('examResults',er);await batchSetCollection('users',us);if(eq.length)await batchSetCollection('examQuestions',eq);await loadExamsFromFirestore();await loadQuestionBankFromFirestore();await loadSubmissionsFromFirestore();auditLogs.unshift({id:uid(),action:'restore-system-backup-firestore',user:currentUser?.email||currentUser?.username||'',at:new Date().toISOString(),questions:qb.length,exams:ex.length,results:er.length});save();}
+    document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã khôi phục dữ liệu từ file sao lưu','ok');
+  }catch(err){toast('Không khôi phục được: '+(err.message||fbError(err)),'bad');}
 }
 
 function qBankTypeLabel(type){
@@ -1089,8 +1169,9 @@ function qBankDuplicateStats(){
   return {groups,groupCount:groups.length,duplicateQuestions,removable};
 }
 function qBankGetFilters(){
-  window.qBankFilters=window.qBankFilters||{search:'',topic:'all',type:'all',level:'all',status:'all',duplicate:'all'};
+  window.qBankFilters=window.qBankFilters||{search:'',topic:'all',type:'all',level:'all',status:'all',duplicate:'all',quality:'all'};
   if(!('duplicate' in window.qBankFilters)) window.qBankFilters.duplicate='all';
+  if(!('quality' in window.qBankFilters)) window.qBankFilters.quality='all';
   return window.qBankFilters;
 }
 function qBankUpdateFilter(key,val){
@@ -1111,7 +1192,10 @@ function qBankFilteredItems(){
     const okStatus=f.status==='all'||String(q.status||'published')===String(f.status);
     const isDup=!!duplicateMap[String(q.id)];
     const okDuplicate=f.duplicate==='all'||(f.duplicate==='duplicated'&&isDup)||(f.duplicate==='unique'&&!isDup);
-    return okSearch&&okTopic&&okType&&okLevel&&okStatus&&okDuplicate;
+    const issues=(typeof qBankQualityIssues==='function')?qBankQualityIssues(q):[];
+    const hasCritical=issues.some(x=>x.level==='bad');
+    const okQuality=f.quality==='all'||(f.quality==='needFix'&&issues.length)||(f.quality==='critical'&&hasCritical)||(f.quality==='ok'&&!issues.length);
+    return okSearch&&okTopic&&okType&&okLevel&&okStatus&&okDuplicate&&okQuality;
   }).sort((a,b)=>{
     if(f.duplicate==='duplicated'){
       const da=duplicateMap[String(a.id)]?.group||9999;
@@ -1158,6 +1242,157 @@ function qBankParseAnswer(type,raw){
   }
   return raw;
 }
+function qBankQualityIssues(q){
+  const issues=[];
+  const type=String(q?.type||'').trim();
+  const text=String(q?.text||'').trim();
+  const solution=String(q?.solution||'').trim();
+  const answer=q?.answer;
+  if(!text) issues.push({code:'missing_text',label:'Thiếu nội dung',level:'bad'});
+  if(!type || !['mc','tf','short'].includes(type)) issues.push({code:'bad_type',label:'Sai dạng câu',level:'bad'});
+  if(!q?.topicId) issues.push({code:'missing_topic',label:'Thiếu chủ đề',level:'warn'});
+  if(!String(q?.level||'').trim()) issues.push({code:'missing_level',label:'Thiếu mức độ',level:'warn'});
+  if(!solution) issues.push({code:'missing_solution',label:'Thiếu lời giải',level:'warn'});
+  if(type==='mc'){
+    const opts=Array.isArray(q.options)?q.options.map(x=>String(x||'').trim()).filter(Boolean):[];
+    if(opts.length<4) issues.push({code:'mc_options',label:'TN thiếu 4 phương án',level:'bad'});
+    if(!(Number.isInteger(Number(answer)) && Number(answer)>=0 && Number(answer)<opts.length)) issues.push({code:'mc_answer',label:'TN sai/thiếu đáp án',level:'bad'});
+  }
+  if(type==='tf'){
+    const sts=Array.isArray(q.statements)?q.statements.map(x=>String(x||'').trim()).filter(Boolean):[];
+    if(sts.length!==4) issues.push({code:'tf_statements',label:'Đ/S chưa đủ 4 ý',level:'bad'});
+    if(!Array.isArray(answer) || answer.length!==sts.length || !answer.every(x=>typeof x==='boolean')) issues.push({code:'tf_answer',label:'Đ/S sai/thiếu đáp án',level:'bad'});
+  }
+  if(type==='short'){
+    if(answer===undefined || answer===null || String(answer).trim()==='') issues.push({code:'short_answer',label:'TLN thiếu đáp án',level:'bad'});
+  }
+  return issues;
+}
+function qBankQuestionHasCriticalIssue(q){return qBankQualityIssues(q).some(x=>x.level==='bad');}
+function qBankQualityStats(){
+  const rows=questionBank.map(q=>({q,issues:qBankQualityIssues(q)}));
+  const needFix=rows.filter(r=>r.issues.length).length;
+  const critical=rows.filter(r=>r.issues.some(x=>x.level==='bad')).length;
+  const missingSolution=rows.filter(r=>r.issues.some(x=>x.code==='missing_solution')).length;
+  const byCode={}; rows.forEach(r=>r.issues.forEach(i=>{byCode[i.code]=(byCode[i.code]||0)+1;}));
+  return {rows,needFix,critical,missingSolution,byCode};
+}
+function qBankQualityBadges(q){
+  const issues=qBankQualityIssues(q);
+  if(!issues.length) return '<span class="mini-badge" style="background:rgba(22,163,74,.10);color:#15803d"><i class="fa-solid fa-circle-check"></i> Đạt kiểm tra</span>';
+  return issues.slice(0,3).map(i=>`<span class="mini-badge" style="background:${i.level==='bad'?'rgba(220,38,38,.10)':'rgba(217,119,6,.10)'};color:${i.level==='bad'?'#dc2626':'#d97706'}"><i class="fa-solid ${i.level==='bad'?'fa-triangle-exclamation':'fa-circle-info'}"></i> ${safe(i.label)}</span>`).join('')+(issues.length>3?`<span class="mini-badge">+${issues.length-3} lỗi</span>`:'');
+}
+function qBankShowNeedFixOnly(){const f=qBankGetFilters();f.quality='needFix';renderQuestionBank();}
+function qBankOpenQualityReport(){
+  if(!requireRole('teacher'))return;
+  qBankNormalizeList();
+  const stats=qBankQualityStats();
+  const rows=stats.rows.filter(r=>r.issues.length).sort((a,b)=>Number(qBankQuestionHasCriticalIssue(b.q))-Number(qBankQuestionHasCriticalIssue(a.q)) || String(b.q.updatedAt||'').localeCompare(String(a.q.updatedAt||'')));
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex flex-wrap justify-between items-start gap-3 mb-4"><div><h2 class="text-2xl md:text-3xl font-black">🛡️ Kiểm tra chất lượng ngân hàng câu hỏi</h2><p class="text-sm" style="color:var(--muted)">Rà soát lỗi cấu trúc trước khi tạo đề: thiếu đáp án, thiếu lời giải, sai số phương án, đúng/sai chưa đủ 4 ý.</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl">&times;</button></div><div class="grid sm:grid-cols-4 gap-3 mb-4">${analyticsCard('Cần rà soát',stats.needFix,'fa-screwdriver-wrench','Có ít nhất 1 lỗi',stats.needFix?'amber':'green')}${analyticsCard('Lỗi nghiêm trọng',stats.critical,'fa-triangle-exclamation','Có thể làm sai đề',stats.critical?'red':'green')}${analyticsCard('Thiếu lời giải',stats.missingSolution,'fa-comment-slash','Nên bổ sung',stats.missingSolution?'amber':'green')}${analyticsCard('Câu đạt',questionBank.length-stats.needFix,'fa-circle-check','Có thể dùng')}</div><div class="flex flex-wrap gap-2 mb-4"><button onclick="qBankMarkCriticalIssuesDraft()" class="bg-amber-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-pen-ruler"></i> Chuyển câu lỗi nặng sang nháp</button><button onclick="qBankExportQualityReportExcel()" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Xuất báo cáo Excel</button><button onclick="qBankShowNeedFixOnly();this.closest('.fixed').remove()" class="btn-soft px-4 py-2 rounded-2xl font-bold">Lọc trên trang chính</button></div><div class="space-y-3">${rows.map(({q,issues},idx)=>`<article class="exam-admin-card ${issues.some(i=>i.level==='bad')?'border-red-200':'border-amber-200'}"><div class="flex flex-wrap justify-between gap-2"><b>${idx+1}. ID: ${safe(q.id)}</b><span>${qBankQualityBadges(q)}</span></div><div class="math-content mt-2 font-semibold">${q.text||'<i>Chưa có nội dung</i>'}</div><div class="mt-2 text-sm" style="color:var(--muted)">${safe(qBankTypeLabel(q.type))} • ${safe(q.topicName||topicName(q.topicId)||'Chưa chủ đề')} • ${safe(q.level||'Chưa mức độ')}</div><div class="mt-3 flex flex-wrap gap-2"><button onclick="openQuestionEditorModal('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-pen"></i> Sửa ngay</button><button onclick="toggleQuestionStatus('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-toggle-on"></i> Đổi trạng thái</button></div></article>`).join('')||'<div class="p-8 text-center text-green-600 font-bold">Toàn bộ ngân hàng hiện đạt kiểm tra cơ bản.</div>'}</div></div>`;
+  document.body.appendChild(m); typeset();
+}
+async function qBankMarkCriticalIssuesDraft(){
+  if(!confirm('Chuyển tất cả câu có lỗi nghiêm trọng sang trạng thái nháp để tránh đưa vào đề?')) return;
+  const ids=questionBank.filter(qBankQuestionHasCriticalIssue).map(q=>String(q.id));
+  if(!ids.length) return toast('Không có câu lỗi nghiêm trọng','ok');
+  questionBank.forEach(q=>{if(ids.includes(String(q.id))){q.status='draft';q.updatedAt=new Date().toISOString();q.qualityFlag='critical';}});
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){try{let batch=db.batch();ids.forEach(id=>batch.set(db.collection('questionBanks').doc(id),{status:'draft',qualityFlag:'critical',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();}catch(err){toast('Đã đổi local, chưa đồng bộ Firestore: '+fbError(err),'bad');}}
+  save();document.querySelector('.fixed')?.remove();renderQuestionBank();toast('Đã chuyển '+ids.length+' câu lỗi nặng sang nháp','ok');
+}
+function qBankExportQualityReportExcel(){
+  if(typeof XLSX==='undefined') return toast('Chưa tải được thư viện XLSX','bad');
+  const rows=qBankQualityStats().rows.filter(r=>r.issues.length).map(({q,issues})=>({id:q.id,type:q.type,topic:q.topicName||topicName(q.topicId),level:q.level||'',status:q.status||'published',issues:issues.map(i=>i.label).join('; '),text:String(q.text||'').replace(/<[^>]*>/g,' '),answer:qBankAnswerText(q),updatedAt:q.updatedAt||''}));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bao_cao_loi_cau_hoi');
+  XLSX.writeFile(wb,'bao_cao_chat_luong_ngan_hang_cau_hoi.xlsx');
+}
+
+
+/* ===== NÂNG CẤP TIẾP: LỊCH SỬ PHIÊN BẢN CÂU HỎI ===== */
+function qVersionList(){
+  try{return JSON.parse(localStorage.getItem('mathpro12_questionVersions')||'[]')||[];}catch(e){return []}
+}
+function saveQVersionList(list){
+  localStorage.setItem('mathpro12_questionVersions',JSON.stringify((list||[]).slice(0,1000)));
+}
+function recordQuestionVersionBeforeSave(oldQ,newQ){
+  if(!oldQ || !oldQ.id) return;
+  const oldText=JSON.stringify(oldQ||{});
+  const newText=JSON.stringify(newQ||{});
+  if(oldText===newText) return;
+  const versions=qVersionList();
+  versions.unshift({
+    id:String(uid()),
+    questionId:String(oldQ.id),
+    savedAt:new Date().toISOString(),
+    savedBy:currentUser?.email||currentUser?.username||currentUser?.fullname||'',
+    before:JSON.parse(JSON.stringify(oldQ)),
+    afterPreview:{text:newQ?.text||'',type:newQ?.type||'',topicId:newQ?.topicId||'',level:newQ?.level||'',status:newQ?.status||''}
+  });
+  saveQVersionList(versions);
+  if(firebaseReady){
+    try{db.collection('questionVersions').doc(String(versions[0].id)).set({...versions[0],savedAt:firebase.firestore.FieldValue.serverTimestamp()});}
+    catch(e){console.warn('Không ghi được lịch sử câu hỏi:',e)}
+  }
+}
+function questionVersionSummary(before={},current={}){
+  const changes=[];
+  [['text','Nội dung'],['answer','Đáp án'],['solution','Lời giải'],['type','Dạng'],['topicId','Chủ đề'],['level','Mức độ'],['status','Trạng thái']].forEach(([k,label])=>{
+    if(JSON.stringify(before?.[k]??'')!==JSON.stringify(current?.[k]??'')) changes.push(label);
+  });
+  if(JSON.stringify(before?.options||[])!==JSON.stringify(current?.options||[])) changes.push('Phương án');
+  if(JSON.stringify(before?.statements||[])!==JSON.stringify(current?.statements||[])) changes.push('Mệnh đề Đ/S');
+  return changes.length?changes.join(', '):'Có chỉnh sửa nhỏ';
+}
+function openQuestionVersionHistory(id){
+  if(!requireRole('teacher'))return;
+  const q=questionBank.find(x=>String(x.id)===String(id));
+  const versions=qVersionList().filter(v=>String(v.questionId)===String(id));
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6">
+    <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+      <div><h2 class="text-2xl md:text-3xl font-black">🕘 Lịch sử chỉnh sửa câu hỏi</h2><p class="text-sm" style="color:var(--muted)">ID: <b>${safe(id)}</b>. Có thể xem bản cũ và khôi phục nếu sửa nhầm.</p></div>
+      <button onclick="this.closest('.fixed').remove()" class="text-3xl">&times;</button>
+    </div>
+    <section class="grid md:grid-cols-2 gap-4 mb-4">
+      <div class="exam-admin-card"><b>Bản hiện tại</b><div class="math-content mt-2">${q?.text||'<i>Không tìm thấy câu hiện tại</i>'}</div><p class="text-xs mt-2" style="color:var(--muted)">${safe(qBankTypeLabel(q?.type||''))} • ${safe(q?.level||'')}</p></div>
+      <div class="exam-admin-card"><b>Thống kê</b><p class="mt-2 text-3xl font-black text-blue-600">${versions.length}</p><p class="text-sm" style="color:var(--muted)">phiên bản đã lưu trên máy này.</p></div>
+    </section>
+    <div class="space-y-3">${versions.map((v,i)=>`<article class="exam-admin-card">
+      <div class="flex flex-wrap justify-between gap-2"><b>Phiên bản ${i+1}</b><span class="text-xs" style="color:var(--muted)">${safe(new Date(v.savedAt).toLocaleString('vi-VN'))} • ${safe(v.savedBy||'')}</span></div>
+      <p class="text-sm mt-1" style="color:var(--muted)">Thay đổi: ${safe(questionVersionSummary(v.before,q||{}))}</p>
+      <div class="math-content mt-2 p-3 rounded-2xl bg-slate-50 border">${v.before?.text||''}</div>
+      <div class="mt-3 flex flex-wrap gap-2"><button onclick="restoreQuestionVersion('${safe(v.id)}')" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục bản này</button><button onclick="previewQuestionVersion('${safe(v.id)}')" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem chi tiết</button></div>
+    </article>`).join('')||'<div class="p-8 text-center text-slate-500">Chưa có lịch sử chỉnh sửa cho câu này. Lịch sử sẽ được ghi từ lần sửa tiếp theo.</div>'}</div>
+  </div>`;
+  document.body.appendChild(m); typeset();
+}
+function previewQuestionVersion(versionId){
+  const v=qVersionList().find(x=>String(x.id)===String(versionId)); if(!v)return;
+  const b=v.before||{};
+  alert('Bản cũ của câu hỏi:\n\nDạng: '+(b.type||'')+'\nChủ đề: '+(b.topicName||topicName(b.topicId)||'')+'\nMức độ: '+(b.level||'')+'\nTrạng thái: '+(b.status||'')+'\n\nNội dung:\n'+(b.text||'')+'\n\nĐáp án:\n'+JSON.stringify(b.answer));
+}
+async function restoreQuestionVersion(versionId){
+  if(!confirm('Khôi phục phiên bản này? Bản hiện tại sẽ được lưu lại vào lịch sử trước khi thay thế.'))return;
+  const versions=qVersionList();
+  const v=versions.find(x=>String(x.id)===String(versionId)); if(!v||!v.before)return toast('Không tìm thấy phiên bản cần khôi phục','bad');
+  const current=questionBank.find(x=>String(x.id)===String(v.questionId));
+  const restored={...JSON.parse(JSON.stringify(v.before)),updatedAt:new Date().toISOString(),restoredFromVersion:String(versionId)};
+  if(current) recordQuestionVersionBeforeSave(current,restored);
+  questionBank=questionBank.filter(x=>String(x.id)!==String(restored.id));
+  questionBank.unshift(restored);
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  save();
+  if(firebaseReady){try{await db.collection('questionBanks').doc(String(restored.id)).set({...restored,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){toast('Đã khôi phục local, chưa đồng bộ Firestore: '+fbError(err),'bad');}}
+  document.querySelector('.fixed')?.remove();
+  renderQuestionBank();
+  toast('Đã khôi phục phiên bản câu hỏi','ok');
+}
+
 function qBankCard(q,idx){
   const duplicateInfo=(window.qBankDuplicateMap||{})[String(q.id)];
   const duplicateBadge=duplicateInfo?`<span class="mini-badge" style="background:rgba(220,38,38,.10);color:#dc2626"><i class="fa-solid fa-copy"></i> Trùng nhóm ${duplicateInfo.group} (${duplicateInfo.count} câu)</span>`:'';
@@ -1171,6 +1406,7 @@ function qBankCard(q,idx){
         <span class="mini-badge">${safe(q.level||'Chưa phân mức')}</span>
         <span class="mini-badge">${safe(qBankStatusLabel(q.status||'published'))}</span>
         ${duplicateBadge}
+        ${typeof qBankQualityBadges==='function'?qBankQualityBadges(q):''}
       </div>
       <span class="text-xs" style="color:var(--muted)">ID: ${safe(q.id)}</span>
     </div>
@@ -1188,6 +1424,7 @@ function qBankCard(q,idx){
       <button onclick="openQuestionEditorModal('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-pen"></i> Sửa</button>
       <button onclick="duplicateQuestionBankItem('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-copy"></i> Nhân bản</button>
       <button onclick="toggleQuestionStatus('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-toggle-on"></i> Đổi trạng thái</button>
+      <button onclick="openQuestionVersionHistory('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</button>
       <button onclick="deleteQuestionBankItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash"></i> Xóa</button>
     </div>
   </article>`;
@@ -1203,6 +1440,8 @@ function renderQuestionBank(){
   const sh=questionBank.filter(q=>q.type==='short').length;
   const draft=questionBank.filter(q=>(q.status||'published')==='draft').length;
   const dupStats=qBankDuplicateStats();
+  const qualityStats=qBankQualityStats();
+  const perfStats=qBankPerformanceSummary();
   window.qBankDuplicateMap=qBankDuplicateIds();
   $('mainView').innerHTML=`<div class="fade-in">
     <div class="flex flex-wrap justify-between items-start gap-3 mb-5">
@@ -1213,22 +1452,30 @@ function renderQuestionBank(){
       </div>
       <div class="flex flex-wrap gap-2">
         <button onclick="openQuestionEditorModal()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo câu hỏi</button>
+        <button onclick="openAutoExamBuilder()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo đề tự động</button>
+        <button onclick="openQuestionPerformanceModal()" class="bg-purple-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-chart-line"></i> Phân tích câu hỏi</button>
+        <button onclick="exportFullSystemBackup()" class="bg-slate-900 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Sao lưu hệ thống</button>
+        <button onclick="openSystemRestoreModal()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục</button>
         <button onclick="exportQuestionBankExcel(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Xuất Excel</button>
         <button onclick="exportQuestionBankExcel(true)" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-filter"></i> Xuất theo lọc</button>
         <button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập/đồng bộ Excel</button>
         <button onclick="openLatexImportModal('bank')" class="bg-cyan-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button>
         <button onclick="syncQuestionBankToFirestore()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ Firestore</button>
+        <button onclick="openQuestionBankTrashModal()" class="bg-amber-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-recycle"></i> Thùng rác (${(deletedQuestionBank||[]).length})</button>
         <button onclick="openClearQuestionBankModal()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa toàn bộ kho</button>
         <button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button>
       </div>
     </div>
-    <section class="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-5">
+    <section class="grid sm:grid-cols-2 xl:grid-cols-9 gap-4 mb-5">
       ${analyticsCard('Tổng câu hỏi',total,'fa-circle-question','Trong kho')}
       ${analyticsCard('Trắc nghiệm',mc,'fa-list-check','A/B/C/D')}
       ${analyticsCard('Đúng/Sai',tf,'fa-toggle-on','4 mệnh đề')}
       ${analyticsCard('Trả lời ngắn',sh,'fa-keyboard','Số hoặc biểu thức')}
       ${analyticsCard('Câu nháp',draft,'fa-pen-ruler','Chưa xuất bản',draft?'amber':'green')}
       ${analyticsCard('Nhóm trùng',dupStats.groupCount,'fa-copy',dupStats.removable+' câu có thể gộp/xóa',dupStats.groupCount?'red':'green')}
+      ${analyticsCard('Thùng rác',(deletedQuestionBank||[]).length,'fa-recycle','Có thể khôi phục',(deletedQuestionBank||[]).length?'amber':'green')}
+      ${analyticsCard('Cần sửa',qualityStats.needFix,'fa-shield-halved',qualityStats.critical+' lỗi nặng',qualityStats.critical?'red':qualityStats.needFix?'amber':'green')}
+      ${analyticsCard('Đã có thống kê',perfStats.withData,'fa-chart-line',perfStats.needReview+' câu cần xem',perfStats.needReview?'amber':'green')}
     </section>
     <section class="glass-card p-5 mb-5">
       <div class="grid lg:grid-cols-[1.4fr_.8fr_.7fr_.8fr_.7fr_.8fr] gap-3">
@@ -1256,13 +1503,65 @@ function renderQuestionBank(){
         <div class="flex flex-wrap gap-3">
           <button onclick="qBankShowDuplicateOnly()" class="text-red-600 font-bold"><i class="fa-solid fa-copy"></i> Xem câu trùng</button>
           <button onclick="qBankOpenDuplicateReport()" class="text-amber-600 font-bold"><i class="fa-solid fa-magnifying-glass"></i> Báo cáo trùng</button>
-          <button onclick="window.qBankFilters={search:'',topic:'all',type:'all',level:'all',status:'all',duplicate:'all'};renderQuestionBank()" class="text-blue-600 font-bold">Xóa bộ lọc</button>
+          <button onclick="qBankOpenQualityReport()" class="text-emerald-600 font-bold"><i class="fa-solid fa-shield-halved"></i> Kiểm tra chất lượng</button>
+          <button onclick="openQuestionPerformanceModal()" class="text-indigo-600 font-bold"><i class="fa-solid fa-chart-line"></i> Phân tích độ khó</button>
+          <button onclick="qBankShowNeedFixOnly()" class="text-red-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Lọc câu cần sửa</button>
+          <button onclick="window.qBankFilters={search:'',topic:'all',type:'all',level:'all',status:'all',duplicate:'all',quality:'all'};renderQuestionBank()" class="text-blue-600 font-bold">Xóa bộ lọc</button>
         </div>
       </div>
     </section>
     <section class="grid xl:grid-cols-2 gap-4">${items.map(qBankCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Không có câu hỏi phù hợp bộ lọc.</div>'}</section>
   </div>`;
   typeset();
+}
+
+
+/* ===== PHÂN TÍCH ĐỘ KHÓ & CHẤT LƯỢNG CÂU HỎI THEO KẾT QUẢ HỌC SINH ===== */
+function qBankPerformanceRows(){
+  const rows=(questionBank||[]).map(q=>{
+    let attempts=0, correct=0, wrong=0;
+    const ids=[String(q.id||''),String(q.sourceQuestionId||''),String(q.bankId||'')].filter(Boolean);
+    (submissions||[]).forEach(sub=>{
+      (sub.details||[]).forEach(d=>{
+        if(ids.includes(String(d.qid))){attempts++; if(d.ok)correct++; else wrong++;}
+      });
+    });
+    const rate=attempts?Math.round(correct*1000/attempts)/10:null;
+    let label='Chưa có dữ liệu', tone='slate', recommend='Chưa đủ lượt làm để đánh giá.';
+    if(attempts>0){
+      if(rate>=90){label='Quá dễ';tone='amber';recommend='Nên dùng cho nhận biết/khởi động hoặc tăng độ nhiễu phương án.';}
+      else if(rate>=70){label='Dễ';tone='green';recommend='Phù hợp nhận biết - thông hiểu.';}
+      else if(rate>=40){label='Vừa sức';tone='blue';recommend='Phù hợp đề luyện tập chính khóa.';}
+      else if(rate>=20){label='Khó';tone='orange';recommend='Nên kiểm tra lời giải, đáp án và dùng cho vận dụng.';}
+      else {label='Rất khó/cần rà soát';tone='red';recommend='Cần kiểm tra lại dữ kiện, đáp án, lời giải hoặc hạ mức độ.';}
+    }
+    return {...q,attempts,correct,wrong,correctRate:rate,label,tone,recommend};
+  });
+  return rows.sort((a,b)=>(b.attempts-a.attempts)||((a.correctRate??999)-(b.correctRate??999)));
+}
+function qBankPerformanceSummary(){
+  const rows=qBankPerformanceRows();
+  return {total:rows.length,withData:rows.filter(r=>r.attempts>0).length,noData:rows.filter(r=>r.attempts===0).length,needReview:rows.filter(r=>r.attempts>=1&&(r.correctRate<20||r.correctRate>=95)).length,hard:rows.filter(r=>r.attempts>=1&&r.correctRate<40).length,easy:rows.filter(r=>r.attempts>=1&&r.correctRate>=80).length};
+}
+function qPerfToneClass(tone){return tone==='red'?'bg-red-100 text-red-700 border-red-200':tone==='orange'?'bg-orange-100 text-orange-700 border-orange-200':tone==='amber'?'bg-amber-100 text-amber-700 border-amber-200':tone==='green'?'bg-green-100 text-green-700 border-green-200':tone==='blue'?'bg-blue-100 text-blue-700 border-blue-200':'bg-slate-100 text-slate-600 border-slate-200';}
+function openQuestionPerformanceModal(){
+  if(!requireRole('teacher'))return;
+  const rows=qBankPerformanceRows(); const sum=qBankPerformanceSummary();
+  const body=rows.map(r=>'<tr class="border-b align-top"><td class="p-3"><b>'+safe(r.id)+'</b><div class="text-xs" style="color:var(--muted)">'+safe(topicName(r.topicId))+'</div></td><td class="p-3"><div class="math-content max-w-xl">'+safe(String(r.text||'')).slice(0,220)+'</div><div class="text-xs mt-1" style="color:var(--muted)">'+safe(r.type||'')+' • '+safe(r.level||'Chưa gán mức')+'</div></td><td class="p-3 text-center font-black">'+r.attempts+'</td><td class="p-3 text-center text-green-700 font-black">'+r.correct+'</td><td class="p-3 text-center text-red-700 font-black">'+r.wrong+'</td><td class="p-3 text-center font-black">'+(r.correctRate===null?'--':r.correctRate+'%')+'</td><td class="p-3"><span class="inline-flex px-2 py-1 rounded-full border text-xs font-black '+qPerfToneClass(r.tone)+'">'+safe(r.label)+'</span><p class="text-xs mt-1" style="color:var(--muted)">'+safe(r.recommend)+'</p></td><td class="p-3"><button onclick="openQuestionEditorModal(\''+safe(String(r.id))+'\')" class="btn-soft px-3 py-2 rounded-xl text-xs font-bold">Sửa</button></td></tr>').join('');
+  const m=document.createElement('div'); m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[95] p-4 overflow-auto fade-in';
+  m.innerHTML='<div class="glass-card max-w-7xl mx-auto p-6"><div class="flex flex-wrap justify-between gap-3 items-start mb-4"><div><span class="mini-badge"><i class="fa-solid fa-chart-line"></i> Phân tích theo bài làm thật</span><h2 class="text-2xl md:text-3xl font-black mt-2">Độ khó ngân hàng câu hỏi</h2><p class="text-sm" style="color:var(--muted)">Dựa trên dữ liệu học sinh đã nộp bài trong hệ thống. Câu chưa có lượt làm sẽ hiển thị “Chưa có dữ liệu”.</p></div><button onclick="this.closest(\'.fixed\').remove()" class="text-3xl leading-none">&times;</button></div><section class="grid sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-5">'+analyticsCard('Tổng câu',sum.total,'fa-circle-question','Trong ngân hàng')+analyticsCard('Có dữ liệu',sum.withData,'fa-chart-line','Đã xuất hiện trong bài làm')+analyticsCard('Chưa có dữ liệu',sum.noData,'fa-eye-slash','Chưa học sinh làm',sum.noData?'amber':'green')+analyticsCard('Câu khó',sum.hard,'fa-fire','Tỉ lệ đúng dưới 40%',sum.hard?'orange':'green')+analyticsCard('Câu dễ',sum.easy,'fa-seedling','Tỉ lệ đúng từ 80%',sum.easy?'blue':'green')+analyticsCard('Cần rà soát',sum.needReview,'fa-triangle-exclamation','Quá dễ/quá khó',sum.needReview?'red':'green')+'</section><div class="flex flex-wrap gap-2 mb-4"><button onclick="exportQuestionPerformanceExcel()" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Xuất báo cáo Excel</button><button onclick="applyPerformanceLevelSuggestion()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Gợi ý cập nhật mức độ</button><button onclick="renderQuestionBank();this.closest(\'.fixed\').remove()" class="btn-soft px-4 py-2 rounded-2xl font-bold">Về ngân hàng</button></div><div class="overflow-x-auto rounded-2xl border bg-white/50"><table class="w-full text-sm"><thead><tr class="text-left bg-slate-100"><th class="p-3">Mã</th><th class="p-3">Câu hỏi</th><th class="p-3 text-center">Lượt</th><th class="p-3 text-center">Đúng</th><th class="p-3 text-center">Sai</th><th class="p-3 text-center">Tỉ lệ đúng</th><th class="p-3">Đánh giá</th><th class="p-3">Sửa</th></tr></thead><tbody>'+(body||'<tr><td colspan="8" class="p-6 text-center text-slate-500">Chưa có dữ liệu câu hỏi.</td></tr>')+'</tbody></table></div></div>';
+  document.body.appendChild(m); typeset();
+}
+function exportQuestionPerformanceExcel(){
+  if(!requireRole('teacher'))return;
+  const rows=qBankPerformanceRows().map(r=>({id:r.id,type:r.type,topic:topicName(r.topicId),level:r.level||'',status:r.status||'published',text:r.text||'',attempts:r.attempts,correct:r.correct,wrong:r.wrong,correctRate:r.correctRate===null?'':r.correctRate,label:r.label,recommend:r.recommend}));
+  if(window.XLSX){const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Phan tich do kho');const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);XLSX.writeFile(wb,'bao-cao-do-kho-cau-hoi-'+stamp+'.xlsx');toast('Đã xuất báo cáo độ khó ra Excel','ok');} else toast('Chưa tải được thư viện XLSX','bad');
+}
+function applyPerformanceLevelSuggestion(){
+  if(!requireRole('teacher'))return;
+  const rows=qBankPerformanceRows(); let changed=0;
+  rows.forEach(r=>{if(!r.attempts)return; const q=questionBank.find(x=>String(x.id)===String(r.id)); if(!q)return; let suggested=''; if(r.correctRate>=85)suggested='Nhận biết'; else if(r.correctRate>=65)suggested='Thông hiểu'; else if(r.correctRate>=35)suggested='Vận dụng'; else suggested='Vận dụng cao'; q.performance={attempts:r.attempts,correct:r.correct,wrong:r.wrong,correctRate:r.correctRate,label:r.label,updatedAt:new Date().toISOString()}; if(!q.level||q.level==='Tự động'||q.level==='Cơ bản'){q.level=suggested;changed++;}});
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank)); save(); renderQuestionBank(); toast('Đã gắn thống kê và gợi ý mức độ cho '+changed+' câu hỏi','ok');
 }
 
 function qBankShowDuplicateOnly(){
@@ -1441,6 +1740,7 @@ async function saveQuestionBankItem(id=''){
   if(!q.text) return toast('Thầy chưa nhập nội dung câu hỏi','bad');
   if(type==='mc'&&q.options.length<2) return toast('Câu trắc nghiệm cần ít nhất 2 phương án','bad');
   if(type==='tf'&&q.statements.length<2) return toast('Câu đúng/sai cần nhập các mệnh đề','bad');
+  recordQuestionVersionBeforeSave(oldQuestion,q);
   questionBank=questionBank.filter(x=>String(x.id)!==String(q.id));
   questionBank.unshift(q);
   localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
@@ -1475,13 +1775,82 @@ async function toggleQuestionStatus(id){
   save(); renderQuestionBank(); toast('Đã đổi trạng thái câu hỏi','ok');
 }
 async function deleteQuestionBankItem(id){
-  if(!confirm('Xóa câu hỏi này khỏi ngân hàng? Các đề đang dùng câu này có thể bị thiếu nếu đã liên kết qua examQuestions.')) return;
-  questionBank=questionBank.filter(q=>String(q.id)!==String(id));
+  if(!requireRole('teacher'))return;
+  const q=questionBank.find(x=>String(x.id)===String(id));
+  if(!q)return toast('Không tìm thấy câu hỏi cần xóa','bad');
+  const reason=prompt('Xóa mềm câu hỏi này vào thùng rác. Nhập lý do xóa hoặc để trống:','');
+  if(reason===null) return;
+  const deleted={...JSON.parse(JSON.stringify(q)),deletedAt:new Date().toISOString(),deletedBy:currentUser?.email||currentUser?.username||'',deleteReason:reason||'Không ghi lý do'};
+  deletedQuestionBank=(deletedQuestionBank||[]).filter(x=>String(x.id)!==String(id));
+  deletedQuestionBank.unshift(deleted);
+  questionBank=questionBank.filter(x=>String(x.id)!==String(id));
   localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank));
+  auditLogs.unshift({id:uid(),action:'soft-delete-question',questionId:String(id),user:currentUser?.email||currentUser?.username||'',at:new Date().toISOString(),reason:reason||''});
   if(firebaseReady){
-    try{await db.collection('questionBanks').doc(String(id)).delete();}catch(err){toast('Chưa xóa được trên Firestore: '+fbError(err),'bad');}
+    try{
+      await db.collection('questionBankTrash').doc(String(id)).set({...deleted,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      await db.collection('questionBanks').doc(String(id)).delete();
+    }catch(err){toast('Đã xóa mềm local, chưa đồng bộ thùng rác Firestore: '+fbError(err),'bad');}
   }
-  save(); renderQuestionBank(); toast('Đã xóa câu hỏi','ok');
+  save(); renderQuestionBank(); toast('Đã chuyển câu hỏi vào thùng rác','ok');
+}
+function deletedQuestionBankCard(q,idx){
+  return `<article class="exam-admin-card"><div class="flex flex-wrap justify-between gap-2"><div class="flex flex-wrap gap-2"><span class="mini-badge"><i class="fa-solid fa-recycle"></i> ${idx+1}</span><span class="mini-badge">${qBankTypeLabel(q.type)}</span><span class="mini-badge">${safe(q.level||'')}</span></div><span class="text-xs" style="color:var(--muted)">ID: ${safe(q.id)}</span></div><div class="mt-2 text-xs" style="color:var(--muted)">Xóa lúc: ${q.deletedAt?new Date(q.deletedAt).toLocaleString('vi-VN'):'Không rõ'} • Người xóa: ${safe(q.deletedBy||'')} • Lý do: ${safe(q.deleteReason||'')}</div><div class="mt-3 text-sm text-blue-700 font-bold">${safe(q.topicName||topicName(q.topicId)||'Chưa có chủ đề')}</div><div class="math-content mt-2 font-semibold">${q.text||''}</div><div class="flex flex-wrap gap-2 mt-4"><button onclick="restoreQuestionBankItem('${safe(q.id)}')" class="bg-green-600 text-white px-3 py-2 rounded-xl text-sm font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục</button><button onclick="hardDeleteQuestionBankTrashItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash-can"></i> Xóa vĩnh viễn</button></div></article>`;
+}
+function openQuestionBankTrashModal(){
+  if(!requireRole('teacher'))return;
+  const items=deletedQuestionBank||[];
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex flex-wrap justify-between items-start gap-3 mb-4"><div><h2 class="text-2xl md:text-3xl font-black">🗑️ Thùng rác ngân hàng câu hỏi</h2><p class="text-sm" style="color:var(--muted)">Câu hỏi xóa mềm được lưu tại đây để khôi phục khi cần. Xóa vĩnh viễn thì không thể phục hồi nếu chưa sao lưu.</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl">&times;</button></div><div class="grid sm:grid-cols-3 gap-3 mb-4">${analyticsCard('Câu trong thùng rác',items.length,'fa-recycle','Có thể khôi phục',items.length?'amber':'green')}${analyticsCard('Đang dùng trong kho',questionBank.length,'fa-database','Câu hiện hành')}${analyticsCard('Sao lưu trước khi xóa','JSON','fa-shield-halved','Khuyến nghị')}</div><div class="flex flex-wrap gap-2 mb-4"><button onclick="restoreAllQuestionBankTrash()" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục tất cả</button><button onclick="emptyQuestionBankTrash()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa vĩnh viễn tất cả</button><button onclick="exportFullSystemBackup()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Sao lưu trước</button></div><section class="grid xl:grid-cols-2 gap-4">${items.map(deletedQuestionBankCard).join('')||'<div class="p-8 rounded-2xl border text-center text-slate-500">Thùng rác đang trống.</div>'}</section></div>`;
+  document.body.appendChild(m); typeset();
+}
+async function restoreQuestionBankItem(id){
+  if(!requireRole('teacher'))return;
+  const q=(deletedQuestionBank||[]).find(x=>String(x.id)===String(id));
+  if(!q)return toast('Không tìm thấy câu trong thùng rác','bad');
+  const restored={...JSON.parse(JSON.stringify(q)),status:q.status||'draft',updatedAt:new Date().toISOString(),restoredAt:new Date().toISOString(),restoredBy:currentUser?.email||currentUser?.username||''};
+  delete restored.deletedAt; delete restored.deletedBy; delete restored.deleteReason;
+  questionBank=questionBank.filter(x=>String(x.id)!==String(id));
+  questionBank.unshift(restored);
+  deletedQuestionBank=(deletedQuestionBank||[]).filter(x=>String(x.id)!==String(id));
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank));
+  auditLogs.unshift({id:uid(),action:'restore-question',questionId:String(id),user:currentUser?.email||currentUser?.username||'',at:new Date().toISOString()});
+  if(firebaseReady){try{await db.collection('questionBanks').doc(String(id)).set({...restored,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await db.collection('questionBankTrash').doc(String(id)).delete();}catch(err){toast('Đã khôi phục local, chưa đồng bộ Firestore: '+fbError(err),'bad');}}
+  save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); openQuestionBankTrashModal(); toast('Đã khôi phục câu hỏi','ok');
+}
+async function restoreAllQuestionBankTrash(){
+  if(!requireRole('teacher'))return;
+  if(!(deletedQuestionBank||[]).length)return toast('Thùng rác đang trống','info');
+  if(!confirm('Khôi phục toàn bộ câu hỏi trong thùng rác?'))return;
+  const items=[...(deletedQuestionBank||[])];
+  items.forEach(q=>{const r={...q,status:q.status||'draft',updatedAt:new Date().toISOString(),restoredAt:new Date().toISOString(),restoredBy:currentUser?.email||currentUser?.username||''};delete r.deletedAt;delete r.deletedBy;delete r.deleteReason;questionBank=questionBank.filter(x=>String(x.id)!==String(r.id));questionBank.unshift(r);});
+  deletedQuestionBank=[];
+  localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank));
+  if(firebaseReady){try{let batch=db.batch();items.forEach(q=>{const r={...q,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};delete r.deletedAt;delete r.deletedBy;delete r.deleteReason;batch.set(db.collection('questionBanks').doc(String(q.id)),r,{merge:true});batch.delete(db.collection('questionBankTrash').doc(String(q.id)));});await batch.commit();}catch(err){toast('Đã khôi phục local, chưa đồng bộ hết Firestore: '+fbError(err),'bad');}}
+  save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); toast('Đã khôi phục tất cả câu hỏi','ok');
+}
+async function hardDeleteQuestionBankTrashItem(id){
+  if(!requireRole('teacher'))return;
+  if(!confirm('Xóa vĩnh viễn câu hỏi này khỏi thùng rác?'))return;
+  deletedQuestionBank=(deletedQuestionBank||[]).filter(x=>String(x.id)!==String(id));
+  localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank));
+  if(firebaseReady){try{await db.collection('questionBankTrash').doc(String(id)).delete();}catch(err){toast('Đã xóa local, chưa xóa Firestore: '+fbError(err),'bad');}}
+  save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); openQuestionBankTrashModal(); toast('Đã xóa vĩnh viễn','ok');
+}
+async function emptyQuestionBankTrash(){
+  if(!requireRole('teacher'))return;
+  if(!(deletedQuestionBank||[]).length)return toast('Thùng rác đang trống','info');
+  const code=prompt('Để xóa vĩnh viễn toàn bộ thùng rác, nhập: XOA VINH VIEN');
+  if(code!=='XOA VINH VIEN')return toast('Đã hủy xóa vĩnh viễn','info');
+  const ids=(deletedQuestionBank||[]).map(q=>String(q.id));
+  deletedQuestionBank=[];
+  localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify([]));
+  if(firebaseReady){try{let batch=db.batch();ids.forEach(id=>batch.delete(db.collection('questionBankTrash').doc(id)));await batch.commit();}catch(err){toast('Đã xóa local, chưa xóa hết Firestore: '+fbError(err),'bad');}}
+  save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); toast('Đã làm trống thùng rác','ok');
 }
 async function migrateAllQuestionsToBank(){
   if(!requireRole('teacher'))return;
