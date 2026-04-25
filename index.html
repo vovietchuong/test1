@@ -250,10 +250,17 @@ async function getUserProfile(user){
 }
 async function loadExamsFromFirestore(){
   if(!firebaseReady) return false;
-  const snap=await db.collection('exams').orderBy('createdAt','desc').get().catch(()=>null);
+  // Sửa lỗi học sinh không thấy đề mới: nhiều đề tạo mới chưa có createdAt,
+  // nếu dùng orderBy('createdAt') thì Firestore sẽ loại các document thiếu field này.
+  let snap=await db.collection('exams').orderBy('updatedAt','desc').get().catch(()=>null);
+  if(!snap) snap=await db.collection('exams').get().catch(()=>null);
   if(!snap) return false;
-  const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
-  if(arr.length){exams=arr;localStorage.setItem('mathpro12_exams',JSON.stringify(exams));return true;}
+  const arr=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
+    const ta=new Date(a.updatedAt?.toDate?a.updatedAt.toDate():a.updatedAt||a.createdAt||0).getTime()||0;
+    const tb=new Date(b.updatedAt?.toDate?b.updatedAt.toDate():b.updatedAt||b.createdAt||0).getTime()||0;
+    return tb-ta;
+  });
+  if(arr.length){exams=arr;localStorage.setItem('mathpro12_exams',JSON.stringify(examsForLocalStorage()));return true;}
   return false;
 }
 
@@ -510,9 +517,20 @@ function classOptionsHTML(selected=[]){
   return classes.map(c=>`<label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white/60"><input type="checkbox" class="edClassCheck" value="${safe(c)}" ${selected.includes(String(c))?'checked':''}> ${safe(c)}</label>`).join('')||'<span class="text-sm text-slate-500">Chưa có lớp. Hãy tạo lớp ở mục Lớp học.</span>';
 }
 function selectedClassIdsFromEditor(){return Array.from(document.querySelectorAll('.edClassCheck:checked')).map(x=>x.value)}
+function normalizeClassName(v=''){
+  return String(v||'').trim().toLowerCase().replace(/\s+/g,'');
+}
 function normalizeExamAccess(e){
-  const classIds=Array.isArray(e.classIds)?e.classIds:(e.className?[e.className]:[]);
-  return {...e,classIds,isPublished:e.isPublished!==false,maxAttempts:Number(e.maxAttempts||0)};
+  let classIds=Array.isArray(e.classIds)?e.classIds:(e.className?[e.className]:[]);
+  classIds=classIds.map(x=>String(x||'').trim()).filter(Boolean);
+  const isPublished=(e.isPublished===true || e.isPublished==='true' || e.status==='published' || e.published===true || e.isPublished===undefined);
+  return {...e,classIds,isPublished,maxAttempts:Number(e.maxAttempts||0)};
+}
+function isExamAssignedToStudent(e,user=currentUser){
+  e=normalizeExamAccess(e||{});
+  if(!e.classIds.length) return true;
+  const studentClass=normalizeClassName(user?.className||user?.class||user?.lop||'');
+  return !!studentClass && e.classIds.map(normalizeClassName).includes(studentClass);
 }
 function examAttemptCount(examId,studentId=currentUser?.id){
   if(!studentId) return 0;
@@ -525,7 +543,7 @@ function getExamAvailability(e,user=currentUser){
   const end=e.endTime?new Date(e.endTime).getTime():null;
   if(e.isPublished===false && user?.role!=='teacher') return {ok:false,label:'Chưa xuất bản',reason:'Đề này chưa được giáo viên xuất bản.'};
   if(user?.role==='student'){
-    if(e.classIds.length && !e.classIds.includes(user.className||'')) return {ok:false,label:'Không thuộc lớp',reason:'Đề này không được giao cho lớp của em.'};
+    if(!isExamAssignedToStudent(e,user)) return {ok:false,label:'Không thuộc lớp',reason:`Đề này giao cho lớp ${e.classIds.join(', ')}; tài khoản của em đang là lớp ${user?.className||'Chưa phân lớp'}.`};
     if(start && now<start) return {ok:false,label:'Chưa mở',reason:'Đề chưa đến thời gian mở.'};
     if(end && now>end) return {ok:false,label:'Đã đóng',reason:'Đề đã hết thời gian làm bài.'};
     if(e.maxAttempts>0 && examAttemptCount(e.id,user.id)>=e.maxAttempts) return {ok:false,label:'Đã làm đủ lượt',reason:`Em đã dùng đủ ${e.maxAttempts} lượt làm bài.`};
@@ -537,7 +555,7 @@ function canStudentSeeExam(e){
   if(currentUser.role==='teacher') return true;
   e=normalizeExamAccess(e);
   if(e.isPublished===false) return false;
-  if(currentUser.role==='student' && e.classIds.length && !e.classIds.includes(currentUser.className||'')) return false;
+  if(currentUser.role==='student' && !isExamAssignedToStudent(e,currentUser)) return false;
   return true;
 }
 function examScheduleText(e){
@@ -1837,13 +1855,20 @@ function editorFields(q,i){if(q.type==='mc')return `<div class="grid md:grid-col
 function addEditorQuestion(type){const base={id:'q'+uid(),type,text:'',solution:''};if(type==='mc'){base.options=['','','',''];base.answer=0}else if(type==='tf'){base.statements=['','','',''];base.answer=[true,true,true,true]}else{base.answer=''}window.editorQ.push(base);refreshEditorQuestions()}
 async function saveExamEditor(id){
   const docId=String(id||uid());
-  const data={id:docId,title:$('edTitle').value.trim(),topicId:Number($('edTopic').value),duration:Number($('edDuration').value||30),level:$('edLevel').value,description:$('edDesc').value,questions:window.editorQ,classIds:selectedClassIdsFromEditor(),startTime:readDateInputValue('edStartTime'),endTime:readDateInputValue('edEndTime'),maxAttempts:Number($('edMaxAttempts')?.value||0),isPublished:($('edPublished')?.value!=='false'),updatedAt:new Date().toISOString()};
+  const oldExam=id?exams.find(e=>String(e.id)===String(id)):null;
+  const nowIso=new Date().toISOString();
+  const data={id:docId,title:$('edTitle').value.trim(),topicId:Number($('edTopic').value),duration:Number($('edDuration').value||30),level:$('edLevel').value,description:$('edDesc').value,questions:window.editorQ,classIds:selectedClassIdsFromEditor(),startTime:readDateInputValue('edStartTime'),endTime:readDateInputValue('edEndTime'),maxAttempts:Number($('edMaxAttempts')?.value||0),isPublished:($('edPublished')?.value!=='false'),createdAt:oldExam?.createdAt||nowIso,updatedAt:nowIso};
   if(!data.title||!data.questions.length)return toast('Cần nhập tên đề và ít nhất 1 câu hỏi','bad');
   if(data.startTime&&data.endTime&&new Date(data.startTime)>=new Date(data.endTime))return toast('Thời gian đóng đề phải sau thời gian mở đề','bad');
   if(id){const idx=exams.findIndex(e=>String(e.id)==String(id)); if(idx>=0)exams[idx]=data}else exams.push(data);
   save();
   if(firebaseReady){
-    try{await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,questionCount:data.questions.length,usesQuestionBank:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); await syncExamStructureToFirestore(data);}
+    try{
+      const firestoreData={...data,createdBy:oldExam?.createdBy||currentUser?.id||null,questionCount:data.questions.length,usesQuestionBank:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+      if(!oldExam?.createdAt) firestoreData.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('exams').doc(docId).set(firestoreData,{merge:true});
+      await syncExamStructureToFirestore(data);
+    }
     catch(err){toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad')}
   } else { await syncExamQuestionsToQuestionBank(data); localStorage.setItem('mathpro12_examQuestionIds_'+docId,JSON.stringify(data.questions.map(q=>getQuestionBankId(q)))); }
   document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã lưu đề thi','ok');
