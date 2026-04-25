@@ -683,6 +683,7 @@ function renderTeacherDashboard(){
     ])}
     ${actionGroup('Nhập liệu và ngân hàng câu hỏi','fa-database',[
       {text:'Nhập câu hỏi từ file',icon:'fa-file-import',fn:"openQuestionImportModal('bank')",cls:'bg-emerald-600 text-white'},
+      {text:'Nhập từ LaTeX',icon:'fa-square-root-variable',fn:"openLatexImportModal('bank')",cls:'bg-cyan-600 text-white'},
       {text:'Nhập đề từ PDF',icon:'fa-file-pdf',fn:'openPDFImportModal()',cls:'bg-rose-600 text-white'},
       {text:'Kho câu hỏi',icon:'fa-box-archive',fn:'renderQuestionBank()'}
     ])}
@@ -727,7 +728,7 @@ function downloadQuestionTemplateExcel(){
     ['tags','Các thẻ cách nhau bằng dấu ; ví dụ: đạo hàm;cực trị;nhận biết']
   ]);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Cau hoi');XLSX.utils.book_append_sheet(wb,guide,'Huong dan');
-  XLSX.writeFile(wb,'mau-nhap-cau-hoi-mathpro12-giai-doan-6.xlsx');
+  XLSX.writeFile(wb,'mau-nhap-cau-hoi-mathpro12-buoc-3.xlsx');
 }
 function downloadQuestionTemplateJSON(){
   const sample={note:'Có thể nhập JSON, CSV hoặc Excel xlsx. type: mc/tf/short; topicId: 1-8; answer của mc dùng A/B/C/D hoặc 0/1/2/3.',
@@ -1069,7 +1070,7 @@ async function previewQuestionImport(){const input=$('questionImportFile'),file=
 function openQuestionImportModal(target='bank'){
   if(target==='editor'&&!window.editorQ)window.editorQ=[]; window.questionImportPreviewItems=[];
   const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 z-[75] p-4 overflow-auto fade-in question-import-modal';
-  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between gap-3"><div><h2 class="text-2xl font-black">📥 Nhập câu hỏi từ file - Giai đoạn 6</h2><p class="text-sm" style="color:var(--muted)">${target==='editor'?'Câu hỏi hợp lệ sẽ được đưa vào đề đang soạn.':'Câu hỏi hợp lệ sẽ được thêm vào kho câu hỏi questionBanks.'}</p></div><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-3 gap-3 mt-4"><button onclick="downloadQuestionTemplateCSV()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-csv"></i> Mẫu CSV</button><button onclick="downloadQuestionTemplateExcel()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Mẫu Excel</button><button onclick="downloadQuestionTemplateJSON()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-code"></i> Mẫu JSON</button></div><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Quy ước:</b> type = <b>mc</b>, <b>tf</b>, <b>short</b>. Nếu bỏ trống topicId, hệ thống tự đoán chủ đề từ nội dung. Dòng lỗi sẽ được báo rõ trước khi lưu.</div><input id="questionImportFile" type="file" accept=".csv,.json,.xlsx,.xls,application/json,text/csv" onchange="previewQuestionImport()" class="mt-4 w-full border rounded-2xl p-3 bg-white"><div id="questionImportPreview" class="mt-4"><p class="text-sm text-slate-500">Chọn file để xem trước dữ liệu.</p></div><div class="flex justify-end gap-3 mt-5"><button onclick="previewQuestionImport()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem trước</button><button onclick="handleQuestionImport('${target}')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-check"></i> Lưu câu hợp lệ</button></div></div>`;
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between gap-3"><div><h2 class="text-2xl font-black">📥 Nhập câu hỏi từ file - Bước 3</h2><p class="text-sm" style="color:var(--muted)">${target==='editor'?'Câu hỏi hợp lệ sẽ được đưa vào đề đang soạn.':'Câu hỏi hợp lệ sẽ được thêm vào kho câu hỏi questionBanks.'}</p></div><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-3 gap-3 mt-4"><button onclick="downloadQuestionTemplateCSV()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-csv"></i> Mẫu CSV</button><button onclick="downloadQuestionTemplateExcel()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Mẫu Excel</button><button onclick="downloadQuestionTemplateJSON()" class="btn-soft px-4 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-code"></i> Mẫu JSON</button></div><div class="mt-4 p-4 rounded-2xl border bg-white/60 text-sm"><b>Quy ước:</b> type = <b>mc</b>, <b>tf</b>, <b>short</b>. Nếu bỏ trống topicId, hệ thống tự đoán chủ đề từ nội dung. Dòng lỗi sẽ được báo rõ trước khi lưu.</div><input id="questionImportFile" type="file" accept=".csv,.json,.xlsx,.xls,application/json,text/csv" onchange="previewQuestionImport()" class="mt-4 w-full border rounded-2xl p-3 bg-white"><div id="questionImportPreview" class="mt-4"><p class="text-sm text-slate-500">Chọn file để xem trước dữ liệu.</p></div><div class="flex justify-end gap-3 mt-5"><button onclick="previewQuestionImport()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem trước</button><button onclick="handleQuestionImport('${target}')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-check"></i> Lưu câu hợp lệ</button></div></div>`;
   document.body.appendChild(m);
 }
 async function handleQuestionImport(target='bank'){
@@ -1086,7 +1087,131 @@ async function handleQuestionImport(target='bank'){
   }catch(err){console.error(err);toast('Không nhập được file: '+(err?.message||err),'bad');}
 }
 
-function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:30,level:'',description:'',questions:[]};const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${TOPICS.map(t=>`<option value="${t.id}" ${e.topicId==t.id?'selected':''}>${t.name}</option>`).join('')}</select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||30}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><input id="edStartTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.startTime)}" title="Thời gian mở đề"><input id="edEndTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.endTime)}" title="Thời gian đóng đề"><input id="edMaxAttempts" type="number" min="0" class="border rounded-xl p-3" placeholder="Số lượt làm, 0 = không giới hạn" value="${e.maxAttempts??1}"><select id="edPublished" class="border rounded-xl p-3 bg-white"><option value="true" ${e.isPublished!==false?'selected':''}>Xuất bản cho học sinh</option><option value="false" ${e.isPublished===false?'selected':''}>Lưu nháp, chưa cho làm</option></select><div class="md:col-span-2"><p class="font-bold mb-2">Giao đề cho lớp</p><div class="flex flex-wrap gap-2">${classOptionsHTML(e.classIds||[])}</div><p class="text-xs mt-1" style="color:var(--muted)">Không chọn lớp nào = tất cả học sinh đều thấy đề.</p></div><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button><button onclick="openQuestionBankPicker()" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-folder-open"></i> Chọn từ kho</button><button onclick="openQuestionImportModal('editor')" class="bg-emerald-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-file-import"></i> Nhập từ file</button><button onclick="downloadQuestionTemplateCSV()" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-download"></i> Mẫu CSV</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;document.body.appendChild(m);window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));refreshEditorQuestions()}
+
+
+// ===== BƯỚC 3: IMPORT LaTeX EX_TEST CHUYÊN NGHIỆP =====
+function latexStripSolution(block=''){
+  const m=String(block).match(/\\loigiai\s*\{([\s\S]*)\}\s*$/);
+  if(!m)return {body:block,solution:''};
+  const idx=block.indexOf(m[0]);
+  return {body:block.slice(0,idx).trim(),solution:m[1].trim()};
+}
+function latexCleanText(s=''){
+  return String(s||'').replace(/\\True\s*/g,'').replace(/\\par\b/g,'\n').replace(/^[\s\n]+|[\s\n]+$/g,'').replace(/\n{3,}/g,'\n\n');
+}
+function readBalancedLatexGroups(text='',start=0,maxGroups=12){
+  const groups=[]; let i=start;
+  while(i<text.length && groups.length<maxGroups){
+    while(i<text.length && /\s/.test(text[i]))i++;
+    if(text[i]!=='{')break;
+    let depth=0, begin=i+1, j=i;
+    for(;j<text.length;j++){
+      const ch=text[j], prev=text[j-1];
+      if(ch==='{' && prev!=='\\')depth++;
+      if(ch==='}' && prev!=='\\')depth--;
+      if(depth===0){groups.push(text.slice(begin,j)); i=j+1; break;}
+    }
+    if(j>=text.length)break;
+  }
+  return groups;
+}
+function parseLatexExBlocks(latex='',opts={}){
+  const text=String(latex||'');
+  const blocks=[...text.matchAll(/\\begin\{ex\}([\s\S]*?)\\end\{ex\}/g)].map(m=>m[1]);
+  const sourceBlocks=blocks.length?blocks:[text];
+  const topicId=Number(opts.topicId||4), level=opts.level||'LaTeX import';
+  const items=[];
+  sourceBlocks.forEach((rawBlock,idx)=>{
+    let {body,solution}=latexStripSolution(rawBlock);
+    const isTF=/\\choiceTF\b/.test(body);
+    const isMC=/\\choice\b/.test(body) && !isTF;
+    try{
+      if(isTF){
+        const cut=body.search(/\\choiceTF\b/);
+        const lead=latexCleanText(body.slice(0,cut));
+        const groups=readBalancedLatexGroups(body, body.indexOf('\\choiceTF')+'\\choiceTF'.length, 4);
+        const statements=groups.slice(0,4).map(latexCleanText);
+        const answer=groups.slice(0,4).map(g=>/\\True\b/.test(g));
+        items.push(normalizeImportedQuestion({type:'tf',topicId,level,text:lead||`Câu đúng/sai ${idx+1}`,statementA:statements[0]||'',statementB:statements[1]||'',statementC:statements[2]||'',statementD:statements[3]||'',answerA:answer[0]?'Đúng':'Sai',answerB:answer[1]?'Đúng':'Sai',answerC:answer[2]?'Đúng':'Sai',answerD:answer[3]?'Đúng':'Sai',solution,tags:'latex-import',standard2018:opts.standard2018||'',difficulty:opts.difficulty||'',sourceExamTitle:opts.source||'Nhập từ LaTeX'},idx,true));
+      }else if(isMC){
+        const cut=body.search(/\\choice\b/);
+        const lead=latexCleanText(body.slice(0,cut));
+        const groups=readBalancedLatexGroups(body, body.indexOf('\\choice')+'\\choice'.length, 4);
+        const ans=Math.max(0,groups.findIndex(g=>/\\True\b/.test(g)));
+        const options=groups.slice(0,4).map(latexCleanText);
+        items.push(normalizeImportedQuestion({type:'mc',topicId,level,text:lead||`Câu trắc nghiệm ${idx+1}`,optionA:options[0]||'',optionB:options[1]||'',optionC:options[2]||'',optionD:options[3]||'',answer:ans,solution,tags:'latex-import',standard2018:opts.standard2018||'',difficulty:opts.difficulty||'',sourceExamTitle:opts.source||'Nhập từ LaTeX'},idx,true));
+      }else{
+        const ansMatch=body.match(/\\shortans\s*\{([^}]*)\}/)||body.match(/\\dapso\s*\{([^}]*)\}/i);
+        const qText=latexCleanText(body.replace(/\\shortans\s*\{[^}]*\}/g,'').replace(/\\dapso\s*\{[^}]*\}/gi,''));
+        items.push(normalizeImportedQuestion({type:'short',topicId,level,text:qText||`Câu trả lời ngắn ${idx+1}`,answer:ansMatch?ansMatch[1].trim():'',solution,tags:'latex-import;can-kiem-tra',standard2018:opts.standard2018||'',difficulty:opts.difficulty||'',sourceExamTitle:opts.source||'Nhập từ LaTeX'},idx,true));
+      }
+    }catch(err){
+      const q=normalizeImportedQuestion({type:'short',topicId,level,text:latexCleanText(rawBlock).slice(0,500),answer:'',solution,tags:'latex-import-loi'},idx,true);
+      q._errors=(q._errors||[]).concat('Không tách được LaTeX: '+(err?.message||err)); items.push(q);
+    }
+  });
+  return items;
+}
+function latexSampleText(){return `\\begin{ex}
+Hàm số $y=x^3-3x$ đạt cực đại tại giá trị nào của $x$?
+\\choice
+{\\True $x=-1$}
+{$x=1$}
+{$x=0$}
+{$x=2$}
+\\loigiai{Ta có $y'=3x^2-3$.}
+\\end{ex}
+
+\\begin{ex}
+Cho hàm số $y=x^3-3x+2$.
+\\choiceTF
+{\\True $y'=3x^2-3$}
+{\\True $y'=0$ khi $x=-1,x=1$}
+{$y'>0$ trên $(-1;1)$}
+{\\True Giá trị cực đại bằng $4$}
+\\end{ex}`;}
+function openLatexImportModal(target='bank'){
+  if(!requireRole('teacher'))return;
+  if(target==='editor'&&!window.editorQ)window.editorQ=[];
+  window.latexImportPreviewItems=[];
+  const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 z-[76] p-4 overflow-auto fade-in latex-import-modal';
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-2xl md:text-3xl font-black">🧩 Nhập câu hỏi từ LaTeX</h2><p class="text-sm" style="color:var(--muted)">${target==='editor'?'Câu hợp lệ sẽ đưa vào đề đang soạn.':'Câu hợp lệ sẽ lưu vào kho questionBanks.'} Hỗ trợ cấu trúc ex_test: \\begin{ex}, \\choice, \\choiceTF, \\True, \\loigiai.</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none">&times;</button></div><section class="grid md:grid-cols-4 gap-3 mt-4"><select id="latexImportTopic" class="border rounded-xl p-3 bg-white">${TOPICS.map(t=>`<option value="${t.id}">${safe(t.name)}</option>`).join('')}</select><select id="latexImportLevel" class="border rounded-xl p-3 bg-white"><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option selected>LaTeX import</option></select><input id="latexImportDifficulty" type="number" min="1" max="10" class="border rounded-xl p-3" placeholder="Độ khó 1-10"><input id="latexImportStandard" class="border rounded-xl p-3" placeholder="Chuẩn CT 2018 / ghi chú"></section><div class="grid lg:grid-cols-[1fr_.8fr] gap-4 mt-4"><div><div class="flex flex-wrap gap-2 mb-2"><button onclick="document.getElementById('latexImportText').value=latexSampleText();previewLatexImport()" class="btn-soft px-3 py-2 rounded-xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Dán mẫu</button><button onclick="previewLatexImport()" class="btn-primary text-white px-3 py-2 rounded-xl font-bold"><i class="fa-solid fa-eye"></i> Xem trước</button></div><textarea id="latexImportText" class="w-full h-[470px] border rounded-2xl p-4 font-mono text-sm" placeholder="Dán các câu LaTeX dạng \\begin{ex} ... \\end{ex} tại đây..."></textarea></div><div id="latexImportPreview" class="min-h-[470px] border rounded-2xl p-3 bg-white/60 overflow-auto"><p class="text-sm text-slate-500">Dán LaTeX rồi bấm “Xem trước”.</p></div></div><div class="flex flex-wrap justify-end gap-3 mt-5"><button onclick="copyLatexImportTemplate()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-copy"></i> Copy mẫu</button><button onclick="handleLatexImport('${target}')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-database"></i> Lưu câu hợp lệ</button></div></div>`;
+  document.body.appendChild(m);
+}
+function renderLatexImportPreview(items=[]){
+  const box=$('latexImportPreview'); if(!box)return; window.latexImportPreviewItems=items;
+  if(!items.length){box.innerHTML='<p class="text-sm text-slate-500">Chưa có câu hỏi để xem trước.</p>';return;}
+  box.innerHTML=importPreviewStats(items)+`<div class="space-y-3 max-h-[410px] overflow-auto">${items.map((q,i)=>`<div class="p-3 rounded-2xl border ${q._errors?.length?'bg-red-50':'bg-white/75'}"><div class="flex justify-between gap-2"><b>Câu ${i+1} • ${safe(q.type)}</b><span class="text-xs ${q._errors?.length?'text-red-600':'text-green-700'} font-bold">${q._errors?.length?safe(q._errors.join('; ')):'Hợp lệ'}</span></div><div class="math-content mt-2 text-sm">${safe(q.text).slice(0,240)}</div></div>`).join('')}</div>`;
+  typeset();
+}
+function previewLatexImport(){
+  const text=$('latexImportText')?.value||'';
+  if(!text.trim())return renderLatexImportPreview([]);
+  const items=parseLatexExBlocks(text,{topicId:$('latexImportTopic')?.value,level:$('latexImportLevel')?.value,standard2018:$('latexImportStandard')?.value,difficulty:$('latexImportDifficulty')?.value,source:'Nhập từ LaTeX'});
+  renderLatexImportPreview(items);
+}
+function copyLatexImportTemplate(){navigator.clipboard?.writeText(latexSampleText());toast('Đã copy mẫu LaTeX','ok');}
+async function saveImportedItemsToBankOrEditor(items,target='bank',sourceLabel='Nhập dữ liệu'){
+  const valid=items.filter(q=>!q._errors?.length).map(q=>{const c={...q};delete c._errors;delete c._row;return c;}); const bad=items.length-valid.length;
+  if(!valid.length){toast('Chưa có câu hỏi hợp lệ để lưu','bad');return false;}
+  if(target==='editor'){
+    window.editorQ=window.editorQ||[]; valid.forEach((q,i)=>{q.id='q'+uid()+i;window.editorQ.push(q)}); refreshEditorQuestions(); toast(`Đã đưa ${valid.length} câu vào đề đang soạn${bad?`, bỏ qua ${bad} câu lỗi`:''}`,'ok'); return true;
+  }
+  const now=new Date().toISOString(); valid.forEach((q,i)=>{q.id=String(q.id||('q'+uid()+i));q.status='published';q.sourceExamTitle=sourceLabel;q.topicName=topicName(q.topicId);q.updatedAt=now;});
+  const byId={};questionBank.forEach(q=>byId[String(q.id)]=q);valid.forEach(q=>byId[String(q.id)]=q);questionBank=Object.values(byId); localStorage.setItem('mathpro12_questionBank',JSON.stringify(questionBank));
+  if(firebaseReady){let batch=db.batch(),count=0;for(const q of valid){batch.set(db.collection('questionBanks').doc(String(q.id)),{...q,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});count++;if(count%450===0){await batch.commit();batch=db.batch();}}await batch.commit();}
+  toast(`Đã nhập ${valid.length} câu vào kho câu hỏi${bad?`, bỏ qua ${bad} câu lỗi`:''}`,'ok'); return true;
+}
+async function handleLatexImport(target='bank'){
+  try{
+    let items=window.latexImportPreviewItems&&window.latexImportPreviewItems.length?window.latexImportPreviewItems:null;
+    if(!items){previewLatexImport();items=window.latexImportPreviewItems||[];}
+    const ok=await saveImportedItemsToBankOrEditor(items,target,'Nhập từ LaTeX');
+    if(ok){document.querySelector('.latex-import-modal')?.remove(); if(target==='bank')renderQuestionBank();}
+  }catch(err){console.error(err);toast('Không nhập được LaTeX: '+(err?.message||err),'bad');}
+}
+
+function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:30,level:'',description:'',questions:[]};const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${TOPICS.map(t=>`<option value="${t.id}" ${e.topicId==t.id?'selected':''}>${t.name}</option>`).join('')}</select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||30}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><input id="edStartTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.startTime)}" title="Thời gian mở đề"><input id="edEndTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.endTime)}" title="Thời gian đóng đề"><input id="edMaxAttempts" type="number" min="0" class="border rounded-xl p-3" placeholder="Số lượt làm, 0 = không giới hạn" value="${e.maxAttempts??1}"><select id="edPublished" class="border rounded-xl p-3 bg-white"><option value="true" ${e.isPublished!==false?'selected':''}>Xuất bản cho học sinh</option><option value="false" ${e.isPublished===false?'selected':''}>Lưu nháp, chưa cho làm</option></select><div class="md:col-span-2"><p class="font-bold mb-2">Giao đề cho lớp</p><div class="flex flex-wrap gap-2">${classOptionsHTML(e.classIds||[])}</div><p class="text-xs mt-1" style="color:var(--muted)">Không chọn lớp nào = tất cả học sinh đều thấy đề.</p></div><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button><button onclick="openQuestionBankPicker()" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-folder-open"></i> Chọn từ kho</button><button onclick="openQuestionImportModal('editor')" class="bg-emerald-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-file-import"></i> Nhập từ file</button><button onclick="openLatexImportModal('editor')" class="bg-cyan-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button><button onclick="downloadQuestionTemplateCSV()" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-download"></i> Mẫu CSV</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;document.body.appendChild(m);window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));refreshEditorQuestions()}
 
 async function ensureQuestionBankReady(){
   if(firebaseReady){try{await loadQuestionBankFromFirestore();}catch(err){console.warn('Không tải được questionBanks:',err)}}
@@ -1414,7 +1539,7 @@ function renderTeacherDashboard(){
   const actionBtn=(text,icon,fn,cls='btn-soft')=>`<button onclick="${fn}" class="${cls} px-4 py-3 rounded-2xl font-bold text-left flex items-center justify-between gap-3"><span><i class="fa-solid ${icon} mr-2"></i>${text}</span><i class="fa-solid fa-chevron-right text-xs opacity-60"></i></button>`;
   const examRows=exams.slice(0,8).map(e=>{e=normalizeExamAccess(e);const status=e.isPublished===false?'<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Nháp</span>':'<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Đã xuất bản</span>';return `<tr class="border-b"><td class="p-3"><b>${safe(e.title)}</b><p class="text-xs" style="color:var(--muted)">${safe(topicName(e.topicId))}</p></td><td class="p-3">${(e.questions||[]).length||e.questionCount||0}</td><td class="p-3">${status}</td><td class="p-3 text-xs" style="color:var(--muted)">${safe(examScheduleText(e))}</td></tr>`}).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có đề.</td></tr>';
   const recentRows=analyticsFilteredSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
-  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Bước 2</span><h2 class="text-3xl md:text-4xl font-black mt-2">Thống kê và phân tích học tập</h2><p style="color:var(--muted)">Lọc theo lớp/đề/thời gian, xem xu hướng điểm, câu sai nhiều và học sinh cần hỗ trợ.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}</section>${teacherAnalyticsHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="font-black text-xl">Danh sách đề thi</h3><button onclick="openExamEditor()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th><th class="p-3">Lịch giao</th></tr></thead><tbody>${examRows}</tbody></table></div></section></div>`;
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Bước 3</span><h2 class="text-3xl md:text-4xl font-black mt-2">Thống kê và phân tích học tập</h2><p style="color:var(--muted)">Lọc dữ liệu, phân tích học tập và nhập ngân hàng câu hỏi từ CSV/Excel/PDF/LaTeX.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}</section>${teacherAnalyticsHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="font-black text-xl">Danh sách đề thi</h3><button onclick="openExamEditor()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th><th class="p-3">Lịch giao</th></tr></thead><tbody>${examRows}</tbody></table></div></section></div>`;
   typeset();
 }
 function renderStats(){
