@@ -959,6 +959,82 @@ async function syncQuestionBankToFirestore(){
   }catch(err){toast('Chưa đồng bộ được Firestore: '+fbError(err),'bad');}
 }
 
+
+function openClearQuestionBankModal(){
+  if(!requireRole('teacher'))return;
+  const total=questionBank.length;
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] grid place-items-center p-4 fade-in';
+  m.innerHTML=`<div class="glass-card w-full max-w-2xl p-6 relative">
+    <button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button>
+    <div class="flex items-start gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-red-600 text-white grid place-items-center"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div>
+        <h2 class="text-2xl font-black text-red-600">Xóa toàn bộ ngân hàng câu hỏi</h2>
+        <p class="text-sm mt-1" style="color:var(--muted)">Thao tác này sẽ xóa <b>${total}</b> câu hỏi trong kho hiện tại. Thầy nên xuất Excel sao lưu trước khi xóa.</p>
+      </div>
+    </div>
+    <div class="mt-4 p-4 rounded-2xl border border-red-200 bg-red-50 text-sm text-red-700">
+      <b>Lưu ý quan trọng:</b> Nếu các đề thi đang lấy câu từ <b>questionBanks</b>/<b>examQuestions</b>, sau khi xóa ngân hàng thì đề có thể không tải đủ câu hỏi cho học sinh. Nếu muốn làm lại từ đầu, thầy có thể chọn xóa luôn liên kết đề - câu hỏi bên dưới.
+    </div>
+    <label class="mt-4 flex items-start gap-2 text-sm p-3 rounded-2xl border bg-white/60">
+      <input id="clearQuestionBankLinks" type="checkbox" class="mt-1">
+      <span>Xóa luôn liên kết <b>examQuestions</b> giữa đề thi và ngân hàng câu hỏi <span style="color:var(--muted)">(khuyên dùng khi thầy muốn xây lại kho từ đầu)</span></span>
+    </label>
+    <div class="mt-4">
+      <label class="block text-sm font-bold mb-2">Nhập chính xác: <span class="text-red-600">XOA TOAN BO</span></label>
+      <input id="clearQuestionBankConfirmText" class="w-full px-4 py-3 rounded-2xl border" placeholder="XOA TOAN BO">
+    </div>
+    <div class="flex flex-wrap justify-end gap-3 mt-5">
+      <button onclick="exportQuestionBankExcel(false)" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Xuất Excel trước</button>
+      <button onclick="this.closest('.fixed').remove()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Hủy</button>
+      <button onclick="clearAllQuestionBankNow()" class="bg-red-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa toàn bộ</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+async function deleteFirestoreCollectionInBatches(collectionName){
+  if(!firebaseReady) return 0;
+  let deleted=0;
+  while(true){
+    const snap=await db.collection(collectionName).limit(450).get();
+    if(snap.empty) break;
+    const batch=db.batch();
+    snap.docs.forEach(doc=>batch.delete(doc.ref));
+    await batch.commit();
+    deleted+=snap.size;
+    if(snap.size<450) break;
+  }
+  return deleted;
+}
+async function clearAllQuestionBankNow(){
+  if(!requireRole('teacher'))return;
+  const typed=String($('clearQuestionBankConfirmText')?.value||'').trim().toUpperCase();
+  if(typed!=='XOA TOAN BO') return toast('Thầy cần nhập đúng chữ XOA TOAN BO để xác nhận','bad');
+  const clearLinks=!!$('clearQuestionBankLinks')?.checked;
+  const oldCount=questionBank.length;
+  try{
+    questionBank=[];
+    localStorage.setItem('mathpro12_questionBank',JSON.stringify([]));
+    localStorage.removeItem('mathpro12_questionBank_backup');
+    if(firebaseReady){
+      const deletedQuestions=await deleteFirestoreCollectionInBatches('questionBanks');
+      let deletedLinks=0;
+      if(clearLinks){ deletedLinks=await deleteFirestoreCollectionInBatches('examQuestions'); }
+      auditLogs.unshift({id:uid(),action:'clear-question-bank',user:currentUser?.email||currentUser?.username||'',count:deletedQuestions||oldCount,clearLinks,deletedLinks,at:new Date().toISOString()});
+    }else{
+      auditLogs.unshift({id:uid(),action:'clear-question-bank-local',user:currentUser?.email||currentUser?.username||'',count:oldCount,clearLinks:false,at:new Date().toISOString()});
+    }
+    save();
+    document.querySelector('.fixed')?.remove();
+    renderQuestionBank();
+    toast(`Đã xóa toàn bộ ngân hàng câu hỏi${clearLinks?' và liên kết đề-câu hỏi':''}`,'ok');
+  }catch(err){
+    toast('Đã xóa local, nhưng có lỗi khi xóa Firestore: '+fbError(err),'bad');
+    save(); renderQuestionBank();
+  }
+}
+
 function qBankTypeLabel(type){
   return type==='mc'?'Trắc nghiệm A/B/C/D':type==='tf'?'Đúng/Sai':type==='short'?'Trả lời ngắn':'Tự luận';
 }
@@ -1142,6 +1218,7 @@ function renderQuestionBank(){
         <button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập/đồng bộ Excel</button>
         <button onclick="openLatexImportModal('bank')" class="bg-cyan-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button>
         <button onclick="syncQuestionBankToFirestore()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ Firestore</button>
+        <button onclick="openClearQuestionBankModal()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa toàn bộ kho</button>
         <button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button>
       </div>
     </div>
