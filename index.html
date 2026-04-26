@@ -4091,6 +4091,282 @@ async function bootstrap(){
   }
 }
 bootstrap();
+
+
+/* ===== NÂNG CẤP LỚP HỌC THEO MÃ RIÊNG - 2026-04-26 =====
+   Mục tiêu: cùng tên lớp 12A1 có thể tồn tại nhiều lớp khác nhau theo từng giáo viên.
+   Học sinh đăng ký bằng mã lớp để tự vào đúng lớp và đúng giáo viên phụ trách.
+*/
+function classCodeStoreKey(){return 'mathpro12_classRooms_v2';}
+function normalizeClassRoom(r){
+  r=r||{};
+  const name=String(r.name||r.className||'Chưa đặt tên').trim()||'Chưa đặt tên';
+  const code=String(r.code||r.classCode||generateClassCode(name)).trim().toUpperCase();
+  return {
+    id:String(r.id||code||uid()),
+    name,
+    code,
+    teacherId:String(r.teacherId||r.createdBy||''),
+    teacherName:String(r.teacherName||''),
+    createdBy:String(r.createdBy||r.teacherId||currentUser?.id||''),
+    createdAt:r.createdAt||new Date().toISOString(),
+    status:r.status||'active'
+  };
+}
+function classRooms(){
+  let arr=[];
+  try{arr=JSON.parse(localStorage.getItem(classCodeStoreKey())||'[]')||[];}catch(e){arr=[];}
+  if(!Array.isArray(arr)) arr=[];
+  if(!arr.length){
+    const seedTeachers=users.filter(u=>u.role==='teacher'||u.role==='admin');
+    const firstTeacher=seedTeachers.find(u=>u.role==='teacher')||seedTeachers[0]||{};
+    const seen=new Set();
+    (classes||[]).forEach((c,idx)=>{
+      const name=String(c||'Chưa đặt tên').trim()||'Chưa đặt tên';
+      let code=generateClassCode(name); while(seen.has(code)){code=generateClassCode(name);} seen.add(code);
+      arr.push(normalizeClassRoom({id:code,name,code,teacherId:firstTeacher.id||'',teacherName:firstTeacher.fullname||firstTeacher.email||'Chưa gán'}));
+    });
+    localStorage.setItem(classCodeStoreKey(),JSON.stringify(arr));
+  }
+  return arr.map(normalizeClassRoom);
+}
+function saveClassRooms(arr){
+  arr=(arr||[]).map(normalizeClassRoom);
+  localStorage.setItem(classCodeStoreKey(),JSON.stringify(arr));
+  classes=[...new Set(arr.map(r=>r.name).filter(Boolean))];
+  localStorage.setItem('mathpro12_classes',JSON.stringify(classes));
+  save();
+}
+function generateClassCode(name='Lop'){
+  const base=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'').toUpperCase().slice(0,6)||'LOP';
+  const rand=Math.random().toString(36).slice(2,6).toUpperCase();
+  return `${base}-${rand}`;
+}
+function classRoomByCode(code){code=String(code||'').trim().toUpperCase();return classRooms().find(r=>String(r.code).toUpperCase()===code)||null;}
+function classRoomLabel(codeOrName){
+  const r=classRoomByCode(codeOrName)||classRooms().find(x=>x.name===codeOrName);
+  return r?`${r.name} • ${r.code}${r.teacherName?' • '+r.teacherName:''}`:String(codeOrName||'Chưa phân lớp');
+}
+function userClassCode(u){return String(u?.classCode||u?.classId||'').trim().toUpperCase();}
+function userClassLabel(u){const r=classRoomByCode(userClassCode(u));return r?`${r.name} (${r.code})`:String(u?.className||'Chưa phân lớp');}
+function teacherClassCodes(user=currentUser){
+  if(isAdminUser(user)) return classRooms().map(r=>r.code);
+  const direct=Array.isArray(user?.classCodes)?user.classCodes.map(x=>String(x).toUpperCase()):[];
+  const fromRooms=classRooms().filter(r=>String(r.teacherId)===String(user?.id)).map(r=>r.code);
+  const legacy=Array.isArray(user?.classNames)?user.classNames:[];
+  const fromLegacy=classRooms().filter(r=>legacy.includes(r.name)).map(r=>r.code);
+  return [...new Set([...direct,...fromRooms,...fromLegacy])];
+}
+teacherClassNames=function(user=currentUser){
+  const codes=teacherClassCodes(user);
+  return classRooms().filter(r=>codes.includes(r.code)).map(r=>`${r.name} (${r.code})`);
+};
+isStudentInMyClass=function(u){
+  if(isAdminUser(currentUser)) return true;
+  const codes=teacherClassCodes();
+  if(userClassCode(u)) return codes.includes(userClassCode(u));
+  return classRooms().some(r=>codes.includes(r.code) && r.name===String(u?.className||''));
+};
+scopedStudents=function(){return users.filter(u=>u.role==='student' && isStudentInMyClass(u));};
+scopedSubmissions=function(){
+  if(isAdminUser(currentUser)) return submissions;
+  const codes=teacherClassCodes();
+  const myStudentIds=new Set(scopedStudents().map(u=>String(u.id)));
+  return submissions.filter(s=>myStudentIds.has(String(s.studentId)) || codes.includes(String(s.classCode||'').toUpperCase()) || classRooms().some(r=>codes.includes(r.code)&&r.name===s.className));
+};
+scopedExams=function(){
+  if(isAdminUser(currentUser)) return exams;
+  const codes=teacherClassCodes();
+  const myId=String(currentUser?.id||'');
+  return exams.map(normalizeExamAccess).filter(e=>String(e.createdBy||e.teacherId||'')===myId || (e.classIds||[]).some(c=>codes.includes(String(c).toUpperCase()) || classRooms().some(r=>r.code===String(c).toUpperCase()&&codes.includes(r.code))));
+};
+
+classOptionsHTML=function(selected=[]){
+  selected=Array.isArray(selected)?selected.map(x=>String(x).toUpperCase()):String(selected||'').split(',').map(x=>x.trim().toUpperCase()).filter(Boolean);
+  const rooms=isAdminUser(currentUser)?classRooms():classRooms().filter(r=>teacherClassCodes().includes(r.code));
+  return rooms.map(r=>`<label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white/60"><input type="checkbox" class="edClassCheck" value="${safe(r.code)}" ${selected.includes(String(r.code).toUpperCase())?'checked':''}> ${safe(r.name)} <span class="text-xs text-slate-500">${safe(r.code)}</span></label>`).join('')||'<span class="text-sm text-slate-500">Chưa có lớp/mã lớp. Hãy tạo lớp trước.</span>';
+};
+selectedClassIdsFromEditor=function(){return Array.from(document.querySelectorAll('.edClassCheck:checked')).map(x=>String(x.value).toUpperCase());};
+const __classCodeNormalizeExamAccess=normalizeExamAccess;
+normalizeExamAccess=function(e){
+  e=__classCodeNormalizeExamAccess(e||{});
+  e.classIds=(e.classIds||[]).map(x=>String(x).toUpperCase());
+  return e;
+};
+getExamAvailability=function(e,user=currentUser){
+  e=normalizeExamAccess(e||{});
+  const now=Date.now();
+  const start=e.startTime?new Date(e.startTime).getTime():null;
+  const end=e.endTime?new Date(e.endTime).getTime():null;
+  if(user?.role==='admin') return {ok:true,label:'Admin xem đề',reason:''};
+  if(e.isPublished===false && user?.role!=='teacher') return {ok:false,label:'Chưa xuất bản',reason:'Đề này chưa được giáo viên xuất bản.'};
+  if(user?.role==='student'){
+    const code=userClassCode(user);
+    const allowedByCode=code && e.classIds.includes(code);
+    const allowedLegacy=e.classIds.some(c=>classRoomByCode(c)?.name===user.className || c===String(user.className||'').toUpperCase());
+    if(e.classIds.length && !allowedByCode && !allowedLegacy) return {ok:false,label:'Không thuộc lớp',reason:'Đề này không được giao cho mã lớp của em.'};
+    if(start && now<start) return {ok:false,label:'Chưa mở',reason:'Đề chưa đến thời gian mở.'};
+    if(end && now>end) return {ok:false,label:'Đã đóng',reason:'Đề đã hết thời gian làm bài.'};
+    if(e.maxAttempts>0 && examAttemptCount(e.id,user.id)>=e.maxAttempts) return {ok:false,label:'Đã làm đủ lượt',reason:`Em đã dùng đủ ${e.maxAttempts} lượt làm bài.`};
+  }
+  return {ok:true,label:e.isPublished===false?'Nháp':'Sẵn sàng',reason:''};
+};
+canStudentSeeExam=function(e){
+  if(isAdminUser(currentUser)||isTeacherUser(currentUser)) return true;
+  e=normalizeExamAccess(e);
+  if(e.isPublished===false) return false;
+  if(currentUser?.role==='student' && e.classIds.length){
+    const code=userClassCode(currentUser);
+    return (code && e.classIds.includes(code)) || e.classIds.some(c=>classRoomByCode(c)?.name===currentUser.className || c===String(currentUser.className||'').toUpperCase());
+  }
+  return true;
+};
+examScheduleText=function(e){
+  e=normalizeExamAccess(e);
+  const fmt=v=>v?new Date(v).toLocaleString('vi-VN'):'Không giới hạn';
+  const cls=e.classIds.length?e.classIds.map(c=>classRoomLabel(c)).join(', '):'Tất cả lớp';
+  const attempts=e.maxAttempts>0?`${e.maxAttempts} lượt`:'Không giới hạn lượt';
+  return `Lớp: ${cls} • Mở: ${fmt(e.startTime)} • Đóng: ${fmt(e.endTime)} • ${attempts}`;
+};
+
+showRegister=function(){
+  document.querySelector('.fixed')?.remove();
+  const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';
+  m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng ký tài khoản</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Học sinh nhập <b>mã lớp</b> do giáo viên cung cấp để vào đúng lớp, đúng giáo viên. Tên lớp có thể trùng, mã lớp là duy nhất.</p><div class="space-y-3 mt-5"><input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên"><input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập, ví dụ: hs12a1@gmail.com"><input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu ít nhất 6 ký tự"><input id="regClassCode" class="w-full px-4 py-3 rounded-2xl border uppercase" placeholder="Mã lớp, ví dụ: 12A1-ABCD"><select id="regRole" class="w-full px-4 py-3 rounded-2xl border bg-white"><option value="student">Học sinh</option><option value="teacher">Giáo viên đã được duyệt email</option></select><p class="text-xs" style="color:var(--muted)">Nếu là học sinh, bắt buộc nhập mã lớp. Nếu chưa có mã, liên hệ giáo viên để lấy mã.</p><button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button></div></div>`;
+  document.body.appendChild(m);
+};
+doRegister=async function(){
+  const email=emailFromLogin($('regU').value.trim()), password=$('regP').value, fullname=$('regName').value.trim()||email;
+  const requestedRole=$('regRole')?.value||'student';
+  const role=detectRegisterRole(email,requestedRole);
+  let room=null, classCode='', className='Chưa phân lớp';
+  if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
+  if(password.length<6) return toast('Mật khẩu Firebase cần ít nhất 6 ký tự','bad');
+  if(role==='student'){
+    classCode=String($('regClassCode')?.value||'').trim().toUpperCase();
+    room=classRoomByCode(classCode);
+    if(!room) return toast('Mã lớp không đúng hoặc chưa được giáo viên tạo','bad');
+    className=room.name;
+  }
+  if(requestedRole==='teacher' && role!=='teacher') toast('Email này chưa được duyệt giáo viên, hệ thống sẽ tạo tài khoản học sinh.','info');
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    const teacherRequest=(requestedRole==='teacher' && role!=='teacher');
+    const profile={id:cred.user.uid,email,username:email,fullname,role,className,classCode,teacherId:room?.teacherId||'',teacherName:room?.teacherName||'',teacherRequest,teacherRequestAt:teacherRequest?firebase.firestore.FieldValue.serverTimestamp():null,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    await db.collection('users').doc(cred.user.uid).set(profile,{merge:true});
+    currentUser={...profile,id:cred.user.uid};
+    users=users.filter(u=>u.id!==cred.user.uid); users.push(currentUser); save();
+    document.querySelector('.fixed')?.remove(); renderHeader();
+    if(role==='teacher'||role==='admin'){ await seedExamsToFirestore(); renderTeacherDashboard(); toast(role==='admin'?'Đăng ký admin thành công':'Đăng ký giáo viên thành công','ok'); }
+    else{ renderExamsPublic(); toast(`Đăng ký thành công vào lớp ${className}`,'ok'); }
+  }catch(err){toast('Đăng ký thất bại: '+fbError(err),'bad');}
+};
+
+function teacherOptionsHTML(selected=''){
+  return users.filter(u=>u.role==='teacher'||u.role==='admin').map(u=>`<option value="${safe(u.id)}" ${String(selected)===String(u.id)?'selected':''}>${safe(u.fullname||u.email||u.username)} (${safe(u.role)})</option>`).join('')||'<option value="">Chưa có giáo viên</option>';
+}
+function roomStudentCount(code){return users.filter(u=>u.role==='student' && userClassCode(u)===String(code).toUpperCase()).length;}
+function roomsForCurrentUser(){return isAdminUser(currentUser)?classRooms():classRooms().filter(r=>teacherClassCodes().includes(r.code));}
+renderClassManager=async function(){
+  if(!requireRole('teacher'))return;
+  await refreshUsersFromFirestore();
+  const rooms=roomsForCurrentUser();
+  const roomCodes=rooms.map(r=>r.code);
+  const students=isAdminUser(currentUser)?users.filter(u=>u.role==='student'):users.filter(u=>u.role==='student' && (roomCodes.includes(userClassCode(u)) || isStudentInMyClass(u)));
+  const avgAll=students.length?Math.round(students.reduce((s,u)=>s+studentAverage(u.id),0)/students.length):0;
+  const active=students.filter(u=>studentSubmissions(u.id).length).length;
+  const weak=students.filter(u=>studentSubmissions(u.id).length && studentAverage(u.id)<50).length;
+  const classCards=rooms.map(r=>`<div class="glass-card p-4"><div class="flex justify-between gap-2"><div><b>${safe(r.name)}</b><p class="text-xs" style="color:var(--muted)">Mã: <b>${safe(r.code)}</b></p><p class="text-xs" style="color:var(--muted)">GV: ${safe(r.teacherName||'Chưa gán')}</p><p class="text-sm" style="color:var(--muted)">${roomStudentCount(r.code)} học sinh</p></div><button onclick="copyClassCode('${safe(r.code)}')" class="text-blue-600" title="Copy mã lớp"><i class="fa-solid fa-copy"></i></button></div><div class="mt-3"><div class="flex justify-between text-sm"><span>Điểm TB</span><b>${classAverageByCode(r.code)}%</b></div><div class="bar-track mt-1"><div class="bar-fill" style="width:${classAverageByCode(r.code)}%"></div></div></div>${isAdminUser(currentUser)?`<div class="flex gap-2 mt-3"><button onclick="openEditClassRoom('${safe(r.code)}')" class="text-xs text-blue-600"><i class="fa-solid fa-pen"></i> Sửa</button><button onclick="removeClassRoom('${safe(r.code)}')" class="text-xs text-red-600"><i class="fa-solid fa-trash"></i> Xóa</button></div>`:''}</div>`).join('');
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-key"></i> Mã lớp riêng</span><h2 class="text-3xl md:text-4xl font-black mt-2">Quản lý lớp học theo mã</h2><p style="color:var(--muted)">Một tên lớp như 12A1 có thể có nhiều mã khác nhau theo từng giáo viên. Học sinh đăng ký bằng mã lớp để vào đúng lớp.</p></div><div class="flex gap-2 flex-wrap"><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl"><i class="fa-solid fa-arrow-left"></i> Dashboard</button><button onclick="exportStudentsCSV()" class="btn-soft px-4 py-2 rounded-2xl"><i class="fa-solid fa-file-export"></i> Xuất CSV</button><button onclick="openAddClassRoomModal()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-school-circle-check"></i> Tạo lớp có mã</button><button onclick="openAddStudentModal()" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-plus"></i> Thêm học sinh</button></div></div>
+  <section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5"><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Tổng học sinh</p><p class="text-3xl font-black">${students.length}</p></div><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Đã làm bài</p><p class="text-3xl font-black">${active}</p></div><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Điểm TB chung</p><p class="text-3xl font-black">${avgAll}%</p></div><div class="glass-card p-5"><p class="text-sm" style="color:var(--muted)">Số mã lớp</p><p class="text-3xl font-black">${rooms.length}</p></div></section>
+  <section class="grid xl:grid-cols-[.85fr_1.35fr] gap-5"><div class="space-y-5"><div class="glass-card p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-black text-xl">Danh sách lớp/mã lớp</h3><span class="mini-badge">${rooms.length} mã</span></div><div class="grid sm:grid-cols-2 xl:grid-cols-1 gap-3">${classCards||'<p class="text-sm text-slate-500">Chưa có lớp.</p>'}</div><div class="mt-4 p-3 rounded-2xl bg-blue-50 text-sm text-blue-800"><b>Lưu ý:</b> gửi mã lớp cho học sinh. Học sinh nhập đúng mã khi đăng ký sẽ tự vào lớp này.</div></div></div>
+  <div class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h3 class="font-black text-xl">Bảng học sinh</h3><p class="text-sm" style="color:var(--muted)">Lọc theo mã lớp và gán lại học sinh vào đúng mã lớp.</p></div></div>${teacherStudentFiltersHTML()}<div class="overflow-x-auto mt-4"><table class="w-full text-sm" id="studentTable"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Lớp/mã lớp</th><th class="p-3">Số bài</th><th class="p-3">Điểm TB</th><th class="p-3">Gần nhất</th><th class="p-3">Trạng thái</th><th class="p-3">Hành động</th></tr></thead><tbody id="studentTableBody">${buildStudentRows(students)}</tbody></table></div></div></section></div>`;
+};
+function classAverageByCode(code){const st=users.filter(u=>u.role==='student'&&userClassCode(u)===String(code).toUpperCase());return st.length?Math.round(st.reduce((s,u)=>s+studentAverage(u.id),0)/st.length):0;}
+function copyClassCode(code){navigator.clipboard?.writeText(code);toast('Đã copy mã lớp: '+code,'ok');}
+function openAddClassRoomModal(editCode=''){
+  const r=editCode?classRoomByCode(editCode):null;
+  const m=document.createElement('div');m.className='class-room-modal fixed inset-0 bg-black/60 z-50 grid place-items-center p-4 fade-in';
+  m.innerHTML=`<div class="glass-card w-full max-w-lg p-6 relative"><button onclick="this.closest('.class-room-modal').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">${r?'Sửa lớp':'Tạo lớp có mã riêng'}</h2><div class="space-y-3 mt-5"><input id="roomName" class="w-full px-4 py-3 rounded-2xl border" value="${safe(r?.name||'')}" placeholder="Tên lớp, ví dụ: 12A1"><input id="roomCode" class="w-full px-4 py-3 rounded-2xl border uppercase" value="${safe(r?.code||'')}" placeholder="Mã lớp tự sinh nếu để trống"><select id="roomTeacher" class="w-full px-4 py-3 rounded-2xl border bg-white" ${isAdminUser(currentUser)?'':'disabled'}>${teacherOptionsHTML(r?.teacherId||currentUser?.id||'')}</select><p class="text-xs" style="color:var(--muted)">Có thể tạo nhiều lớp tên 12A1, nhưng mã lớp phải khác nhau.</p><button onclick="saveClassRoom('${safe(editCode)}')" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Lưu lớp</button></div></div>`;
+  document.body.appendChild(m);
+}
+function openEditClassRoom(code){openAddClassRoomModal(code);}
+async function saveClassRoom(editCode=''){
+  let arr=classRooms();
+  const name=($('roomName')?.value||'').trim(); if(!name) return toast('Nhập tên lớp trước','bad');
+  let code=($('roomCode')?.value||'').trim().toUpperCase()||generateClassCode(name);
+  const teacherId=isAdminUser(currentUser)?($('roomTeacher')?.value||''):String(currentUser?.id||'');
+  const teacher=users.find(u=>String(u.id)===String(teacherId))||currentUser||{};
+  if(arr.some(r=>r.code===code && r.code!==String(editCode).toUpperCase())) return toast('Mã lớp này đã tồn tại, hãy dùng mã khác','bad');
+  const obj=normalizeClassRoom({id:code,name,code,teacherId,teacherName:teacher.fullname||teacher.email||teacher.username||'',createdBy:teacherId});
+  if(editCode) arr=arr.map(r=>r.code===String(editCode).toUpperCase()?{...r,...obj}:r); else arr.push(obj);
+  saveClassRooms(arr);
+  if(firebaseReady){try{await db.collection('classes').doc(code).set({...obj,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){toast('Đã lưu local, chưa lưu Firestore: '+fbError(err),'bad');}}
+  document.querySelector('.class-room-modal')?.remove(); renderClassManager(); toast('Đã lưu lớp và mã lớp','ok');
+}
+function removeClassRoom(code){
+  code=String(code).toUpperCase();
+  if(roomStudentCount(code)) return toast('Lớp còn học sinh, chưa thể xóa','bad');
+  if(!confirm('Xóa mã lớp '+code+'?')) return;
+  saveClassRooms(classRooms().filter(r=>r.code!==code)); renderClassManager(); toast('Đã xóa mã lớp','ok');
+}
+teacherStudentFiltersHTML=function(){
+  const rooms=roomsForCurrentUser();
+  return `<div class="grid lg:grid-cols-[1fr_220px_180px] gap-3"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input id="studentSearch" oninput="applyStudentFilters()" class="w-full pl-11 pr-4 py-3 rounded-2xl border bg-white/80" placeholder="Tìm theo họ tên, email, lớp, mã lớp..."></div><select id="studentClassFilter" onchange="applyStudentFilters()" class="px-4 py-3 rounded-2xl border bg-white"><option value="all">Tất cả mã lớp</option>${rooms.map(r=>`<option value="${safe(r.code)}">${safe(r.name)} • ${safe(r.code)}</option>`).join('')}</select><select id="studentSortFilter" onchange="applyStudentFilters()" class="px-4 py-3 rounded-2xl border bg-white"><option value="name">Sắp xếp theo tên</option><option value="avgDesc">Điểm TB cao → thấp</option><option value="avgAsc">Điểm TB thấp → cao</option><option value="recent">Làm bài gần nhất</option></select></div>`;
+};
+buildStudentRows=function(list){
+  const rooms=roomsForCurrentUser();
+  return list.map(u=>{
+    const subs=studentSubmissions(u.id), avg=studentAverage(u.id), last=studentLastSubmit(u.id);
+    const status=avg>=80?'Tốt':avg>=50?'Cần theo dõi':subs.length?'Yếu':'Chưa làm bài';
+    const statusCls=avg>=80?'bg-green-100 text-green-700':avg>=50?'bg-amber-100 text-amber-700':subs.length?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600';
+    return `<tr class="border-b hover:bg-blue-50/50"><td class="p-3"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-2xl btn-primary text-white grid place-items-center font-black">${safe(String(u.fullname||u.email||'H').trim()[0]||'H')}</div><div><b>${safe(u.fullname||u.email||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(u.email||u.username||'')}</p></div></div></td><td class="p-3"><select onchange="updateStudentClass('${safe(u.id)}',this.value)" class="border rounded-xl px-3 py-2 bg-white">${rooms.map(r=>`<option value="${safe(r.code)}" ${userClassCode(u)===r.code?'selected':''}>${safe(r.name)} • ${safe(r.code)}</option>`).join('')}</select><p class="text-xs mt-1" style="color:var(--muted)">${safe(userClassLabel(u))}</p></td><td class="p-3"><b>${subs.length}</b><p class="text-xs" style="color:var(--muted)">lượt làm</p></td><td class="p-3"><b>${avg}%</b><div class="bar-track mt-1 max-w-28"><div class="bar-fill" style="width:${avg}%"></div></div></td><td class="p-3 text-xs" style="color:var(--muted)">${last?safe(last.date||'Đã làm'):'Chưa có'}</td><td class="p-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${statusCls}">${status}</span></td><td class="p-3"><button onclick="renderStudentDetail('${safe(u.id)}')" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-eye"></i> Chi tiết</button></td></tr>`;
+  }).join('')||'<tr><td colspan="7" class="p-6 text-center text-slate-500">Chưa có học sinh phù hợp.</td></tr>';
+};
+applyStudentFilters=function(){
+  let list=isAdminUser(currentUser)?users.filter(u=>u.role==='student'):scopedStudents();
+  const q=norm($('studentSearch')?.value||''), cls=$('studentClassFilter')?.value||'all', sort=$('studentSortFilter')?.value||'name';
+  if(q) list=list.filter(u=>norm((u.fullname||'')+' '+(u.email||u.username||'')+' '+(u.className||'')+' '+userClassCode(u)).includes(q));
+  if(cls!=='all') list=list.filter(u=>userClassCode(u)===String(cls).toUpperCase());
+  if(sort==='avgDesc') list.sort((a,b)=>studentAverage(b.id)-studentAverage(a.id));
+  else if(sort==='avgAsc') list.sort((a,b)=>studentAverage(a.id)-studentAverage(b.id));
+  else if(sort==='recent') list.sort((a,b)=>(studentLastSubmit(b.id)?new Date(studentLastSubmit(b.id).createdAt||studentLastSubmit(b.id).date||0).getTime():0)-(studentLastSubmit(a.id)?new Date(studentLastSubmit(a.id).createdAt||studentLastSubmit(a.id).date||0).getTime():0));
+  else list.sort((a,b)=>String(a.fullname||a.email||'').localeCompare(String(b.fullname||b.email||''),'vi'));
+  const body=$('studentTableBody'); if(body) body.innerHTML=buildStudentRows(list);
+};
+updateStudentClass=async function(userId,classCode){
+  const room=classRoomByCode(classCode); if(!room) return toast('Mã lớp không tồn tại','bad');
+  if(!isAdminUser(currentUser) && !teacherClassCodes().includes(room.code)) return toast('Giáo viên chỉ được gán học sinh vào lớp mình phụ trách','bad');
+  const u=users.find(x=>String(x.id)===String(userId)); if(u){u.classCode=room.code;u.className=room.name;u.teacherId=room.teacherId;u.teacherName=room.teacherName;}
+  save();
+  if(firebaseReady){try{await db.collection('users').doc(String(userId)).set({classCode:room.code,className:room.name,teacherId:room.teacherId,teacherName:room.teacherName,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(err){toast('Chưa cập nhật được Firestore: '+fbError(err),'bad')}}
+  toast('Đã cập nhật mã lớp cho học sinh','ok');
+};
+openAddStudentModal=function(){
+  const rooms=roomsForCurrentUser();
+  const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';
+  m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Thêm học sinh nhanh</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Chọn đúng mã lớp để học sinh thuộc lớp của giáo viên phụ trách.</p><div class="space-y-3 mt-5"><input id="addStuName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên học sinh"><input id="addStuEmail" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email hoặc mã học sinh"><select id="addStuClass" class="w-full px-4 py-3 rounded-2xl border bg-white">${rooms.map(r=>`<option value="${safe(r.code)}">${safe(r.name)} • ${safe(r.code)}</option>`).join('')}</select><button onclick="addStudentLocal()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Lưu học sinh</button></div></div>`;
+  document.body.appendChild(m);
+};
+addStudentLocal=async function(){
+  const fullname=($('addStuName')?.value||'').trim(), email=emailFromLogin(($('addStuEmail')?.value||'').trim()||('hs'+uid())), code=$('addStuClass')?.value||'';
+  const room=classRoomByCode(code); if(!room) return toast('Chọn mã lớp trước','bad');
+  if(!fullname)return toast('Thầy nhập họ tên học sinh','bad');
+  const id='local_'+uid(); const u={id,username:email,email,fullname,role:'student',className:room.name,classCode:room.code,teacherId:room.teacherId,teacherName:room.teacherName};
+  users.push(u); save(); document.querySelector('.fixed')?.remove(); renderClassManager(); toast('Đã thêm học sinh vào mã lớp '+room.code,'ok');
+};
+// Khi tạo phiên thi và kết quả, ghi thêm classCode để admin/giáo viên lọc chính xác theo mã lớp.
+const __classCodeCreateExamSession=createExamSession;
+createExamSession=async function(exam){
+  const id=await __classCodeCreateExamSession(exam);
+  if(firebaseReady&&id&&currentUser?.role==='student'){
+    try{await db.collection('examSessions').doc(id).set({classCode:userClassCode(currentUser),teacherId:currentUser.teacherId||''},{merge:true});}catch(e){}
+  }
+  return id;
+};
+// Khởi tạo dữ liệu mã lớp từ lớp cũ khi tải trang.
+try{saveClassRooms(classRooms());}catch(e){console.warn('Không khởi tạo được mã lớp:',e);}
+
 </script>
 </body>
 </html>
