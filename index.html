@@ -31,6 +31,8 @@
     html[data-theme="dark"] .option-card{background:rgba(15,23,42,.45)}.option-card:hover{border-color:#60a5fa;transform:scale(1.005)}.option-card.selected{border-color:#2563eb;background:rgba(37,99,235,.12)}
     .question-image{max-width:100%;max-height:420px;border-radius:1rem;border:1px solid var(--line);cursor:zoom-in;background:white}
     .question-image-thumb{max-width:210px;max-height:130px;border-radius:.8rem;border:1px solid var(--line);object-fit:contain;background:white}
+    .image-upload-panel{border:1px dashed var(--line);border-radius:1rem;padding:.75rem;background:rgba(37,99,235,.055)}
+    .image-upload-status{font-size:.78rem;color:var(--muted);margin-top:.35rem}
     .class-chip{display:inline-flex;padding:.25rem .6rem;border-radius:999px;background:rgba(6,182,212,.12);color:#0891b2;font-size:.75rem;font-weight:700}
     .correct{border-color:#16a34a!important;background:rgba(22,163,74,.13)!important}.wrong{border-color:#dc2626!important;background:rgba(220,38,38,.11)!important}
     ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px}
@@ -174,6 +176,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics-compat.js"></script>
 <script>
   const firebaseConfig = {
@@ -189,6 +192,7 @@
   try { firebase.analytics(); } catch(e) {}
   window.auth = firebase.auth();
   window.db = firebase.firestore();
+  try { window.storage = firebase.storage(); } catch(e) { window.storage = null; }
 </script>
 
 <script>
@@ -226,6 +230,7 @@ const SUBTOPICS=[
 ];
 let currentUser=null, users=[], exams=[], submissions=[], questionBank=[], deletedQuestionBank=[], classes=[], auditLogs=[], selectedExam=null, examAnswers={}, examReview=false, examTimer=null, examRemain=0, examWarnings=0, examStartedAt=null, examAnswerKey={}, examAntiCheatLocked=false, examSessionId=null, examSubmitted=false, lastSessionSyncAt=0;
 let firebaseReady = !!(window.firebase && window.auth && window.db);
+let firebaseStorageReady = !!(window.firebase && window.storage);
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
 const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
@@ -813,7 +818,84 @@ function renderExamRoom(){
 
 function zoomImage(src){const m=document.createElement('div');m.className='fixed inset-0 bg-black/80 z-[90] grid place-items-center p-4 fade-in';m.innerHTML=`<button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-5 text-white text-3xl">&times;</button><img src="${src}" class="max-w-[96vw] max-h-[90vh] rounded-2xl bg-white object-contain">`;document.body.appendChild(m)}
 function imagePreviewHTML(q){return q?.imageUrl?`<div class="my-3"><img src="${safe(q.imageUrl)}" onclick="zoomImage('${safe(q.imageUrl)}')" class="question-image" alt="Hình minh họa câu hỏi"></div>`:''}
-function readQuestionImageFile(input,idx){const file=input.files&&input.files[0];if(!file)return;if(file.size>950000){toast('Ảnh nên dưới 1MB để web chạy nhanh','bad');input.value='';return;}const reader=new FileReader();reader.onload=()=>{editorQ[idx].imageUrl=reader.result;refreshEditorQuestions();toast('Đã nhúng ảnh vào câu hỏi','ok')};reader.readAsDataURL(file)}
+function cleanFileName(name=''){return String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/-+/g,'-').slice(0,80)||'question-image.png'}
+function imageStoragePath(file,questionId='draft'){
+  const uidPart=String(currentUser?.id||currentUser?.email||'teacher').replace(/[^a-zA-Z0-9_-]+/g,'_');
+  const qPart=String(questionId||'draft').replace(/[^a-zA-Z0-9._-]+/g,'_');
+  return `question-images/${uidPart}/${qPart}/${Date.now()}-${cleanFileName(file?.name||'image.png')}`;
+}
+function validateQuestionImageFile(file){
+  if(!file) return 'Chưa chọn ảnh';
+  if(!String(file.type||'').startsWith('image/')) return 'File được chọn chưa phải là ảnh';
+  if(file.size>5*1024*1024) return 'Ảnh nên dưới 5MB để tải nhanh trong phòng thi';
+  return '';
+}
+function fileToDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});}
+async function uploadQuestionImageToFirebase(file,questionId='draft',statusElId=''){
+  const err=validateQuestionImageFile(file); if(err) throw new Error(err);
+  const statusEl=statusElId?$(statusElId):null;
+  if(!firebaseStorageReady || !window.storage) throw new Error('Firebase Storage chưa sẵn sàng');
+  const path=imageStoragePath(file,questionId);
+  const metadata={contentType:file.type||'image/png',customMetadata:{questionId:String(questionId||''),uploadedBy:String(currentUser?.email||currentUser?.username||'')}};
+  const task=storage.ref(path).put(file,metadata);
+  await new Promise((resolve,reject)=>{
+    task.on('state_changed',snap=>{
+      if(statusEl){const percent=Math.round((snap.bytesTransferred/snap.totalBytes)*100);statusEl.textContent=`Đang tải ảnh lên Firebase Storage: ${percent}%`;}
+    },reject,resolve);
+  });
+  const url=await task.snapshot.ref.getDownloadURL();
+  if(statusEl)statusEl.textContent='Đã tải ảnh lên Firebase Storage và gắn vào câu hỏi.';
+  return {url,path};
+}
+async function readQuestionImageFile(input,idx){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const statusId=`editorImageStatus_${idx}`;
+  try{
+    const questionId=window.editorQ?.[idx]?.id||('draft-'+idx);
+    if(firebaseStorageReady && window.storage){
+      const up=await uploadQuestionImageToFirebase(file,questionId,statusId);
+      editorQ[idx].imageUrl=up.url; editorQ[idx].imagePath=up.path; editorQ[idx].imageStorage='firebase';
+      toast('Đã upload ảnh lên Firebase Storage','ok');
+    }else{
+      if(file.size>950000) throw new Error('Firebase Storage chưa bật. Ảnh nhúng tạm dạng Base64 nên cần dưới 1MB.');
+      editorQ[idx].imageUrl=await fileToDataUrl(file); editorQ[idx].imageStorage='base64-local';
+      toast('Đã nhúng ảnh tạm bằng Base64','ok');
+    }
+    refreshEditorQuestions();
+  }catch(err){toast('Chưa tải được ảnh: '+(err?.message||err),'bad');}
+  finally{input.value='';}
+}
+async function qBankUploadImageFile(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const statusEl=$('qbeImageStatus');
+  try{
+    const qid=$('qbeIdHidden')?.value||('q'+uid());
+    if(statusEl)statusEl.textContent='Đang xử lý ảnh...';
+    let url='', path='', storageType='';
+    if(firebaseStorageReady && window.storage){
+      const up=await uploadQuestionImageToFirebase(file,qid,'qbeImageStatus');
+      url=up.url; path=up.path; storageType='firebase';
+      toast('Đã upload ảnh lên Firebase Storage','ok');
+    }else{
+      if(file.size>950000) throw new Error('Firebase Storage chưa bật. Ảnh nhúng tạm dạng Base64 nên cần dưới 1MB.');
+      url=await fileToDataUrl(file); storageType='base64-local';
+      if(statusEl)statusEl.textContent='Đã nhúng ảnh tạm bằng Base64.';
+      toast('Đã nhúng ảnh tạm bằng Base64','ok');
+    }
+    if($('qbeImageUrl')) $('qbeImageUrl').value=url;
+    if($('qbeImagePath')) $('qbeImagePath').value=path;
+    if($('qbeImageStorage')) $('qbeImageStorage').value=storageType;
+    qBankPreviewEditor();
+  }catch(err){if(statusEl)statusEl.textContent='';toast('Chưa tải được ảnh: '+(err?.message||err),'bad');}
+  finally{input.value='';}
+}
+function clearQBankImage(){
+  if($('qbeImageUrl'))$('qbeImageUrl').value='';
+  if($('qbeImagePath'))$('qbeImagePath').value='';
+  if($('qbeImageStorage'))$('qbeImageStorage').value='';
+  if($('qbeImageStatus'))$('qbeImageStatus').textContent='Đã xóa ảnh khỏi câu hỏi. Ảnh cũ trên Storage không bị xóa tự động.';
+  qBankPreviewEditor();
+}
 function renderQuestion(q,i){
   const saved=examAnswers[q.id];let body='';
   if(q.type==='mc')body=q.options.map((o,idx)=>`<label class="option-card flex gap-3 ${saved==idx?'selected':''}"><input type="radio" name="${q.id}" onchange="setMC('${q.id}',${idx})" ${saved==idx?'checked':''}><span class="math-content"><b>${'ABCD'[idx]}.</b> ${o}</span></label>`).join('');
@@ -1703,6 +1785,18 @@ function openQuestionEditorModal(id=''){
           <input id="qbePoint" type="number" step="0.25" min="0" class="exam-admin-input" value="${safe(q.point||1)}" placeholder="Điểm">
         </div>
         <textarea id="qbeSolution" rows="4" class="exam-admin-input" placeholder="Lời giải chi tiết">${safe(q.solution||'')}</textarea>
+        <input type="hidden" id="qbeIdHidden" value="${safe(q.id||'')}">
+        <input type="hidden" id="qbeImagePath" value="${safe(q.imagePath||'')}">
+        <input type="hidden" id="qbeImageStorage" value="${safe(q.imageStorage||'')}">
+        <div class="image-upload-panel">
+          <label class="text-sm font-black block mb-2"><i class="fa-solid fa-image text-blue-600"></i> Hình ảnh câu hỏi</label>
+          <div class="grid md:grid-cols-[1fr_auto_auto] gap-2">
+            <input id="qbeImageUrl" class="exam-admin-input" value="${safe(q.imageUrl||'')}" placeholder="Link ảnh hoặc tự upload từ máy">
+            <label class="btn-soft px-4 py-3 rounded-2xl text-center cursor-pointer font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Tải ảnh<input type="file" accept="image/*" class="hidden" onchange="qBankUploadImageFile(this)"></label>
+            <button type="button" onclick="clearQBankImage()" class="exam-action-btn exam-action-danger justify-center"><i class="fa-solid fa-trash"></i> Xóa</button>
+          </div>
+          <div id="qbeImageStatus" class="image-upload-status">${q.imageStorage==='firebase'?'Ảnh đang lưu trên Firebase Storage.':q.imageUrl?'Đang dùng ảnh đã gắn trong câu hỏi.':'Khuyến nghị: ảnh hình vẽ, bảng biến thiên, đồ thị nên lưu Firebase Storage để đề thi nhẹ và ổn định.'}</div>
+        </div>
         <input id="qbeTags" class="exam-admin-input" value="${safe((q.tags||[]).join(', '))}" placeholder="Tag, ví dụ: đạo hàm, cực trị, vận dụng">
       </section>
       <section class="space-y-3">
@@ -1745,7 +1839,9 @@ function qBankPreviewEditor(){
   const statements=($('qbeStatements')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
   const ans=qBankParseAnswer(type,$('qbeAnswer')?.value||'');
   const preview=$('qbePreview'); if(!preview)return;
+  const imgUrl=($('qbeImageUrl')?.value||'').trim();
   preview.innerHTML=`<div class="font-bold">${text||'Chưa nhập nội dung câu hỏi.'}</div>`+
+    (imgUrl?imagePreviewHTML({imageUrl:imgUrl}):'')+
     (type==='mc'?`<div class="mt-3 grid gap-2">${options.map((op,i)=>`<div class="option-card ${Number(ans)===i?'correct':''}"><b>${String.fromCharCode(65+i)}.</b> ${op}</div>`).join('')||'<p class="text-slate-500">Chưa nhập phương án.</p>'}</div>`:'')+
     (type==='tf'?`<div class="mt-3 grid gap-2">${statements.map((st,i)=>`<div class="option-card ${Array.isArray(ans)&&ans[i]?'correct':''}"><b>${String.fromCharCode(97+i)})</b> ${st}</div>`).join('')||'<p class="text-slate-500">Chưa nhập mệnh đề.</p>'}</div>`:'')+
     `<div class="mt-3 text-sm"><b>Đáp án:</b> ${safe($('qbeAnswer')?.value||'Chưa nhập')}</div>`;
@@ -1768,6 +1864,9 @@ async function saveQuestionBankItem(id=''){
     text:($('qbeText')?.value||'').trim(),
     answer:qBankParseAnswer(type,$('qbeAnswer')?.value||''),
     solution:($('qbeSolution')?.value||'').trim(),
+    imageUrl:($('qbeImageUrl')?.value||'').trim(),
+    imagePath:($('qbeImagePath')?.value||'').trim(),
+    imageStorage:($('qbeImageStorage')?.value||'').trim(),
     point:Number($('qbePoint')?.value||1),
     tags:($('qbeTags')?.value||'').split(',').map(x=>x.trim()).filter(Boolean),
     updatedAt:new Date().toISOString(),
@@ -2890,7 +2989,7 @@ function addPickedQuestionsToEditor(){
   document.querySelector('.bank-picker-modal')?.remove();refreshEditorQuestions();toast('Đã thêm '+added+' câu từ kho'+(skipped?', bỏ qua '+skipped+' câu đã có':''),'ok');
 }
 
-function refreshEditorQuestions(){const box=$('editorQuestions');if(!box)return;box.innerHTML=window.editorQ.map((q,i)=>`<div class="p-4 rounded-2xl border bg-white/60"><div class="flex justify-between"><b>Câu ${i+1} - ${q.type}</b><button onclick="editorQ.splice(${i},1);refreshEditorQuestions()" class="text-red-600">Xóa</button></div><textarea onchange="editorQ[${i}].text=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Nội dung câu hỏi">${safe(q.text||'')}</textarea><div class="grid md:grid-cols-[1fr_180px] gap-2 mt-2"><input onchange="editorQ[${i}].imageUrl=this.value" class="border rounded-xl p-2" placeholder="Link ảnh hoặc để trống" value="${safe(q.imageUrl||'')}"><label class="btn-soft px-3 py-2 rounded-xl text-center cursor-pointer">Tải ảnh<input type="file" accept="image/*" class="hidden" onchange="readQuestionImageFile(this,${i})"></label></div>${q.imageUrl?`<img src="${safe(q.imageUrl)}" class="question-image-thumb mt-2" alt="Ảnh câu hỏi">`:''}${editorFields(q,i)}<textarea onchange="editorQ[${i}].solution=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Lời giải">${safe(q.solution||'')}</textarea></div>`).join('')||'<p class="text-slate-500">Chưa có câu hỏi. Hãy thêm câu mới.</p>';typeset()}
+function refreshEditorQuestions(){const box=$('editorQuestions');if(!box)return;box.innerHTML=window.editorQ.map((q,i)=>`<div class="p-4 rounded-2xl border bg-white/60"><div class="flex justify-between"><b>Câu ${i+1} - ${q.type}</b><button onclick="editorQ.splice(${i},1);refreshEditorQuestions()" class="text-red-600">Xóa</button></div><textarea onchange="editorQ[${i}].text=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Nội dung câu hỏi">${safe(q.text||'')}</textarea><div class="grid md:grid-cols-[1fr_180px] gap-2 mt-2"><input onchange="editorQ[${i}].imageUrl=this.value" class="border rounded-xl p-2" placeholder="Link ảnh hoặc để trống" value="${safe(q.imageUrl||'')}"><label class="btn-soft px-3 py-2 rounded-xl text-center cursor-pointer">Tải ảnh<input type="file" accept="image/*" class="hidden" onchange="readQuestionImageFile(this,${i})"></label></div><div id="editorImageStatus_${i}" class="image-upload-status">${q.imageStorage==='firebase'?'Ảnh lưu trên Firebase Storage.':q.imageUrl?'Đã gắn ảnh.':'Có thể dán link ảnh hoặc tải ảnh từ máy.'}</div>${q.imageUrl?`<img src="${safe(q.imageUrl)}" class="question-image-thumb mt-2" alt="Ảnh câu hỏi">`:''}${editorFields(q,i)}<textarea onchange="editorQ[${i}].solution=this.value" class="w-full border rounded-xl p-2 mt-2" placeholder="Lời giải">${safe(q.solution||'')}</textarea></div>`).join('')||'<p class="text-slate-500">Chưa có câu hỏi. Hãy thêm câu mới.</p>';typeset()}
 function editorFields(q,i){if(q.type==='mc')return `<div class="grid md:grid-cols-2 gap-2 mt-2">${[0,1,2,3].map(k=>`<input onchange="editorQ[${i}].options[${k}]=this.value" class="border rounded-xl p-2" placeholder="Phương án ${'ABCD'[k]}" value="${safe(q.options?.[k]||'')}">`).join('')}</div><select onchange="editorQ[${i}].answer=Number(this.value)" class="border rounded-xl p-2 mt-2"><option value="0" ${q.answer==0?'selected':''}>Đáp án A</option><option value="1" ${q.answer==1?'selected':''}>Đáp án B</option><option value="2" ${q.answer==2?'selected':''}>Đáp án C</option><option value="3" ${q.answer==3?'selected':''}>Đáp án D</option></select>`; if(q.type==='tf')return `<div class="space-y-2 mt-2">${[0,1,2,3].map(k=>`<div class="grid md:grid-cols-[1fr_140px] gap-2"><input onchange="editorQ[${i}].statements[${k}]=this.value" class="border rounded-xl p-2" placeholder="Mệnh đề ${String.fromCharCode(97+k)}" value="${safe(q.statements?.[k]||'')}"><select onchange="editorQ[${i}].answer[${k}]=this.value==='true'" class="border rounded-xl p-2"><option value="true" ${q.answer?.[k]!==false?'selected':''}>Đúng</option><option value="false" ${q.answer?.[k]===false?'selected':''}>Sai</option></select></div>`).join('')}</div>`; return `<input onchange="editorQ[${i}].answer=this.value" class="border rounded-xl p-2 mt-2 w-full" placeholder="Đáp án ngắn" value="${safe(q.answer||'')}">`}
 function addEditorQuestion(type){const base={id:'q'+uid(),type,text:'',solution:''};if(type==='mc'){base.options=['','','',''];base.answer=0}else if(type==='tf'){base.statements=['','','',''];base.answer=[true,true,true,true]}else{base.answer=''}window.editorQ.push(base);refreshEditorQuestions()}
 async function saveExamEditor(id){
