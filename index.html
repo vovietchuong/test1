@@ -234,20 +234,28 @@ let firebaseStorageReady = !!(window.firebase && window.storage);
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}
 const $=id=>document.getElementById(id); const uid=()=>Date.now()+Math.floor(Math.random()*9999);
 const emailFromLogin=(v='')=>String(v).trim().includes('@')?String(v).trim():`${String(v).trim()}@mathpro12.edu.vn`;
-const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com','admin@mathpro12.edu.vn'];
+const ADMIN_EMAILS=['admin@mathpro12.edu.vn','admin@thionline2027.com'];
+const TEACHER_EMAILS=['giaovien@mathpro12.edu.vn','giaovien@thionline2027.com'];
 const SECURITY_VERSION='step-4-user-approval-audit-2026-04-25';
+function isSeedAdminEmail(email=''){
+  return ADMIN_EMAILS.includes(String(email).toLowerCase().trim());
+}
 function isSeedTeacherEmail(email=''){
-  return TEACHER_EMAILS.includes(String(email).toLowerCase().trim());
+  return TEACHER_EMAILS.includes(String(email).toLowerCase().trim()) || isSeedAdminEmail(email);
 }
 function detectRegisterRole(email='', requestedRole='student'){
   email=String(email).toLowerCase().trim();
   // Bước 3: bỏ mã giáo viên. Người đăng ký mới mặc định là học sinh.
   // Chỉ email có trong danh sách duyệt sẵn mới được tạo trực tiếp vai trò giáo viên.
+  if(isSeedAdminEmail(email)) return 'admin';
   if(requestedRole==='teacher' && isSeedTeacherEmail(email)) return 'teacher';
   return 'student';
 }
+function isAdminUser(user=currentUser){
+  return !!user && user.role==='admin';
+}
 function isTeacherUser(user=currentUser){
-  return !!user && user.role==='teacher';
+  return !!user && (user.role==='teacher' || user.role==='admin');
 }
 function canSeeSensitiveExamData(){
   return isTeacherUser(currentUser);
@@ -255,14 +263,17 @@ function canSeeSensitiveExamData(){
 function fbError(err){console.error(err); return err?.message||'Lỗi Firebase';}
 async function getUserProfile(user){
   if(!user) return null;
-  let fallbackRole=isSeedTeacherEmail(user.email||'')?'teacher':'student';
+  let fallbackRole=isSeedAdminEmail(user.email||'')?'admin':(isSeedTeacherEmail(user.email||'')?'teacher':'student');
   let profile={id:user.uid,username:user.email,fullname:user.displayName||user.email,role:fallbackRole,email:user.email,className:'Chưa phân lớp'};
   if(firebaseReady){
     const ref=db.collection('users').doc(user.uid);
     const snap=await ref.get();
     if(snap.exists){
       profile={...profile,...snap.data(),id:user.uid,email:user.email,username:user.email};
-      if(fallbackRole==='teacher' && profile.role!=='teacher'){
+      if(fallbackRole==='admin' && profile.role!=='admin'){
+        profile.role='admin';
+        await ref.set({role:'admin',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      }else if(fallbackRole==='teacher' && !['teacher','admin'].includes(profile.role)){
         profile.role='teacher';
         await ref.set({role:'teacher',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
       }
@@ -484,7 +495,8 @@ function save(){
 }
 async function load(){
   users=JSON.parse(localStorage.getItem('mathpro12_users')||'null')||[
-   {id:1,username:'giaovien@mathpro12.edu.vn',password:'giaovien',role:'teacher',fullname:'Giáo viên Toán'},
+   {id:'admin_local',username:'admin@mathpro12.edu.vn',password:'admin',role:'admin',fullname:'Quản trị hệ thống'},
+   {id:1,username:'giaovien@mathpro12.edu.vn',password:'giaovien',role:'teacher',fullname:'Giáo viên Toán',classNames:['12A1']},
    {id:2,username:'hs1@mathpro12.edu.vn',password:'123456',role:'student',fullname:'Nguyễn Văn An'},
    {id:3,username:'hs2@mathpro12.edu.vn',password:'123456',role:'student',fullname:'Trần Thị Bình'}
   ];
@@ -646,14 +658,14 @@ function antiCheatWarning(reason='Rời khỏi màn hình thi'){
 }
 function setMC(qid,idx){examAnswers[qid]=idx;saveExamProgress();document.querySelectorAll(`input[name="${qid}"]`).forEach(inp=>{const card=inp.closest('.option-card'); if(card) card.classList.toggle('selected',inp.checked);});updateExamProgressUI()}
 function setShort(qid,val){examAnswers[qid]=val;saveExamProgress();updateExamProgressUI()}
-function renderHeader(){const ui=$('userInfo');const theme=localStorage.getItem('mathpro12_theme')||'light';document.documentElement.dataset.theme=theme;ui.innerHTML=`<button onclick="toggleTheme()" class="btn-soft px-3 py-2 rounded-xl no-print"><i class="fa-solid ${theme==='dark'?'fa-sun':'fa-moon'}"></i></button>`+(currentUser?`<div class="flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-50/80"><i class="fa-solid fa-circle-user text-blue-600"></i><span class="font-semibold text-sm">${safe(currentUser.fullname||currentUser.username)}</span><span class="text-xs px-2 py-1 rounded-full bg-white">${currentUser.role==='teacher'?'Giáo viên':'Học sinh'}</span><button onclick="logout()" class="text-red-500 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button></div>`:`<button onclick="showLoginModal()" class="btn-primary text-white px-4 py-2 rounded-2xl no-print"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>`)}
+function renderHeader(){const ui=$('userInfo');const theme=localStorage.getItem('mathpro12_theme')||'light';document.documentElement.dataset.theme=theme;ui.innerHTML=`<button onclick="toggleTheme()" class="btn-soft px-3 py-2 rounded-xl no-print"><i class="fa-solid ${theme==='dark'?'fa-sun':'fa-moon'}"></i></button>`+(currentUser?`<div class="flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-50/80"><i class="fa-solid fa-circle-user text-blue-600"></i><span class="font-semibold text-sm">${safe(currentUser.fullname||currentUser.username)}</span><span class="text-xs px-2 py-1 rounded-full bg-white">${currentUser.role==='admin'?'Admin':(currentUser.role==='teacher'?'Giáo viên':'Học sinh')}</span><button onclick="logout()" class="text-red-500 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button></div>`:`<button onclick="showLoginModal()" class="btn-primary text-white px-4 py-2 rounded-2xl no-print"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>`)}
 function toggleTheme(){const n=(document.documentElement.dataset.theme==='dark')?'light':'dark';localStorage.setItem('mathpro12_theme',n);renderHeader()}
 async function logout(){
   try{ if(firebaseReady) await auth.signOut(); }catch(e){}
   currentUser=null; save(); renderHeader(); renderHome(); toast('Đã đăng xuất','ok');
 }
 function requireRole(role){if(!currentUser){showLoginModal();return false} if(role==='teacher'&&!isTeacherUser(currentUser)){toast('Tài khoản hiện tại không có quyền giáo viên','bad');return false} if(role&&role!=='teacher'&&currentUser.role!==role){toast('Tài khoản hiện tại không có quyền truy cập','bad');return false} return true}
-function renderHome(){setExamFocusMode(false);clearInterval(examTimer);$('mainView').innerHTML=`<section class="grid lg:grid-cols-[1.1fr_.9fr] gap-6 items-center fade-in"><div class="glass-card p-7 md:p-10"><span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold"><i class="fa-solid fa-bolt"></i> Nền tảng ôn thi Toán 12</span><h2 class="text-3xl md:text-5xl font-black mt-4 leading-tight">Ôn tập, thi online, quản lý điểm <span class="bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent">chuyên nghiệp</span></h2><p class="mt-4 text-lg" style="color:var(--muted)">Khách có thể xem bài giảng và kho đề. Học sinh đăng nhập để làm bài, xem lời giải. Giáo viên quản lý đề thi, điểm số và dữ liệu học sinh.</p><div class="flex flex-wrap gap-3 mt-6"><button onclick="renderLessons()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-book-open"></i> Xem bài giảng</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-pen"></i> Vào kho đề</button>${currentUser?.role==='teacher'?`<button onclick="renderTeacherDashboard()" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-chalkboard-user"></i> Quản lý</button>`:''}</div></div><div class="grid grid-cols-2 gap-4">${statCards()}</div></section><section class="mt-7 grid md:grid-cols-4 gap-4">${TOPICS.map(t=>`<button onclick="renderExamsPublic(${t.id})" class="glass-card p-5 text-left"><i class="fa-solid ${t.icon} text-2xl text-blue-600"></i><h3 class="font-bold mt-3">${t.name}</h3><p class="text-sm mt-1" style="color:var(--muted)">${exams.filter(e=>topicMatches(e.topicId,t.id)).length} đề thi</p></button>`).join('')}</section>`;typeset()}
+function renderHome(){setExamFocusMode(false);clearInterval(examTimer);$('mainView').innerHTML=`<section class="grid lg:grid-cols-[1.1fr_.9fr] gap-6 items-center fade-in"><div class="glass-card p-7 md:p-10"><span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold"><i class="fa-solid fa-bolt"></i> Nền tảng ôn thi Toán 12</span><h2 class="text-3xl md:text-5xl font-black mt-4 leading-tight">Ôn tập, thi online, quản lý điểm <span class="bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent">chuyên nghiệp</span></h2><p class="mt-4 text-lg" style="color:var(--muted)">Khách có thể xem bài giảng và kho đề. Học sinh đăng nhập để làm bài, xem lời giải. Giáo viên quản lý đề thi, điểm số và dữ liệu học sinh.</p><div class="flex flex-wrap gap-3 mt-6"><button onclick="renderLessons()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-book-open"></i> Xem bài giảng</button><button onclick="renderExamsPublic()" class="btn-soft px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-file-pen"></i> Vào kho đề</button>${isTeacherUser(currentUser)?`<button onclick="renderTeacherDashboard()" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-chalkboard-user"></i> Quản lý</button>`:''}</div></div><div class="grid grid-cols-2 gap-4">${statCards()}</div></section><section class="mt-7 grid md:grid-cols-4 gap-4">${TOPICS.map(t=>`<button onclick="renderExamsPublic(${t.id})" class="glass-card p-5 text-left"><i class="fa-solid ${t.icon} text-2xl text-blue-600"></i><h3 class="font-bold mt-3">${t.name}</h3><p class="text-sm mt-1" style="color:var(--muted)">${exams.filter(e=>topicMatches(e.topicId,t.id)).length} đề thi</p></button>`).join('')}</section>`;typeset()}
 function statCards(){const totalQ=exams.reduce((s,e)=>s+e.questions.length,0);return [['Đề thi',exams.length,'fa-file-lines'],['Câu hỏi',totalQ,'fa-circle-question'],['Học sinh',users.filter(u=>u.role==='student').length,'fa-users'],['Lượt làm',submissions.length,'fa-chart-simple']].map(x=>`<div class="glass-card p-5"><i class="fa-solid ${x[2]} text-blue-600 text-2xl"></i><p class="text-3xl font-black mt-2">${x[1]}</p><p class="text-sm" style="color:var(--muted)">${x[0]}</p></div>`).join('')}
 function renderLessons(){ setExamFocusMode(false); $('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">📚 Bài giảng ôn tập theo chủ đề</h2><div class="grid md:grid-cols-2 gap-5">${TOPICS.map(t=>`<article class="glass-card p-6"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl btn-primary text-white grid place-items-center"><i class="fa-solid ${t.icon}"></i></div><h3 class="font-bold text-lg">${t.name}</h3></div><ul class="mt-4 space-y-2 text-sm" style="color:var(--muted)"><li>• Tóm tắt công thức trọng tâm</li><li>• Ví dụ minh họa có lời giải</li><li>• Bài tập luyện tập theo mức độ</li></ul><button onclick="renderExamsPublic(${t.id})" class="mt-4 btn-soft px-4 py-2 rounded-xl font-semibold">Luyện đề chủ đề này</button></article>`).join('')}</div>`; }
 function renderExamsPublic(topic='all'){
@@ -676,7 +688,7 @@ async function doLogin(){
     document.querySelector('.fixed')?.remove();
     renderHeader();
     await loadExamsFromFirestore(); await loadQuestionBankFromFirestore(); await loadSubmissionsFromFirestore();
-    if(currentUser.role==='teacher') { await seedExamsToFirestore(); renderTeacherDashboard(); } else renderExamsPublic();
+    if(isTeacherUser(currentUser)) { await seedExamsToFirestore(); renderTeacherDashboard(); } else renderExamsPublic();
     toast('Đăng nhập Firebase thành công','ok');
   }catch(err){
     toast('Đăng nhập thất bại: '+fbError(err),'bad');
@@ -702,7 +714,7 @@ async function doRegister(){
     users.push(currentUser); save();
     document.querySelector('.fixed')?.remove();
     renderHeader();
-    if(role==='teacher'){ await seedExamsToFirestore(); renderTeacherDashboard(); toast('Đăng ký giáo viên thành công','ok'); }
+    if(role==='teacher'||role==='admin'){ await seedExamsToFirestore(); renderTeacherDashboard(); toast(role==='admin'?'Đăng ký admin thành công':'Đăng ký giáo viên thành công','ok'); }
     else{ renderExamsPublic(); toast('Đăng ký học sinh thành công','ok'); }
   }catch(err){
     toast('Đăng ký thất bại: '+fbError(err),'bad');
@@ -3716,6 +3728,197 @@ function renderStats(){
   const avg=avgOf(mine), warn=mine.reduce((s,x)=>s+(Number(x.warnings)||0),0);
   $('mainView').innerHTML=`<h2 class="text-3xl font-black mb-5">📊 Thống kê học tập</h2><section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Số bài đã làm',mine.length,'fa-file-pen')}${analyticsCard('Điểm trung bình',avg+'%','fa-chart-line','',avg>=70?'green':avg>=50?'amber':'red')}${analyticsCard('Cảnh báo',warn,'fa-shield-halved','',warn?'amber':'green')}${analyticsCard('Điểm cao nhất',mine.length?Math.max(...mine.map(s=>Number(s.percent)||0))+'%':'-','fa-trophy')}</section><div class="glass-card p-5 mb-5"><h3 class="font-black text-xl mb-3">Xu hướng điểm</h3>${weeklyTrendHTML(mine)}</div><div class="glass-card p-5 overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-2">Đề thi</th><th>Điểm</th><th>Cảnh báo</th><th>Ngày làm</th></tr></thead><tbody>${mine.map(s=>`<tr class="border-b"><td class="p-2">${safe(s.examTitle)}</td><td><b>${s.score}/${s.total}</b> (${s.percent}%)</td><td>${s.warnings||0}</td><td>${safe(s.date||'')}</td></tr>`).join('')||'<tr><td class="p-4" colspan="4">Chưa có dữ liệu.</td></tr>'}</tbody></table></div>`;
 }
+
+
+// ===== NÂNG CẤP ADMIN & PHÂN QUYỀN GIÁO VIÊN - 2026-04-26 =====
+function roleLabel(user=currentUser){return user?.role==='admin'?'Admin hệ thống':(user?.role==='teacher'?'Giáo viên':'Học sinh')}
+function requireRole(role){
+  if(!currentUser){showLoginModal();return false}
+  if(role==='admin'&&!isAdminUser(currentUser)){toast('Chỉ admin hệ thống mới được truy cập chức năng này','bad');return false}
+  if(role==='teacher'&&!isTeacherUser(currentUser)){toast('Tài khoản hiện tại không có quyền giáo viên','bad');return false}
+  if(role&&role!=='teacher'&&role!=='admin'&&currentUser.role!==role){toast('Tài khoản hiện tại không có quyền truy cập','bad');return false}
+  return true;
+}
+function teacherClassNames(user=currentUser){
+  if(isAdminUser(user)) return [...classes];
+  const arr=Array.isArray(user?.classNames)?user.classNames:(user?.className?[user.className]:[]);
+  return [...new Set(arr.map(x=>String(x||'').trim()).filter(Boolean))];
+}
+function isStudentInMyClass(u){return isAdminUser(currentUser)||teacherClassNames().includes(String(u?.className||'Chưa phân lớp'))}
+function scopedStudents(){return users.filter(u=>u.role==='student' && isStudentInMyClass(u));}
+function scopedSubmissions(){
+  if(isAdminUser(currentUser)) return submissions;
+  const cls=teacherClassNames();
+  return submissions.filter(s=>cls.includes(String(s.className||'')) || scopedStudents().some(u=>String(u.id)===String(s.studentId)));
+}
+function scopedExams(){
+  if(isAdminUser(currentUser)) return exams;
+  const me=String(currentUser?.id||currentUser?.email||currentUser?.username||'');
+  const cls=teacherClassNames();
+  return exams.filter(e=>String(e.createdBy||e.teacherId||'')===me || (Array.isArray(e.classIds)&&e.classIds.some(c=>cls.includes(String(c)))) || !e.createdBy);
+}
+function scopedQuestions(){
+  if(isAdminUser(currentUser)) return questionBank;
+  const me=String(currentUser?.id||currentUser?.email||currentUser?.username||'');
+  return questionBank.filter(q=>String(q.createdBy||q.teacherId||'')===me || !q.createdBy);
+}
+function adminOnlyGuard(){ if(!isAdminUser(currentUser)){toast('Chức năng quan trọng này chỉ dành cho admin hệ thống','bad');return false} return true; }
+function normalizeTeacherOwnership(obj={}){
+  if(!obj.createdBy) obj.createdBy=currentUser?.id||currentUser?.email||null;
+  if(!obj.teacherId) obj.teacherId=currentUser?.id||currentUser?.email||null;
+  if(!obj.teacherName) obj.teacherName=currentUser?.fullname||currentUser?.email||'';
+  if(!Array.isArray(obj.classIds)||!obj.classIds.length){
+    const tc=teacherClassNames(); if(tc.length&&!isAdminUser(currentUser)) obj.classIds=[...tc];
+  }
+  return obj;
+}
+function scopeWarningHTML(){
+  if(isAdminUser(currentUser)) return `<div class="p-4 rounded-2xl bg-indigo-50 text-indigo-700 border border-indigo-100 mb-5"><b><i class="fa-solid fa-crown"></i> Admin hệ thống:</b> có quyền quản trị toàn bộ người dùng, dữ liệu, bảo mật, sao lưu và khôi phục.</div>`;
+  return `<div class="p-4 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 mb-5"><b><i class="fa-solid fa-user-lock"></i> Phạm vi giáo viên:</b> chỉ quản lý học sinh thuộc lớp <b>${safe(teacherClassNames().join(', ')||'chưa gán')}</b>, được thêm câu hỏi và tạo đề; không truy cập phân quyền, backup/restore, rules bảo mật và công cụ hệ thống.</div>`;
+}
+
+// khóa các chức năng quan trọng cho admin
+const __oldRenderUserManager=typeof renderUserManager==='function'?renderUserManager:null;
+renderUserManager=function(){ if(!adminOnlyGuard())return; return __oldRenderUserManager&&__oldRenderUserManager(); }
+const __oldExportBackupJSON=typeof exportBackupJSON==='function'?exportBackupJSON:null;
+exportBackupJSON=function(){ if(!adminOnlyGuard())return; return __oldExportBackupJSON&&__oldExportBackupJSON(); }
+const __oldExportBackupWithFirestore=typeof exportBackupWithFirestore==='function'?exportBackupWithFirestore:null;
+if(__oldExportBackupWithFirestore) exportBackupWithFirestore=function(){ if(!adminOnlyGuard())return; return __oldExportBackupWithFirestore(); }
+const __oldRenderDataTools=typeof renderDataTools==='function'?renderDataTools:null;
+renderDataTools=function(){ if(!adminOnlyGuard())return; return __oldRenderDataTools&&__oldRenderDataTools(); }
+const __oldShowSecurityRules=typeof showSecurityRules==='function'?showSecurityRules:null;
+showSecurityRules=function(){ if(!adminOnlyGuard())return; return __oldShowSecurityRules&&__oldShowSecurityRules(); }
+const __oldRestoreFullSystemBackupNow=typeof restoreFullSystemBackupNow==='function'?restoreFullSystemBackupNow:null;
+if(__oldRestoreFullSystemBackupNow) restoreFullSystemBackupNow=async function(){ if(!adminOnlyGuard())return; return await __oldRestoreFullSystemBackupNow(); }
+const __oldUpdateUserRole=typeof updateUserRole==='function'?updateUserRole:null;
+if(__oldUpdateUserRole) updateUserRole=async function(userId,newRole){ if(!adminOnlyGuard())return; return await __oldUpdateUserRole(userId,newRole); }
+const __oldApproveAllTeacherRequests=typeof approveAllTeacherRequests==='function'?approveAllTeacherRequests:null;
+if(__oldApproveAllTeacherRequests) approveAllTeacherRequests=async function(){ if(!adminOnlyGuard())return; return await __oldApproveAllTeacherRequests(); }
+const __oldRejectTeacherRequest=typeof rejectTeacherRequest==='function'?rejectTeacherRequest:null;
+if(__oldRejectTeacherRequest) rejectTeacherRequest=async function(userId){ if(!adminOnlyGuard())return; return await __oldRejectTeacherRequest(userId); }
+
+// gắn chủ sở hữu khi đồng bộ kho câu hỏi / đề
+const __oldSyncExamQuestionsToQuestionBank=syncExamQuestionsToQuestionBank;
+syncExamQuestionsToQuestionBank=async function(examData){ normalizeTeacherOwnership(examData); (examData.questions||[]).forEach(q=>normalizeTeacherOwnership(q)); return await __oldSyncExamQuestionsToQuestionBank(examData); }
+const __oldSyncExamStructureToFirestore=syncExamStructureToFirestore;
+syncExamStructureToFirestore=async function(examData){ normalizeTeacherOwnership(examData); return await __oldSyncExamStructureToFirestore(examData); }
+
+function adminDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows){
+  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-crown"></i> Admin</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm quản trị toàn hệ thống</h2><p style="color:var(--muted)">Quản lý người dùng, phân quyền, dữ liệu, bảo mật, câu hỏi, đề thi và kết quả toàn trường.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderDataTools()" class="bg-slate-800 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> Công cụ dữ liệu</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Rules</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Toàn hệ thống')}${analyticsCard('Giáo viên',users.filter(u=>u.role==='teacher').length,'fa-chalkboard-user','Đang hoạt động')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Toàn hệ thống')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh & lớp','fa-users-gear','renderClassManager()','btn-primary text-white')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi toàn hệ thống</h3><p class="text-sm" style="color:var(--muted)">Admin thấy tất cả đề, có quyền kiểm tra và điều phối.</p></div><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div>${examManagerHTML()}</section></div>`;
+}
+function teacherScopedDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows){
+  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</span><h2 class="text-3xl md:text-4xl font-black mt-2">Bảng quản lý lớp của giáo viên</h2><p style="color:var(--muted)">Theo dõi học sinh lớp mình, thêm câu hỏi, tạo đề và xem kết quả trong phạm vi được phân công.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh lớp mình</button><button onclick="openExamEditor()" class="bg-blue-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo đề</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-box-archive"></i> Kho câu hỏi</button></div></div><section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh lớp mình',totalStudents,'fa-user-graduate','Theo lớp được gán')}${analyticsCard('Đề liên quan',scopedExams().length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Câu hỏi của mình',totalQuestions,'fa-database','Có thể thêm/sửa')}${analyticsCard('Lớp được gán',teacherClassNames().length,'fa-school',teacherClassNames().join(', ')||'Chưa gán')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác giáo viên được phép</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Nhập câu hỏi từ file','fa-file-import',"openQuestionImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh lớp mình','fa-users-gear','renderClassManager()','btn-primary text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây của lớp mình</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi của giáo viên</h3><p class="text-sm" style="color:var(--muted)">Chỉ hiển thị đề do giáo viên tạo hoặc giao cho lớp mình.</p></div><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div>${examManagerHTML()}</section></div>`;
+}
+renderTeacherDashboard=function(){
+  if(!requireRole('teacher'))return;
+  const originalExams=exams, originalSubmissions=submissions, originalQuestionBank=questionBank;
+  if(!isAdminUser(currentUser)){exams=scopedExams();submissions=scopedSubmissions();questionBank=scopedQuestions();}
+  const totalStudents=scopedStudents().length;
+  const totalQuestions=questionBank.length || exams.reduce((sum,e)=>sum+((e.questions||[]).length||0),0);
+  const publishedCount=exams.filter(e=>normalizeExamAccess(e).isPublished!==false).length;
+  const draftCount=exams.length-publishedCount;
+  const actionBtn=(text,icon,fn,cls='btn-soft')=>`<button onclick="${fn}" class="${cls} px-4 py-3 rounded-2xl font-bold text-left flex items-center justify-between gap-3"><span><i class="fa-solid ${icon} mr-2"></i>${text}</span><i class="fa-solid fa-chevron-right text-xs opacity-60"></i></button>`;
+  const recentRows=scopedSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
+  $('mainView').innerHTML=isAdminUser(currentUser)?adminDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows):teacherScopedDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows);
+  exams=originalExams; submissions=originalSubmissions; questionBank=originalQuestionBank;
+  typeset();
+}
+
+// giáo viên chỉ thấy học sinh lớp mình trong quản lý lớp
+const __oldRenderClassManager=renderClassManager;
+renderClassManager=function(){
+  if(!requireRole('teacher'))return;
+  if(isAdminUser(currentUser)) return __oldRenderClassManager();
+  const oldUsers=users, oldClasses=classes;
+  users=users.filter(u=>u.role!=='student'||isStudentInMyClass(u));
+  classes=teacherClassNames();
+  const r=__oldRenderClassManager();
+  users=oldUsers; classes=oldClasses;
+  return r;
+}
+const __oldApplyStudentFilters=applyStudentFilters;
+applyStudentFilters=function(){
+  if(isAdminUser(currentUser)) return __oldApplyStudentFilters();
+  const oldUsers=users, oldClasses=classes;
+  users=users.filter(u=>u.role!=='student'||isStudentInMyClass(u)); classes=teacherClassNames();
+  const r=__oldApplyStudentFilters(); users=oldUsers; classes=oldClasses; return r;
+}
+const __oldRenderStudentDetail=renderStudentDetail;
+renderStudentDetail=function(userId){
+  const u=users.find(x=>String(x.id)===String(userId));
+  if(!isAdminUser(currentUser)&&!isStudentInMyClass(u)){toast('Giáo viên chỉ xem được học sinh thuộc lớp mình','bad');return;}
+  return __oldRenderStudentDetail(userId);
+}
+const __oldUpdateStudentClass=updateStudentClass;
+updateStudentClass=async function(userId,className){
+  const u=users.find(x=>String(x.id)===String(userId));
+  if(!isAdminUser(currentUser)&&!isStudentInMyClass(u)){toast('Không được sửa học sinh ngoài lớp mình','bad');return;}
+  if(!isAdminUser(currentUser)&&!teacherClassNames().includes(String(className))){toast('Giáo viên chỉ được gán học sinh vào lớp mình phụ trách','bad');return;}
+  return await __oldUpdateStudentClass(userId,className);
+}
+
+
+
+// Ghi đè nội dung Firestore Rules theo mô hình admin/teacher/student mới
+showSecurityRules=function(){
+  if(!adminOnlyGuard())return;
+  const rules=`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn(){ return request.auth != null; }
+    function myUser(){ return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function myRole(){ return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? myUser().data.role : 'guest'; }
+    function isAdmin(){ return myRole() == 'admin'; }
+    function isTeacher(){ return myRole() == 'teacher' || isAdmin(); }
+    function isOwner(userId){ return signedIn() && request.auth.uid == userId; }
+    function sameTeacher(){ return isTeacher() && (resource.data.createdBy == request.auth.uid || resource.data.teacherId == request.auth.uid || isAdmin()); }
+    function sameTeacherNew(){ return isTeacher() && (request.resource.data.createdBy == request.auth.uid || request.resource.data.teacherId == request.auth.uid || isAdmin()); }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isTeacher();
+      allow create: if isOwner(userId) && request.resource.data.role in ['student','teacher'];
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /questionBanks/{questionId} {
+      allow read: if signedIn();
+      allow create: if isTeacher() && sameTeacherNew();
+      allow update, delete: if isAdmin() || sameTeacher();
+    }
+
+    match /exams/{examId} {
+      allow read: if true;
+      allow create: if isTeacher() && sameTeacherNew();
+      allow update, delete: if isAdmin() || sameTeacher();
+    }
+
+    match /examQuestions/{id} {
+      allow read: if signedIn();
+      allow create: if isTeacher();
+      allow update, delete: if isAdmin() || isTeacher();
+    }
+
+    match /examSessions/{sessionId} {
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
+      allow update: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
+      allow delete: if isAdmin();
+    }
+
+    match /examResults/{resultId} {
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
+      allow update, delete: if isAdmin();
+    }
+  }
+}`;
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">Firestore Rules theo mô hình Admin - Giáo viên - Học sinh</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><p class="my-3 text-sm" style="color:var(--muted)">Dán đoạn này vào Firebase Console → Firestore Database → Rules. Admin có quyền toàn hệ thống; giáo viên chỉ tạo/sửa dữ liệu có createdBy/teacherId của mình; học sinh chỉ tạo phiên làm bài và đọc điểm của mình.</p><textarea class="w-full h-[520px] border rounded-2xl p-4 font-mono text-sm">${rules}</textarea></div>`;
+  document.body.appendChild(m);
+}
+
 
 async function bootstrap(){
   $('mainView').innerHTML='<div class="glass-card p-8 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-3 font-semibold">Đang kết nối Firebase và tải dữ liệu...</p></div>';
