@@ -382,7 +382,7 @@ async function syncExamStructureToFirestore(examData){
   await batch.commit();
 }
 async function migrateAllExamStructures(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   try{
     for(const e of exams){await syncExamStructureToFirestore(e);}
     toast('Đã tạo cấu trúc examQuestions cho tất cả đề','ok');
@@ -1090,7 +1090,7 @@ function exportQuestionBankExcel(onlyFiltered=false){
   toast(`Đã xuất ${items.length} câu hỏi ra file Excel`,'ok');
 }
 async function syncQuestionBankToFirestore(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   qBankNormalizeList();
   if(!firebaseReady)return toast('Firebase chưa sẵn sàng, dữ liệu đã lưu local nhưng chưa đồng bộ cloud','bad');
   try{
@@ -1106,7 +1106,7 @@ async function syncQuestionBankToFirestore(){
 
 
 function openClearQuestionBankModal(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const total=questionBank.length;
   const m=document.createElement('div');
   m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] grid place-items-center p-4 fade-in';
@@ -1153,7 +1153,7 @@ async function deleteFirestoreCollectionInBatches(collectionName){
   return deleted;
 }
 async function clearAllQuestionBankNow(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const typed=String($('clearQuestionBankConfirmText')?.value||'').trim().toUpperCase();
   if(typed!=='XOA TOAN BO') return toast('Thầy cần nhập đúng chữ XOA TOAN BO để xác nhận','bad');
   const clearLinks=!!$('clearQuestionBankLinks')?.checked;
@@ -1206,7 +1206,7 @@ function downloadJSONFile(obj,filename){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},300);
 }
 async function exportFullSystemBackup(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   qBankNormalizeList();
   const payload=systemBackupLocalPayload();
   if(firebaseReady){
@@ -1220,7 +1220,7 @@ async function exportFullSystemBackup(){
   save();toast('Đã xuất file sao lưu toàn hệ thống','ok');
 }
 function openSystemRestoreModal(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[95] grid place-items-center p-4 fade-in';
   m.innerHTML=`<div class="glass-card w-full max-w-3xl p-6 relative">
     <button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button>
@@ -1247,7 +1247,7 @@ async function batchSetCollection(collectionName,items){
   await batch.commit();return count;
 }
 async function restoreFullSystemBackupNow(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const confirm=String($('systemRestoreConfirm')?.value||'').trim().toUpperCase();
   if(confirm!=='KHOI PHUC') return toast('Thầy cần nhập đúng chữ KHOI PHUC để xác nhận','bad');
   try{
@@ -1564,11 +1564,11 @@ function qBankCard(q,idx){
     </div>
     <div class="mt-3 p-3 rounded-2xl bg-blue-50/70 text-sm ${q.solution?'':'hidden'}"><b>Lời giải:</b><div class="math-content">${q.solution||''}</div></div>
     <div class="flex flex-wrap gap-2 mt-4">
-      <button onclick="openQuestionEditorModal('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-pen"></i> Sửa</button>
-      <button onclick="duplicateQuestionBankItem('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-copy"></i> Nhân bản</button>
-      <button onclick="toggleQuestionStatus('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-toggle-on"></i> Đổi trạng thái</button>
+      ${canModifyQuestionBankItem(q)?`<button onclick="openQuestionEditorModal('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-pen"></i> Sửa</button>`:''}
+      <button onclick="duplicateQuestionBankItem('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-copy"></i> Nhân bản để tạo đề</button>
+      ${canModifyQuestionBankItem(q)?`<button onclick="toggleQuestionStatus('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-toggle-on"></i> Đổi trạng thái</button>`:''}
       <button onclick="openQuestionVersionHistory('${safe(q.id)}')" class="exam-action-btn"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</button>
-      <button onclick="deleteQuestionBankItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash"></i> Xóa</button>
+      ${questionBankDangerAllowed()?`<button onclick="deleteQuestionBankItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash"></i> Xóa</button>`:''}
     </div>
   </article>`;
 }
@@ -1586,27 +1586,30 @@ function renderQuestionBank(){
   const qualityStats=qBankQualityStats();
   const perfStats=qBankPerformanceSummary();
   window.qBankDuplicateMap=qBankDuplicateIds();
+  const adminDangerButtons=isAdminUser(currentUser)?`
+        <button onclick="exportFullSystemBackup()" class="bg-slate-900 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Sao lưu hệ thống</button>
+        <button onclick="openSystemRestoreModal()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục</button>
+        <button onclick="syncQuestionBankToFirestore()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ Firestore</button>
+        <button onclick="openQuestionBankTrashModal()" class="bg-amber-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-recycle"></i> Thùng rác (${(deletedQuestionBank||[]).length})</button>
+        <button onclick="openClearQuestionBankModal()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa toàn bộ kho</button>`:'';
   $('mainView').innerHTML=`<div class="fade-in">
+    ${teacherQuestionBankNotice()}
     <div class="flex flex-wrap justify-between items-start gap-3 mb-5">
       <div>
         <span class="mini-badge"><i class="fa-solid fa-database"></i> Quản lý câu hỏi</span>
         <h2 class="text-3xl md:text-4xl font-black mt-2">Ngân hàng câu hỏi chuyên nghiệp</h2>
-        <p style="color:var(--muted)">Tạo, sửa, lọc, nhân bản và đồng bộ câu hỏi lên Firestore. Học sinh không thấy đáp án/lời giải.</p>
+        <p style="color:var(--muted)">Tạo, sửa, lọc và chọn câu hỏi để tạo đề. Giáo viên không thấy các thao tác nguy hiểm như xóa, đồng bộ hay khôi phục hệ thống.</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button onclick="openQuestionEditorModal()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo câu hỏi</button>
         <button onclick="openAutoExamBuilder()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo đề tự động</button>
         <button onclick="openQuestionPerformanceModal()" class="bg-purple-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-chart-line"></i> Phân tích câu hỏi</button>
-        <button onclick="exportFullSystemBackup()" class="bg-slate-900 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Sao lưu hệ thống</button>
-        <button onclick="openSystemRestoreModal()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục</button>
         <button onclick="exportQuestionBankExcel(false)" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-excel"></i> Xuất Excel</button>
         <button onclick="exportQuestionBankExcel(true)" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-filter"></i> Xuất theo lọc</button>
         <button onclick="openQuestionImportModal('bank')" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-import"></i> Nhập/đồng bộ Excel</button>
         <button onclick="openWordImportModal()" class="bg-blue-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-word"></i> Nhập Word</button>
         <button onclick="openLatexImportModal('bank')" class="bg-cyan-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button>
-        <button onclick="syncQuestionBankToFirestore()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ Firestore</button>
-        <button onclick="openQuestionBankTrashModal()" class="bg-amber-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-recycle"></i> Thùng rác (${(deletedQuestionBank||[]).length})</button>
-        <button onclick="openClearQuestionBankModal()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa toàn bộ kho</button>
+        ${adminDangerButtons}
         <button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl">Quay lại</button>
       </div>
     </div>
@@ -1785,7 +1788,9 @@ async function qBankDeleteDuplicateCopies(){
 
 function openQuestionEditorModal(id=''){
   if(!requireRole('teacher'))return;
-  const q=questionBank.find(x=>String(x.id)===String(id))||{id:'',type:'mc',topicId:TOPICS[0]?.id||'',level:'Nhận biết',status:'published',point:1,tags:[]};
+  const existing=questionBank.find(x=>String(x.id)===String(id));
+  if(existing && !canModifyQuestionBankItem(existing)) return toast('Giáo viên chỉ được sửa câu hỏi do mình tạo. Thầy có thể bấm Nhân bản để tạo bản riêng rồi đưa vào đề.','bad');
+  const q=existing||{id:'',type:'mc',topicId:TOPICS[0]?.id||'',level:'Nhận biết',status:'published',point:1,tags:[]};
   const m=document.createElement('div');
   m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
   m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6">
@@ -1874,6 +1879,8 @@ function qBankPreviewEditor(){
 }
 async function saveQuestionBankItem(id=''){
   if(!requireRole('teacher'))return;
+  const oldQuestion=questionBank.find(x=>String(x.id)===String(id));
+  if(oldQuestion && !canModifyQuestionBankItem(oldQuestion)) return toast('Giáo viên chỉ được lưu chỉnh sửa câu hỏi do mình tạo.','bad');
   const type=$('qbeType')?.value||'mc';
   const topicId=$('qbeTopic')?.value||'';
   const options=($('qbeOptions')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
@@ -1937,7 +1944,7 @@ async function toggleQuestionStatus(id){
   save(); renderQuestionBank(); toast('Đã đổi trạng thái câu hỏi','ok');
 }
 async function deleteQuestionBankItem(id){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const q=questionBank.find(x=>String(x.id)===String(id));
   if(!q)return toast('Không tìm thấy câu hỏi cần xóa','bad');
   const reason=prompt('Xóa mềm câu hỏi này vào thùng rác. Nhập lý do xóa hoặc để trống:','');
@@ -1961,7 +1968,7 @@ function deletedQuestionBankCard(q,idx){
   return `<article class="exam-admin-card"><div class="flex flex-wrap justify-between gap-2"><div class="flex flex-wrap gap-2"><span class="mini-badge"><i class="fa-solid fa-recycle"></i> ${idx+1}</span><span class="mini-badge">${qBankTypeLabel(q.type)}</span><span class="mini-badge">${safe(q.level||'')}</span></div><span class="text-xs" style="color:var(--muted)">ID: ${safe(q.id)}</span></div><div class="mt-2 text-xs" style="color:var(--muted)">Xóa lúc: ${q.deletedAt?new Date(q.deletedAt).toLocaleString('vi-VN'):'Không rõ'} • Người xóa: ${safe(q.deletedBy||'')} • Lý do: ${safe(q.deleteReason||'')}</div><div class="mt-3 text-sm text-blue-700 font-bold">${safe(q.topicName||topicName(q.topicId)||'Chưa có chủ đề')}</div><div class="math-content mt-2 font-semibold">${q.text||''}</div><div class="flex flex-wrap gap-2 mt-4"><button onclick="restoreQuestionBankItem('${safe(q.id)}')" class="bg-green-600 text-white px-3 py-2 rounded-xl text-sm font-bold"><i class="fa-solid fa-rotate-left"></i> Khôi phục</button><button onclick="hardDeleteQuestionBankTrashItem('${safe(q.id)}')" class="exam-action-btn exam-action-danger"><i class="fa-solid fa-trash-can"></i> Xóa vĩnh viễn</button></div></article>`;
 }
 function openQuestionBankTrashModal(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const items=deletedQuestionBank||[];
   const m=document.createElement('div');
   m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 p-4 overflow-auto fade-in';
@@ -1969,7 +1976,7 @@ function openQuestionBankTrashModal(){
   document.body.appendChild(m); typeset();
 }
 async function restoreQuestionBankItem(id){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const q=(deletedQuestionBank||[]).find(x=>String(x.id)===String(id));
   if(!q)return toast('Không tìm thấy câu trong thùng rác','bad');
   const restored={...JSON.parse(JSON.stringify(q)),status:q.status||'draft',updatedAt:new Date().toISOString(),restoredAt:new Date().toISOString(),restoredBy:currentUser?.email||currentUser?.username||''};
@@ -1984,7 +1991,7 @@ async function restoreQuestionBankItem(id){
   save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); openQuestionBankTrashModal(); toast('Đã khôi phục câu hỏi','ok');
 }
 async function restoreAllQuestionBankTrash(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   if(!(deletedQuestionBank||[]).length)return toast('Thùng rác đang trống','info');
   if(!confirm('Khôi phục toàn bộ câu hỏi trong thùng rác?'))return;
   const items=[...(deletedQuestionBank||[])];
@@ -1996,7 +2003,7 @@ async function restoreAllQuestionBankTrash(){
   save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); toast('Đã khôi phục tất cả câu hỏi','ok');
 }
 async function hardDeleteQuestionBankTrashItem(id){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   if(!confirm('Xóa vĩnh viễn câu hỏi này khỏi thùng rác?'))return;
   deletedQuestionBank=(deletedQuestionBank||[]).filter(x=>String(x.id)!==String(id));
   localStorage.setItem('mathpro12_deletedQuestionBank',JSON.stringify(deletedQuestionBank));
@@ -2004,7 +2011,7 @@ async function hardDeleteQuestionBankTrashItem(id){
   save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); openQuestionBankTrashModal(); toast('Đã xóa vĩnh viễn','ok');
 }
 async function emptyQuestionBankTrash(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   if(!(deletedQuestionBank||[]).length)return toast('Thùng rác đang trống','info');
   const code=prompt('Để xóa vĩnh viễn toàn bộ thùng rác, nhập: XOA VINH VIEN');
   if(code!=='XOA VINH VIEN')return toast('Đã hủy xóa vĩnh viễn','info');
@@ -2015,7 +2022,7 @@ async function emptyQuestionBankTrash(){
   save(); document.querySelector('.fixed')?.remove(); renderQuestionBank(); toast('Đã làm trống thùng rác','ok');
 }
 async function migrateAllQuestionsToBank(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   try{
     for(const e of exams){await syncExamQuestionsToQuestionBank(e);}
     await loadQuestionBankFromFirestore();
@@ -3031,6 +3038,7 @@ async function saveExamEditor(id){
   document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã lưu đề thi','ok');
 }
 async function deleteExam(id){
+  if(!adminDangerGuard())return;
   if(confirm('Xóa đề này và các điểm liên quan?')){
     exams=exams.filter(e=>String(e.id)!=String(id));
     submissions=submissions.filter(s=>String(s.examId)!=String(id));
@@ -3040,6 +3048,7 @@ async function deleteExam(id){
   }
 }
 function showSecurityRules(){
+  if(!adminDangerGuard())return;
   const rules=`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -3495,6 +3504,7 @@ function buildBackupObject(){
   return {version:'MathPro12-step5',exportedAt:new Date().toISOString(),users,exams,submissions,questionBank,classes,auditLogs,meta:{totalUsers:users.length,totalExams:exams.length,totalResults:submissions.length,totalQuestions:questionBank.length}};
 }
 function exportBackupJSON(){
+  if(!adminDangerGuard())return;
   const data=JSON.stringify(buildBackupObject(),null,2);
   const blob=new Blob([data],{type:'application/json;charset=utf-8'});
   const a=document.createElement('a');
@@ -3505,6 +3515,7 @@ function exportBackupJSON(){
   toast('Đã xuất file sao lưu JSON','ok');
 }
 function importBackupJSON(input){
+  if(!adminDangerGuard())return;
   const file=input.files&&input.files[0]; if(!file)return;
   const reader=new FileReader();
   reader.onload=()=>{
@@ -3526,7 +3537,7 @@ function importBackupJSON(input){
   reader.readAsText(file);
 }
 async function syncLocalDataToFirestore(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   if(!firebaseReady) return toast('Firebase chưa sẵn sàng','bad');
   if(!confirm('Đồng bộ đề thi, kho câu hỏi, lớp học và hồ sơ người dùng local lên Firestore?')) return;
   try{
@@ -3538,7 +3549,7 @@ async function syncLocalDataToFirestore(){
   }catch(err){toast('Đồng bộ thất bại: '+fbError(err),'bad');}
 }
 function renderDataTools(){
-  if(!requireRole('teacher'))return;
+  if(!adminDangerGuard())return;
   const issues=dataQualityReport();
   const issueRows=issues.map(x=>`<tr class="border-b"><td class="p-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${x.level==='bad'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}">${x.level==='bad'?'Lỗi':'Cảnh báo'}</span></td><td class="p-3">${safe(x.group)}</td><td class="p-3">${safe(x.msg)}</td><td class="p-3"><b>${safe(x.ref||'')}</b></td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-green-600 font-semibold">Dữ liệu chưa phát hiện lỗi.</td></tr>';
   $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-screwdriver-wrench"></i> Bước 5</span><h2 class="text-3xl font-black mt-2">Công cụ vận hành dữ liệu</h2><p style="color:var(--muted)">Sao lưu, phục hồi, kiểm tra lỗi dữ liệu và đồng bộ Firestore.</p></div><button onclick="renderTeacherDashboard()" class="btn-soft px-4 py-2 rounded-2xl font-bold">Quay lại dashboard</button></div><section class="grid md:grid-cols-4 gap-4 mb-5">${analyticsCard('Người dùng',users.length,'fa-users')}${analyticsCard('Đề thi',exams.length,'fa-file-lines')}${analyticsCard('Câu hỏi',questionBank.length,'fa-database')}${analyticsCard('Bài làm',submissions.length,'fa-chart-simple')}</section><section class="grid lg:grid-cols-3 gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Sao lưu dữ liệu</h3><p class="text-sm mb-4" style="color:var(--muted)">Xuất toàn bộ dữ liệu local ra file JSON để lưu trữ an toàn.</p><button onclick="exportBackupJSON()" class="btn-primary text-white px-4 py-3 rounded-2xl font-bold w-full"><i class="fa-solid fa-download"></i> Xuất backup JSON</button></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Phục hồi dữ liệu</h3><p class="text-sm mb-4" style="color:var(--muted)">Chọn file backup JSON đã xuất từ hệ thống MathPro 12.</p><input type="file" accept="application/json,.json" onchange="importBackupJSON(this)" class="w-full px-4 py-3 rounded-2xl border bg-white"></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Đồng bộ Firestore</h3><p class="text-sm mb-4" style="color:var(--muted)">Đẩy dữ liệu local quan trọng lên Firestore, phù hợp khi thầy nhập dữ liệu offline trước.</p><button onclick="syncLocalDataToFirestore()" class="bg-emerald-600 text-white px-4 py-3 rounded-2xl font-bold w-full"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ lên Firestore</button></div></section><section class="glass-card p-5"><h3 class="font-black text-xl mb-3">Bảng kiểm tra lỗi dữ liệu</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Mức</th><th class="p-3">Nhóm</th><th class="p-3">Nội dung</th><th class="p-3">Đối tượng</th></tr></thead><tbody>${issueRows}</tbody></table></div></section></div>`;
@@ -3763,6 +3774,19 @@ function scopedQuestions(){
   return questionBank.filter(q=>String(q.createdBy||q.teacherId||'')===me || !q.createdBy);
 }
 function adminOnlyGuard(){ if(!isAdminUser(currentUser)){toast('Chức năng quan trọng này chỉ dành cho admin hệ thống','bad');return false} return true; }
+
+function questionBankDangerAllowed(){return isAdminUser(currentUser);}
+function adminDangerGuard(){return adminOnlyGuard();}
+function canModifyQuestionBankItem(q={}){
+  if(isAdminUser(currentUser)) return true;
+  const me=String(currentUser?.id||currentUser?.email||currentUser?.username||'');
+  const owner=String(q.createdBy||q.teacherId||'');
+  // Giáo viên được sửa câu của mình hoặc câu cũ chưa có chủ sở hữu để đảm bảo tương thích dữ liệu cũ.
+  return !!currentUser && currentUser.role==='teacher' && (!owner || owner===me);
+}
+function teacherQuestionBankNotice(){
+  return isAdminUser(currentUser)?'' : '<div class="mb-4 p-4 rounded-2xl border border-blue-200 bg-blue-50 text-blue-800 text-sm"><b><i class="fa-solid fa-circle-info"></i> Quyền giáo viên:</b> được xem kho câu hỏi để chọn câu tạo đề, được thêm/sửa/nhân bản câu hỏi của mình. Các thao tác nguy hiểm như xóa, thùng rác, đồng bộ Firestore, sao lưu/khôi phục hệ thống và xóa toàn bộ kho đã được ẩn và khóa.</div>';
+}
 function normalizeTeacherOwnership(obj={}){
   if(!obj.createdBy) obj.createdBy=currentUser?.id||currentUser?.email||null;
   if(!obj.teacherId) obj.teacherId=currentUser?.id||currentUser?.email||null;
