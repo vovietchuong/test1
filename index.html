@@ -3090,14 +3090,22 @@ function geminiResponseText(data={}){
 }
 async function callGeminiGenerateContent({apiKey,model,systemText,userParts,responseSchema,temperature=0.05}){
   if(!apiKey) throw new Error('Chưa nhập Gemini API key hoặc chưa cấu hình backend AI.');
+  const safeModel=(model||SMART_IMPORT_DEFAULT_MODEL||'gemini-2.5-flash').trim();
   const body={
     systemInstruction:{parts:[{text:systemText||smartImportSystemPrompt()}]},
     contents:[{role:'user',parts:userParts}],
     generationConfig:{temperature,responseMimeType:'application/json',responseSchema:responseSchema||smartQuestionJsonSchema()}
   };
-  const res=await fetch(`${SMART_IMPORT_GEMINI_API_BASE}/${encodeURIComponent(model||SMART_IMPORT_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const data=await res.json();
-  if(!res.ok) throw new Error(data?.error?.message||'Không gọi được Gemini API');
+  const res=await fetch(`${SMART_IMPORT_GEMINI_API_BASE}/${encodeURIComponent(safeModel)}:generateContent`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},
+    body:JSON.stringify(body)
+  });
+  let data={}; try{data=await res.json();}catch(e){}
+  if(!res.ok){
+    const msg=data?.error?.message||`Không gọi được Gemini API. HTTP ${res.status}`;
+    throw new Error(msg+' | Kiểm tra API key, model, quota/billing, API restrictions và quyền Generative Language API.');
+  }
   const out=geminiResponseText(data);
   const parsed=parseJsonArrayLoose(out);
   return Array.isArray(parsed)?parsed:(parsed.questions||[]);
@@ -3127,10 +3135,32 @@ async function smartParseWithAI(rawText='',opts={}){
 }
 
 function smartQuestionJsonSchema(){
+  // Gemini responseSchema dùng schema đơn giản, tránh any/{} và additionalProperties để khỏi lỗi 400.
   return {
     type:'object',
-    additionalProperties:false,
-    properties:{questions:{type:'array',items:{type:'object',additionalProperties:true,properties:{type:{type:'string'},text:{type:'string'},options:{type:'array',items:{type:'string'}},statements:{type:'array',items:{type:'string'}},answer:{},solution:{type:'string'},level:{type:'string'},standard2018:{type:'string'},tags:{type:'string'},confidence:{type:'number'},hasImage:{type:'boolean'},imageNote:{type:'string'}}}}},
+    properties:{
+      questions:{
+        type:'array',
+        items:{
+          type:'object',
+          properties:{
+            type:{type:'string',enum:['mc','tf','short']},
+            text:{type:'string'},
+            options:{type:'array',items:{type:'string'}},
+            statements:{type:'array',items:{type:'string'}},
+            answerText:{type:'string'},
+            solution:{type:'string'},
+            level:{type:'string'},
+            standard2018:{type:'string'},
+            tags:{type:'string'},
+            confidence:{type:'number'},
+            hasImage:{type:'boolean'},
+            imageNote:{type:'string'}
+          },
+          required:['type','text']
+        }
+      }
+    },
     required:['questions']
   };
 }
