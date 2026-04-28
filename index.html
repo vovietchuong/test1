@@ -149,6 +149,30 @@
     .exam-meta-tile b{display:block;font-size:1.05rem;color:var(--brand)}
     @media(max-width:900px){.exam-admin-toolbar{grid-template-columns:1fr}.exam-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+    /* ===== PDF THI THẬT FULL HỆ THỐNG ===== */
+    .pdf-exam-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .6rem;border-radius:999px;background:rgba(220,38,38,.10);color:#dc2626;font-size:.75rem;font-weight:900;border:1px solid rgba(220,38,38,.18)}
+    .pdf-exam-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:1rem;align-items:start}
+    .pdf-viewer-card{position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow:auto;background:rgba(15,23,42,.86);border:1px solid rgba(96,165,250,.26);border-radius:1.5rem;padding:1rem;box-shadow:0 24px 70px -38px rgba(0,0,0,.7)}
+    .pdf-toolbar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;background:rgba(15,23,42,.92);border:1px solid rgba(255,255,255,.1);border-radius:1rem;padding:.65rem;margin-bottom:.75rem;color:#e5eefc;backdrop-filter:blur(12px)}
+    .pdf-tool-btn{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-height:2.25rem;padding:.45rem .75rem;border-radius:.8rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:#e5eefc;font-weight:900;font-size:.82rem}
+    .pdf-tool-btn:hover{background:rgba(96,165,250,.16)}
+    .pdf-canvas-wrap{display:grid;place-items:center;min-height:70vh;overflow:auto;border-radius:1rem;background:#0b1220;padding:1rem}
+    #pdfExamCanvas{background:white;border-radius:.4rem;box-shadow:0 18px 45px rgba(0,0,0,.45);max-width:none}
+    .pdf-answer-panel{position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow:auto;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:1.5rem;padding:1rem;box-shadow:0 24px 70px -38px rgba(0,0,0,.55)}
+    html[data-theme="dark"] .pdf-answer-panel{background:rgba(15,23,42,.94);border-color:rgba(96,165,250,.22)}
+    .pdf-answer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+    .pdf-answer-cell{border:1px solid var(--line);border-radius:1rem;padding:.65rem;background:rgba(37,99,235,.045)}
+    .pdf-answer-cell.answered{border-color:rgba(22,163,74,.5);background:rgba(22,163,74,.09)}
+    .pdf-answer-cell b{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem}
+    .pdf-answer-cell input,.pdf-answer-cell select{width:100%;border:1px solid var(--line);border-radius:.75rem;padding:.55rem;background:white;outline:none;font-weight:800}
+    html[data-theme="dark"] .pdf-answer-cell input,html[data-theme="dark"] .pdf-answer-cell select{background:rgba(15,23,42,.68);color:var(--text)}
+    .pdf-key-textarea{width:100%;min-height:8rem;border:1px solid var(--line);border-radius:1rem;padding:.85rem;background:rgba(255,255,255,.72);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+    html[data-theme="dark"] .pdf-key-textarea{background:rgba(15,23,42,.58);color:var(--text)}
+    .pdf-page-thumb{display:inline-flex;min-width:2.25rem;height:2.25rem;border-radius:.75rem;align-items:center;justify-content:center;border:1px solid var(--line);font-weight:900;background:rgba(148,163,184,.12)}
+    @media(max-width:1100px){.pdf-exam-layout{grid-template-columns:1fr}.pdf-viewer-card,.pdf-answer-panel{position:relative;top:auto;max-height:none}.pdf-answer-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:640px){.pdf-answer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pdf-toolbar{justify-content:flex-start}.pdf-tool-btn{flex:1}.pdf-canvas-wrap{padding:.5rem}}
+
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
   </style>
 </head>
@@ -675,7 +699,7 @@ function renderExamsPublic(topic='all'){
   $('mainView').innerHTML=`<div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h2 class="text-3xl font-black">🧪 Kho đề luyện thi</h2><p style="color:var(--muted)">Học sinh chỉ thấy đề đã xuất bản và được giao đúng lớp.</p></div><select onchange="renderExamsPublic(this.value)" class="px-4 py-3 rounded-2xl border bg-white">${topicSelectOptionsHTML(topic,true)}</select></div><div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">${list.map(examCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Chưa có đề phù hợp với lớp/tài khoản hiện tại.</div>'}</div>`;typeset()}
 function examCard(e){
   e=normalizeExamAccess(e); const av=getExamAvailability(e); const locked=currentUser?.role==='student'&&!av.ok;
-  return `<article class="glass-card p-5 slide-up"><div class="flex justify-between gap-3"><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">${topicName(e.topicId)}</span><span class="text-xs" style="color:var(--muted)"><i class="fa-regular fa-clock"></i> ${e.duration||30} phút</span></div><h3 class="font-black text-xl mt-3 math-content">${safe(e.title)}</h3><p class="text-sm mt-2 min-h-10" style="color:var(--muted)">${safe(e.description||'Đề ôn tập')}</p><p class="text-xs mt-2" style="color:var(--muted)">${safe(examScheduleText(e))}</p><div class="flex gap-2 mt-3 text-xs flex-wrap"><span class="px-2 py-1 rounded-lg bg-slate-100">${(e.questions||[]).length||e.questionCount||0} câu</span><span class="px-2 py-1 rounded-lg bg-slate-100">${safe(e.level||'Ôn tập')}</span><span class="px-2 py-1 rounded-lg ${av.ok?'bg-green-100 text-green-700':'bg-amber-100 text-amber-700'}">${safe(av.label)}</span></div><button ${locked?'disabled':''} onclick="startExam('${e.id}')" class="mt-4 w-full ${locked?'bg-slate-300 text-slate-600 cursor-not-allowed':'btn-primary text-white'} py-3 rounded-2xl font-bold"><i class="fa-solid ${locked?'fa-lock':'fa-play'}"></i> ${locked?safe(av.reason):(currentUser?.role==='student'?'Làm bài':'Xem / làm thử')}</button></article>`
+  return `<article class="glass-card p-5 slide-up"><div class="flex justify-between gap-3"><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">${topicName(e.topicId)}</span><span class="text-xs" style="color:var(--muted)"><i class="fa-regular fa-clock"></i> ${e.duration||30} phút</span></div><h3 class="font-black text-xl mt-3 math-content">${safe(e.title)}</h3><p class="text-sm mt-2 min-h-10" style="color:var(--muted)">${safe(e.description||'Đề ôn tập')}</p><p class="text-xs mt-2" style="color:var(--muted)">${safe(examScheduleText(e))}</p><div class="flex gap-2 mt-3 text-xs flex-wrap"><span class="px-2 py-1 rounded-lg bg-slate-100">${isPdfExam(e)?pdfQuestionCount(e):((e.questions||[]).length||e.questionCount||0)} câu</span><span class="px-2 py-1 rounded-lg bg-slate-100">${safe(e.level||'Ôn tập')}</span>${isPdfExam(e)?'<span class="pdf-exam-badge"><i class="fa-solid fa-file-pdf"></i> PDF</span>':''}<span class="px-2 py-1 rounded-lg ${av.ok?'bg-green-100 text-green-700':'bg-amber-100 text-amber-700'}">${safe(av.label)}</span></div><button ${locked?'disabled':''} onclick="startExam('${e.id}')" class="mt-4 w-full ${locked?'bg-slate-300 text-slate-600 cursor-not-allowed':'btn-primary text-white'} py-3 rounded-2xl font-bold"><i class="fa-solid ${locked?'fa-lock':'fa-play'}"></i> ${locked?safe(av.reason):(currentUser?.role==='student'?'Làm bài':'Xem / làm thử')}</button></article>`
 }
 function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Dùng email Firebase. Ví dụ: hs1@mathpro12.edu.vn / 123456</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><div class="grid grid-cols-2 gap-2"><button onclick="quickLogin('hs1@mathpro12.edu.vn','123456')" class="btn-soft py-2 rounded-xl">Học sinh mẫu</button><button onclick="quickLogin('giaovien@mathpro12.edu.vn','giaovien')" class="btn-soft py-2 rounded-xl">Giáo viên mẫu</button></div><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
 async function doLogin(){
@@ -720,8 +744,153 @@ async function doRegister(){
     toast('Đăng ký thất bại: '+fbError(err),'bad');
   }
 }
+
+// ===== PDF THI THẬT FULL HỆ THỐNG =====
+let pdfExamDoc=null, pdfExamPage=1, pdfExamScale=1.35, pdfExamRendering=false;
+function isPdfExam(e){return !!e && (e.type==='pdf_exam' || e.examType==='pdf_exam' || !!e.pdfUrl);}
+function parsePdfAnswerKey(text=''){
+  return String(text||'').replace(/[;|]+/g,' ').split(/[\s,]+/).map(x=>x.trim()).filter(Boolean);
+}
+function pdfAnswerKeyText(e={}){
+  if(Array.isArray(e.answerKey)) return e.answerKey.join(' ');
+  if(Array.isArray(e.pdfAnswerKey)) return e.pdfAnswerKey.join(' ');
+  return String(e.answerKeyText||e.pdfAnswerKeyText||'');
+}
+function getPdfAnswerKey(e={}){return parsePdfAnswerKey(pdfAnswerKeyText(e));}
+function pdfQuestionCount(e={}){return Number(e.pdfQuestionCount||e.questionCount||getPdfAnswerKey(e).length||0);}
+async function uploadPdfExamFile(file){
+  if(!file) return null;
+  if(!firebaseStorageReady) throw new Error('Firebase Storage chưa sẵn sàng. Thầy kiểm tra cấu hình Storage trước khi upload PDF.');
+  const clean=String(file.name||'de-thi.pdf').replace(/[^a-zA-Z0-9_.-]/g,'_');
+  const ref=storage.ref().child('pdf_exams/'+Date.now()+'_'+clean);
+  await ref.put(file,{contentType:'application/pdf'});
+  return await ref.getDownloadURL();
+}
+function openPdfExamEditor(){openExamEditor(null);setTimeout(()=>{const mode=$('edExamMode'); if(mode){mode.value='pdf_exam';toggleExamEditorMode();}},60)}
+function toggleExamEditorMode(){
+  const mode=$('edExamMode')?.value||'normal';
+  const normal=$('normalQuestionEditorPanel'), pdf=$('pdfExamEditorPanel');
+  if(normal) normal.style.display=mode==='pdf_exam'?'none':'';
+  if(pdf) pdf.style.display=mode==='pdf_exam'?'':'none';
+}
+function updatePdfKeyPreview(){
+  const key=parsePdfAnswerKey($('edPdfAnswerKey')?.value||'');
+  const box=$('pdfKeyPreview');
+  if(box) box.innerHTML=key.length?`<span class="pdf-exam-badge"><i class="fa-solid fa-circle-check"></i> ${key.length} câu đã có đáp án</span>`:'<span class="text-xs text-slate-500">Nhập đáp án cách nhau bằng dấu cách, dấu phẩy hoặc xuống dòng.</span>';
+  const count=$('edPdfQuestionCount');
+  if(count && (!count.value || Number(count.value)<key.length)) count.value=key.length;
+}
+async function startPdfExam(base){
+  const av=getExamAvailability(base);
+  if(currentUser?.role==='student'&&!av.ok){toast(av.reason||'Chưa thể làm đề này','bad');renderExamsPublic();return;}
+  examSubmitted=false; examReview=false; examSessionId=null; lastSessionSyncAt=0;
+  selectedExam=JSON.parse(JSON.stringify(base));
+  selectedExam.originalId=String(base.id);
+  selectedExam.instanceId=String(uid());
+  selectedExam.answerKey=getPdfAnswerKey(base);
+  selectedExam.pdfQuestionCount=pdfQuestionCount(base);
+  selectedExam.questions=Array.from({length:selectedExam.pdfQuestionCount},(_,i)=>({id:'pdfq_'+(i+1),type:'pdf',text:'Câu '+(i+1),answer:selectedExam.answerKey[i]||''}));
+  examAnswerKey={}; selectedExam.questions.forEach((q,i)=>examAnswerKey[q.id]={type:'pdf',answer:selectedExam.answerKey[i]||''});
+  examAnswers={}; examRemain=(selectedExam.duration||60)*60; examWarnings=0; examStartedAt=new Date().toISOString();
+  if(currentUser?.role==='student') await createExamSession(selectedExam);
+  saveExamProgress();
+  renderPdfExamRoom();
+  if(currentUser?.role==='student'){
+    enableAntiCheat(); clearInterval(examTimer);
+    examTimer=setInterval(()=>{examRemain--;saveExamProgress();updateTimer(); if(examRemain<=0){clearInterval(examTimer);submitPdfExam(true)}},1000);
+  }
+}
+function setPdfAnswer(i,val){examAnswers['pdfq_'+i]=val;saveExamProgress();updatePdfExamProgressUI();}
+function pdfAnsweredCount(){return Array.from({length:pdfQuestionCount(selectedExam)},(_,i)=>examAnswers['pdfq_'+(i+1)]).filter(v=>String(v??'').trim()).length;}
+function updatePdfExamProgressUI(){
+  const total=pdfQuestionCount(selectedExam), done=pdfAnsweredCount(), pct=total?Math.round(done*100/total):0;
+  const doneEl=$('pdfDoneCount'); if(doneEl) doneEl.textContent=done;
+  const totalEl=$('pdfTotalCount'); if(totalEl) totalEl.textContent=total;
+  const pctEl=$('pdfProgressPercent'); if(pctEl) pctEl.textContent=pct+'%';
+  const fill=$('pdfProgressFill'); if(fill) fill.style.width=pct+'%';
+  for(let i=1;i<=total;i++){const c=$('pdfAnsCell_'+i); if(c)c.classList.toggle('answered',!!String(examAnswers['pdfq_'+i]??'').trim());}
+}
+function renderPdfAnswerInputs(){
+  const total=pdfQuestionCount(selectedExam);
+  const key=getPdfAnswerKey(selectedExam);
+  return Array.from({length:total},(_,idx)=>{
+    const i=idx+1;
+    const val=examAnswers['pdfq_'+i]??'';
+    const select=['A','B','C','D'].includes(String(key[idx]||'').toUpperCase());
+    const input=select?`<select onchange="setPdfAnswer(${i},this.value)"><option value="">--</option>${['A','B','C','D'].map(x=>`<option value="${x}" ${String(val).toUpperCase()===x?'selected':''}>${x}</option>`).join('')}</select>`:`<input onchange="setPdfAnswer(${i},this.value)" oninput="setPdfAnswer(${i},this.value)" value="${safe(val)}" placeholder="Đáp án">`;
+    return `<div id="pdfAnsCell_${i}" class="pdf-answer-cell ${String(val).trim()?'answered':''}"><b>Câu ${i}</b>${input}</div>`;
+  }).join('');
+}
+async function loadPdfExamDocument(){
+  if(!selectedExam?.pdfUrl){toast('Đề PDF chưa có file PDF','bad');return;}
+  const loadingTask=pdfjsLib.getDocument(selectedExam.pdfUrl);
+  pdfExamDoc=await loadingTask.promise;
+  pdfExamPage=1; pdfExamScale=Number(localStorage.getItem('mathpro12_pdf_scale')||1.35);
+  renderPdfExamPage();
+}
+async function renderPdfExamPage(){
+  if(!pdfExamDoc||pdfExamRendering) return;
+  pdfExamRendering=true;
+  try{
+    const page=await pdfExamDoc.getPage(pdfExamPage);
+    const canvas=$('pdfExamCanvas'); if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    const viewport=page.getViewport({scale:pdfExamScale});
+    canvas.width=viewport.width; canvas.height=viewport.height;
+    await page.render({canvasContext:ctx,viewport}).promise;
+    const pageBox=$('pdfPageBox'); if(pageBox) pageBox.textContent=`Trang ${pdfExamPage}/${pdfExamDoc.numPages}`;
+    const scaleBox=$('pdfScaleBox'); if(scaleBox) scaleBox.textContent=Math.round(pdfExamScale*100)+'%';
+  }finally{pdfExamRendering=false;}
+}
+function pdfNextPage(){if(pdfExamDoc&&pdfExamPage<pdfExamDoc.numPages){pdfExamPage++;renderPdfExamPage();}}
+function pdfPrevPage(){if(pdfExamDoc&&pdfExamPage>1){pdfExamPage--;renderPdfExamPage();}}
+function pdfZoomIn(){pdfExamScale=Math.min(3.5,pdfExamScale+.15);localStorage.setItem('mathpro12_pdf_scale',pdfExamScale);renderPdfExamPage();}
+function pdfZoomOut(){pdfExamScale=Math.max(.65,pdfExamScale-.15);localStorage.setItem('mathpro12_pdf_scale',pdfExamScale);renderPdfExamPage();}
+function pdfFitWidth(){const wrap=document.querySelector('.pdf-canvas-wrap'); if(!wrap||!pdfExamDoc)return; pdfExamDoc.getPage(pdfExamPage).then(page=>{const vp=page.getViewport({scale:1}); pdfExamScale=Math.max(.65,Math.min(3.5,(wrap.clientWidth-36)/vp.width)); localStorage.setItem('mathpro12_pdf_scale',pdfExamScale); renderPdfExamPage();});}
+function renderPdfExamRoom(){
+  setExamFocusMode(true);
+  const e=selectedExam, total=pdfQuestionCount(e), done=pdfAnsweredCount(), pct=total?Math.round(done*100/total):0;
+  $('mainView').innerHTML=`<div class="exam-focus-shell fade-in"><div class="exam-focus-frame"><div class="exam-topbar exam-focus-topbar glass-card p-5 mb-4"><div class="flex flex-wrap justify-between gap-3"><div class="focus-brand"><div class="focus-brand-logo"><i class="fa-solid fa-file-pdf"></i></div><div><div class="text-xs uppercase tracking-[.18em] font-black text-cyan-200">Phòng thi PDF như đề thật</div><h2 class="text-xl md:text-2xl font-black truncate">${safe(e.title)}</h2><p class="text-sm text-blue-100">${topicName(e.topicId||8)} • ${total} câu • <span class="pdf-exam-badge"><i class="fa-solid fa-magnifying-glass-plus"></i> Có zoom PDF</span></p></div></div><div class="focus-command-bar"><span class="exam-status-pill"><i class="fa-solid fa-pen"></i> Đã làm <b id="pdfDoneCount">${done}</b>/<b id="pdfTotalCount">${total}</b></span><span id="timerBox" class="px-4 py-2 rounded-2xl bg-black/70 text-white font-mono border border-white/10">--:--</span><button onclick="openPdfSubmitConfirm(false)" class="focus-submit-btn px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-paper-plane"></i> Nộp bài</button><button onclick="exitExamToList()" class="focus-danger-btn px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-xmark"></i> Thoát</button></div></div><div class="exam-progress-label mt-4"><span>Tiến độ nhập đáp án</span><span id="pdfProgressPercent">${pct}%</span></div><div class="exam-progress-track"><div id="pdfProgressFill" class="exam-progress-fill" style="width:${pct}%"></div></div></div><div class="pdf-exam-layout"><section class="pdf-viewer-card"><div class="pdf-toolbar"><div class="flex flex-wrap gap-2"><button class="pdf-tool-btn" onclick="pdfPrevPage()"><i class="fa-solid fa-chevron-left"></i></button><span id="pdfPageBox" class="pdf-page-thumb">...</span><button class="pdf-tool-btn" onclick="pdfNextPage()"><i class="fa-solid fa-chevron-right"></i></button></div><div class="flex flex-wrap gap-2"><button class="pdf-tool-btn" onclick="pdfZoomOut()"><i class="fa-solid fa-minus"></i></button><span id="pdfScaleBox" class="pdf-page-thumb">...</span><button class="pdf-tool-btn" onclick="pdfZoomIn()"><i class="fa-solid fa-plus"></i></button><button class="pdf-tool-btn" onclick="pdfFitWidth()"><i class="fa-solid fa-arrows-left-right"></i> Vừa rộng</button></div></div><div class="pdf-canvas-wrap"><canvas id="pdfExamCanvas"></canvas></div></section><aside class="pdf-answer-panel"><h3 class="font-black text-xl"><i class="fa-solid fa-list-ol text-blue-600"></i> Phiếu trả lời</h3><p class="text-sm mt-1 mb-3" style="color:var(--muted)">Nhập đáp án theo PDF. Hệ thống không cần đọc công thức, không đưa vào ngân hàng câu hỏi.</p><div class="pdf-answer-grid">${renderPdfAnswerInputs()}</div><button onclick="openPdfSubmitConfirm(false)" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-paper-plane"></i> Nộp bài PDF</button></aside></div></div></div>`;
+  updateTimer(); loadPdfExamDocument();
+}
+function openPdfSubmitConfirm(auto=false){
+  if(auto) return submitPdfExam(true);
+  const total=pdfQuestionCount(selectedExam), done=pdfAnsweredCount(), missing=[];
+  for(let i=1;i<=total;i++) if(!String(examAnswers['pdfq_'+i]??'').trim()) missing.push(i);
+  const old=$('submitConfirmModal'); if(old)old.remove();
+  const modal=document.createElement('div'); modal.id='submitConfirmModal'; modal.className='submit-modal-backdrop fade-in no-print';
+  modal.innerHTML=`<div class="submit-modal slide-up" onclick="event.stopPropagation()"><div class="submit-modal-head"><div class="submit-modal-icon"><i class="fa-solid fa-file-pdf"></i></div><div><h2 class="text-2xl font-black">Xác nhận nộp bài PDF</h2><p class="text-sm text-blue-100 mt-1">Bài làm sẽ được chấm theo đáp án giáo viên đã nhập.</p></div></div><div class="p-5 space-y-4"><div class="submit-summary-grid"><div class="submit-summary-card"><b>${done}</b><span class="text-xs font-bold" style="color:var(--muted)">Đã nhập</span></div><div class="submit-summary-card"><b>${Math.max(total-done,0)}</b><span class="text-xs font-bold" style="color:var(--muted)">Còn trống</span></div><div class="submit-summary-card"><b>${total?Math.round(done*100/total):0}%</b><span class="text-xs font-bold" style="color:var(--muted)">Hoàn thành</span></div></div>${missing.length?`<div class="rounded-2xl p-4 bg-amber-50 border border-amber-200 text-amber-800"><b>Còn ${missing.length} câu chưa nhập:</b><div class="unanswered-list mt-2">${missing.slice(0,40).map(n=>`<span class="unanswered-chip">${n}</span>`).join('')}</div></div>`:`<div class="rounded-2xl p-4 bg-green-50 border border-green-200 text-green-800 font-bold"><i class="fa-solid fa-circle-check"></i> Đã nhập đủ đáp án.</div>`}<div class="flex flex-wrap justify-end gap-3"><button onclick="closeSubmitConfirm()" class="btn-soft px-5 py-3 rounded-2xl font-bold">Quay lại</button><button onclick="closeSubmitConfirm();submitPdfExam(false)" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-black">Nộp bài</button></div></div></div>`;
+  modal.onclick=closeSubmitConfirm; document.body.appendChild(modal);
+}
+async function submitPdfExam(auto=false){
+  if(!selectedExam||examSubmitted)return;
+  if(!currentUser){showLoginModal();toast('Thầy/các em cần đăng nhập học sinh để lưu điểm.','info');return;}
+  examSubmitted=true; await syncExamSession(true);
+  const key=getPdfAnswerKey(selectedExam), total=pdfQuestionCount(selectedExam);
+  let score=0, details=[];
+  for(let i=1;i<=total;i++){
+    const ans=examAnswers['pdfq_'+i]??'';
+    const correct=key[i-1]??'';
+    const ok=norm(ans)===norm(correct);
+    if(ok) score++;
+    details.push({qid:'pdfq_'+i,answer:ans,correctAnswer:correct,ok,type:'pdf'});
+  }
+  const sub={id:String(uid()),studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',examId:String(selectedExam.originalId||selectedExam.id),examInstanceId:selectedExam.instanceId||null,sessionId:examSessionId||null,examTitle:selectedExam.title,examType:'pdf_exam',score,total,percent:total?Math.round(score*100/total):0,warnings:examWarnings,autoSubmitted:!!auto,startedAt:examStartedAt,submittedAt:new Date().toISOString(),date:new Date().toLocaleString('vi-VN'),details,createdAt:new Date().toISOString()};
+  if(currentUser.role==='student'){
+    submissions.unshift(sub); save();
+    if(firebaseReady){try{await db.collection('examResults').doc(sub.id).set({...sub,createdAt:firebase.firestore.FieldValue.serverTimestamp(),submittedAt:firebase.firestore.FieldValue.serverTimestamp()}); await finishExamSession(sub,auto);}catch(err){toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad');}}
+  }
+  clearInterval(examTimer); disableAntiCheat(); clearExamProgress(); renderPdfResult(sub,auto);
+}
+function renderPdfResult(sub,auto=false){
+  setExamFocusMode(false); window.lastExamSubmission=sub;
+  const level=resultLevelText(sub.percent||0);
+  $('mainView').innerHTML=`<section class="space-y-5 fade-in"><div class="result-hero"><div class="flex flex-wrap items-center justify-between gap-5"><div><p class="uppercase tracking-[.2em] text-xs font-black text-cyan-100">Kết quả bài thi PDF</p><h2 class="text-3xl font-black mt-2">${safe(sub.examTitle)}</h2><p class="mt-2 text-blue-100">${auto?'Hệ thống tự nộp khi hết giờ.':'Đã nộp bài thành công.'} • Cảnh báo: ${sub.warnings||0}</p></div><div class="score-ring" style="--p:${sub.percent}%"><div class="score-ring-inner"><b class="text-3xl">${sub.percent}%</b><span class="text-xs text-blue-100">${sub.score}/${sub.total}</span></div></div></div></div><div class="grid md:grid-cols-3 gap-4"><div class="result-kpi"><b>${sub.score}</b><span>Câu đúng</span></div><div class="result-kpi"><b>${sub.total-sub.score}</b><span>Câu sai/trống</span></div><div class="result-kpi"><b>${level.title}</b><span>${level.note}</span></div></div><div class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3 mb-3"><h3 class="font-black text-xl"><i class="fa-solid fa-key text-blue-600"></i> Đáp án và bài làm</h3><button onclick="renderExamsPublic()" class="btn-soft px-4 py-2 rounded-2xl font-bold">Về kho đề</button></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Câu</th><th class="p-3">Bài làm</th><th class="p-3">Đáp án</th><th class="p-3">Kết quả</th></tr></thead><tbody>${(sub.details||[]).map((d,i)=>`<tr class="border-b"><td class="p-3 font-black">${i+1}</td><td class="p-3">${safe(d.answer||'Chưa nhập')}</td><td class="p-3 font-bold text-blue-700">${safe(d.correctAnswer||'')}</td><td class="p-3">${d.ok?'<span class="answer-pill good">Đúng</span>':'<span class="answer-pill bad">Sai</span>'}</td></tr>`).join('')}</tbody></table></div></div></section>`;
+}
+
 async function startExam(id){
   const base=exams.find(e=>String(e.id)==String(id)); if(!base)return;
+  if(isPdfExam(base)) return startPdfExam(base);
   const av=getExamAvailability(base);
   if(currentUser?.role==='student'&&!av.ok){toast(av.reason||'Chưa thể làm đề này','bad');renderExamsPublic();return;}
   const key=progressKey(id), saved=key?JSON.parse(localStorage.getItem(key)||'null'):null;
@@ -3592,12 +3761,19 @@ function openPDFImportModal(){openSmartImportModal('bank');}
 function openWordImportModal(){openSmartImportModal('bank');}
 
 
-function openExamEditor(id=null){const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:30,level:'',description:'',questions:[]};const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${topicSelectOptionsHTML(e.topicId,false)}</select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||30}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><input id="edStartTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.startTime)}" title="Thời gian mở đề"><input id="edEndTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.endTime)}" title="Thời gian đóng đề"><input id="edMaxAttempts" type="number" min="0" class="border rounded-xl p-3" placeholder="Số lượt làm, 0 = không giới hạn" value="${e.maxAttempts??1}"><select id="edPublished" class="border rounded-xl p-3 bg-white"><option value="true" ${e.isPublished!==false?'selected':''}>Xuất bản cho học sinh</option><option value="false" ${e.isPublished===false?'selected':''}>Lưu nháp, chưa cho làm</option></select><div class="md:col-span-2"><p class="font-bold mb-2">Giao đề cho lớp</p><div class="flex flex-wrap gap-2">${classOptionsHTML(e.classIds||[])}</div><p class="text-xs mt-1" style="color:var(--muted)">Không chọn lớp nào = tất cả học sinh đều thấy đề.</p></div><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button><button onclick="openQuestionBankPicker()" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-folder-open"></i> Chọn từ kho</button><button onclick="openSmartImportModal('editor')" class="bg-emerald-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-robot"></i> Import AI</button><button onclick="openQuestionImportModal('editor')" class="btn-soft px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-file-import"></i> CSV/Excel</button><button onclick="openLatexImportModal('editor')" class="bg-cyan-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button><button onclick="downloadQuestionTemplateCSV()" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-download"></i> Mẫu CSV</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;document.body.appendChild(m);window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));refreshEditorQuestions()}
-
-async function ensureQuestionBankReady(){
-  if(firebaseReady){try{await loadQuestionBankFromFirestore();}catch(err){console.warn('Không tải được questionBanks:',err)}}
-  if(!questionBank.length){questionBank=questionBankFromLocalExams();localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));}
+function openExamEditor(id=null){
+  const e=id?exams.find(x=>x.id==id):{title:'',topicId:4,duration:60,level:'',description:'',questions:[],type:'normal'};
+  const isPdf=isPdfExam(e);
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex justify-between"><div><h2 class="text-2xl font-black">${id?'Sửa đề':'Tạo đề mới'}</h2><p class="text-sm" style="color:var(--muted)">Có thể tạo đề thường hoặc đề PDF thi thật không cần đưa vào ngân hàng câu hỏi.</p></div><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><input id="edTitle" class="border rounded-xl p-3" placeholder="Tên đề" value="${safe(e.title)}"><select id="edTopic" class="border rounded-xl p-3">${topicSelectOptionsHTML(e.topicId||4,false)}</select><select id="edExamMode" onchange="toggleExamEditorMode()" class="border rounded-xl p-3 bg-white"><option value="normal" ${!isPdf?'selected':''}>Đề câu hỏi thường</option><option value="pdf_exam" ${isPdf?'selected':''}>Đề PDF thi thật</option></select><input id="edDuration" type="number" class="border rounded-xl p-3" placeholder="Thời gian" value="${e.duration||60}"><input id="edLevel" class="border rounded-xl p-3" placeholder="Mức độ" value="${safe(e.level||'')}"><input id="edStartTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.startTime)}" title="Thời gian mở đề"><input id="edEndTime" type="datetime-local" class="border rounded-xl p-3" value="${toDateInputValue(e.endTime)}" title="Thời gian đóng đề"><input id="edMaxAttempts" type="number" min="0" class="border rounded-xl p-3" placeholder="Số lượt làm, 0 = không giới hạn" value="${e.maxAttempts??1}"><select id="edPublished" class="border rounded-xl p-3 bg-white"><option value="true" ${e.isPublished!==false?'selected':''}>Xuất bản cho học sinh</option><option value="false" ${e.isPublished===false?'selected':''}>Lưu nháp, chưa cho làm</option></select><div class="md:col-span-2"><p class="font-bold mb-2">Giao đề cho lớp</p><div class="flex flex-wrap gap-2">${classOptionsHTML(e.classIds||[])}</div><p class="text-xs mt-1" style="color:var(--muted)">Không chọn lớp nào = tất cả học sinh đều thấy đề.</p></div><textarea id="edDesc" class="md:col-span-2 border rounded-xl p-3" placeholder="Mô tả">${safe(e.description||'')}</textarea></div>
+  <div id="pdfExamEditorPanel" class="mt-5 p-5 rounded-2xl border bg-rose-50/60" style="display:${isPdf?'':'none'}"><div class="flex flex-wrap justify-between gap-3"><div><h3 class="font-black text-xl text-rose-700"><i class="fa-solid fa-file-pdf"></i> Đề PDF thi thật</h3><p class="text-sm text-rose-700">Giáo viên chỉ upload/gắn PDF và nhập đáp án. Học sinh xem PDF bằng zoom, làm bài trên phiếu trả lời.</p></div><span class="pdf-exam-badge">Không đưa vào ngân hàng câu hỏi</span></div><div class="grid md:grid-cols-[1fr_1fr_160px] gap-3 mt-4"><input id="edPdfUrl" class="border rounded-xl p-3" placeholder="Link PDF đã có hoặc để trống để upload" value="${safe(e.pdfUrl||'')}"><label class="btn-soft px-4 py-3 rounded-xl text-center cursor-pointer font-bold"><i class="fa-solid fa-upload"></i> Chọn file PDF<input id="edPdfFile" type="file" accept="application/pdf" class="hidden"></label><input id="edPdfQuestionCount" type="number" min="1" class="border rounded-xl p-3" placeholder="Số câu" value="${pdfQuestionCount(e)||''}"></div><div class="mt-4"><label class="font-black">Đáp án nhanh</label><textarea id="edPdfAnswerKey" oninput="updatePdfKeyPreview()" class="pdf-key-textarea mt-2" placeholder="Ví dụ: A B C D A C 0.5 2 -1">${safe(pdfAnswerKeyText(e))}</textarea><div id="pdfKeyPreview" class="mt-2"></div><p class="text-xs mt-2 text-rose-700">Có thể nhập A/B/C/D hoặc đáp án số. Mỗi đáp án cách nhau bằng dấu cách, phẩy hoặc xuống dòng.</p></div></div>
+  <div id="normalQuestionEditorPanel" style="display:${isPdf?'none':''}"><div class="mt-5 flex gap-2 flex-wrap"><button onclick="addEditorQuestion('mc')" class="btn-soft px-3 py-2 rounded-xl">+ Trắc nghiệm</button><button onclick="addEditorQuestion('tf')" class="btn-soft px-3 py-2 rounded-xl">+ Đúng/Sai</button><button onclick="addEditorQuestion('short')" class="btn-soft px-3 py-2 rounded-xl">+ Trả lời ngắn</button><button onclick="openQuestionBankPicker()" class="bg-indigo-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-folder-open"></i> Chọn từ kho</button><button onclick="openSmartImportModal('editor')" class="bg-emerald-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-robot"></i> Import AI</button><button onclick="openQuestionImportModal('editor')" class="btn-soft px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-file-import"></i> CSV/Excel</button><button onclick="openLatexImportModal('editor')" class="bg-cyan-600 text-white px-3 py-2 rounded-xl font-semibold"><i class="fa-solid fa-square-root-variable"></i> Nhập LaTeX</button><button onclick="downloadQuestionTemplateCSV()" class="btn-soft px-3 py-2 rounded-xl"><i class="fa-solid fa-download"></i> Mẫu CSV</button></div><div id="editorQuestions" class="space-y-4 mt-4"></div></div><div class="flex justify-end gap-3 mt-5"><button onclick="saveExamEditor(${id||0})" class="bg-green-600 text-white px-5 py-3 rounded-2xl font-bold">Lưu đề</button></div></div>`;
+  document.body.appendChild(m);
+  window.editorQ=JSON.parse(JSON.stringify(e.questions||[]));
+  refreshEditorQuestions(); updatePdfKeyPreview(); toggleExamEditorMode();
 }
+
 function cleanQuestionFromBank(q){const copy=JSON.parse(JSON.stringify(q||{}));copy.sourceQuestionId=copy.sourceQuestionId||copy.id;delete copy.createdAt;delete copy.updatedAt;return copy;}
 async function openQuestionBankPicker(){
   if(!window.editorQ)window.editorQ=[];await ensureQuestionBankReady();window.bankPicked={};
@@ -3628,16 +3804,37 @@ function editorFields(q,i){if(q.type==='mc')return `<div class="grid md:grid-col
 function addEditorQuestion(type){const base={id:'q'+uid(),type,text:'',solution:''};if(type==='mc'){base.options=['','','',''];base.answer=0}else if(type==='tf'){base.statements=['','','',''];base.answer=[true,true,true,true]}else{base.answer=''}window.editorQ.push(base);refreshEditorQuestions()}
 async function saveExamEditor(id){
   const docId=String(id||uid());
-  const data={id:docId,title:$('edTitle').value.trim(),topicId:Number($('edTopic').value),duration:Number($('edDuration').value||30),level:$('edLevel').value,description:$('edDesc').value,questions:window.editorQ,classIds:selectedClassIdsFromEditor(),startTime:readDateInputValue('edStartTime'),endTime:readDateInputValue('edEndTime'),maxAttempts:Number($('edMaxAttempts')?.value||0),isPublished:($('edPublished')?.value!=='false'),updatedAt:new Date().toISOString()};
-  if(!data.title||!data.questions.length)return toast('Cần nhập tên đề và ít nhất 1 câu hỏi','bad');
+  const mode=$('edExamMode')?.value||'normal';
+  const isPdf=mode==='pdf_exam';
+  let pdfUrl=($('edPdfUrl')?.value||'').trim();
+  try{
+    if(isPdf && $('edPdfFile')?.files?.[0]){
+      toast('Đang upload file PDF lên Firebase Storage...','info');
+      pdfUrl=await uploadPdfExamFile($('edPdfFile').files[0]);
+    }
+  }catch(err){return toast('Upload PDF chưa thành công: '+(err?.message||err),'bad');}
+  const answerKey=isPdf?parsePdfAnswerKey($('edPdfAnswerKey')?.value||''):[];
+  const pdfCount=isPdf?Number($('edPdfQuestionCount')?.value||answerKey.length||0):0;
+  const data={id:docId,title:$('edTitle').value.trim(),topicId:$('edTopic').value,duration:Number($('edDuration').value||60),level:$('edLevel').value,description:$('edDesc').value,classIds:selectedClassIdsFromEditor(),startTime:readDateInputValue('edStartTime'),endTime:readDateInputValue('edEndTime'),maxAttempts:Number($('edMaxAttempts')?.value||0),isPublished:($('edPublished')?.value!=='false'),updatedAt:new Date().toISOString()};
+  if(isPdf){
+    Object.assign(data,{type:'pdf_exam',examType:'pdf_exam',pdfUrl,answerKey,answerKeyText:answerKey.join(' '),pdfQuestionCount:pdfCount,questionCount:pdfCount,questions:[],usesQuestionBank:false});
+  }else{
+    Object.assign(data,{type:'normal',questions:window.editorQ||[],questionCount:(window.editorQ||[]).length,usesQuestionBank:true});
+  }
+  if(!data.title)return toast('Cần nhập tên đề','bad');
+  if(isPdf && !data.pdfUrl)return toast('Đề PDF cần có file PDF hoặc link PDF','bad');
+  if(isPdf && (!data.pdfQuestionCount||!answerKey.length))return toast('Đề PDF cần nhập số câu và đáp án','bad');
+  if(!isPdf && !data.questions.length)return toast('Cần nhập ít nhất 1 câu hỏi','bad');
   if(data.startTime&&data.endTime&&new Date(data.startTime)>=new Date(data.endTime))return toast('Thời gian đóng đề phải sau thời gian mở đề','bad');
   if(id){const idx=exams.findIndex(e=>String(e.id)==String(id)); if(idx>=0)data.createdAt=exams[idx].createdAt||data.updatedAt,exams[idx]=data}else {data.createdAt=new Date().toISOString(); exams.unshift(data);}
   save();
   if(firebaseReady){
-    try{await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,questionCount:data.questions.length,usesQuestionBank:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); await syncExamStructureToFirestore(data);}
-    catch(err){toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad')}
-  } else { await syncExamQuestionsToQuestionBank(data); localStorage.setItem('mathpro12_examQuestionIds_'+docId,JSON.stringify(data.questions.map(q=>getQuestionBankId(q)))); }
-  document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast('Đã lưu đề thi','ok');
+    try{
+      await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:id?(data.createdAt||new Date().toISOString()):firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      if(isPdf){await deleteExamQuestionLinks(docId).catch(()=>{});} else {await syncExamStructureToFirestore(data);}
+    }catch(err){toast('Đã lưu local, chưa ghi được Firestore: '+fbError(err),'bad')}
+  } else if(!isPdf){ await syncExamQuestionsToQuestionBank(data); localStorage.setItem('mathpro12_examQuestionIds_'+docId,JSON.stringify(data.questions.map(q=>getQuestionBankId(q)))); }
+  document.querySelector('.fixed')?.remove();renderTeacherDashboard();toast(isPdf?'Đã lưu đề PDF thi thật':'Đã lưu đề thi','ok');
 }
 async function deleteExam(id){
   if(!adminDangerGuard())return;
@@ -4332,7 +4529,7 @@ function renderTeacherDashboard(){
   const actionBtn=(text,icon,fn,cls='btn-soft')=>`<button onclick="${fn}" class="${cls} px-4 py-3 rounded-2xl font-bold text-left flex items-center justify-between gap-3"><span><i class="fa-solid ${icon} mr-2"></i>${text}</span><i class="fa-solid fa-chevron-right text-xs opacity-60"></i></button>`;
   const examRows=exams.slice(0,8).map(e=>{e=normalizeExamAccess(e);const status=e.isPublished===false?'<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Nháp</span>':'<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Đã xuất bản</span>';return `<tr class="border-b"><td class="p-3"><b>${safe(e.title)}</b><p class="text-xs" style="color:var(--muted)">${safe(topicName(e.topicId))}</p></td><td class="p-3">${(e.questions||[]).length||e.questionCount||0}</td><td class="p-3">${status}</td><td class="p-3 text-xs" style="color:var(--muted)">${safe(examScheduleText(e))}</td></tr>`}).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có đề.</td></tr>';
   const recentRows=analyticsFilteredSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
-  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Giai đoạn 7</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm phân tích & can thiệp học tập</h2><p style="color:var(--muted)">Theo dõi chất lượng lớp, phát hiện học sinh cần hỗ trợ, phân tích chủ đề yếu và xuất báo cáo.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('AI tự ra đề mới','fa-brain','openAIAutoExamBuilder()','bg-emerald-600 text-white')}${actionBtn('Tạo đề từ kho','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('PDF → đề thi thật','fa-person-chalkboard',"openSmartImportModal('exam')",'bg-indigo-700 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi nâng cao</h3><p class="text-sm" style="color:var(--muted)">Lọc, xuất bản, giao lớp, nhân bản và kiểm tra nhanh từng đề.</p></div><div class="flex flex-wrap gap-2"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ cấu trúc</button></div></div>${examManagerHTML()}</section></div>`;
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Giai đoạn 7</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm phân tích & can thiệp học tập</h2><p style="color:var(--muted)">Theo dõi chất lượng lớp, phát hiện học sinh cần hỗ trợ, phân tích chủ đề yếu và xuất báo cáo.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('AI tự ra đề mới','fa-brain','openAIAutoExamBuilder()','bg-emerald-600 text-white')}${actionBtn('Tạo đề từ kho','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề PDF thi thật','fa-file-pdf','openPdfExamEditor()','bg-rose-700 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('PDF → đề thi thật','fa-person-chalkboard',"openSmartImportModal('exam')",'bg-indigo-700 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi nâng cao</h3><p class="text-sm" style="color:var(--muted)">Lọc, xuất bản, giao lớp, nhân bản và kiểm tra nhanh từng đề.</p></div><div class="flex flex-wrap gap-2"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ cấu trúc</button></div></div>${examManagerHTML()}</section></div>`;
   typeset();
 }
 function renderStats(){
