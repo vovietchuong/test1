@@ -3229,10 +3229,22 @@ function normalizeAIQuestion(q={},idx=0,opts={}){
   return normalizeImportedMathQuestion?normalizeImportedMathQuestion(out,opts.autoMath!==false):out;
 }
 function parseJsonArrayLoose(text=''){
-  let s=String(text||'').trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```$/,'').trim();
+  let s=String(text||'').trim();
+  s=s.replace(/^```(?:json)?\s*/i,'').replace(/```$/,'').trim();
   try{return JSON.parse(s);}catch(e){}
-  const a=s.indexOf('['), b=s.lastIndexOf(']');
-  if(a>=0&&b>a) return JSON.parse(s.slice(a,b+1));
+  const objStart=s.indexOf('{'), objEnd=s.lastIndexOf('}');
+  if(objStart>=0 && objEnd>objStart){
+    const objText=s.slice(objStart,objEnd+1);
+    try{return JSON.parse(objText);}catch(e){}
+  }
+  const arrStart=s.indexOf('['), arrEnd=s.lastIndexOf(']');
+  if(arrStart>=0 && arrEnd>arrStart){
+    const arrText=s.slice(arrStart,arrEnd+1);
+    try{return JSON.parse(arrText);}catch(e){}
+  }
+  // Cứu lỗi thường gặp khi AI lỡ thêm chữ trước/sau JSON hoặc xuống dòng thừa.
+  const cleaned=s.replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/,\s*([}\]])/g,'$1');
+  try{return JSON.parse(cleaned);}catch(e){}
   throw new Error('AI chưa trả về JSON hợp lệ. Thầy thử bấm đọc lại hoặc dùng chế độ tách câu nội bộ.');
 }
 function dataUrlToGeminiInlineData(dataUrl=''){
@@ -3246,10 +3258,15 @@ function geminiResponseText(data={}){
 async function callGeminiGenerateContent({apiKey,model,systemText,userParts,responseSchema,temperature=0.05}){
   if(!apiKey) throw new Error('Chưa nhập Gemini API key hoặc chưa cấu hình backend AI.');
   const safeModel=(model||SMART_IMPORT_DEFAULT_MODEL||'gemini-2.5-flash').trim();
+  const parts=Array.isArray(userParts)?userParts:[{text:String(userParts||'')}];
   const body={
     systemInstruction:{parts:[{text:systemText||smartImportSystemPrompt()}]},
-    contents:[{role:'user',parts:userParts}],
-    generationConfig:{temperature,responseMimeType:'application/json',responseSchema:responseSchema||smartQuestionJsonSchema()}
+    contents:[{role:'user',parts}],
+    generationConfig:{
+      temperature,
+      responseMimeType:'application/json',
+      responseSchema:responseSchema||smartQuestionJsonSchema()
+    }
   };
   const res=await fetch(`${SMART_IMPORT_GEMINI_API_BASE}/${encodeURIComponent(safeModel)}:generateContent`,{
     method:'POST',
@@ -3263,7 +3280,9 @@ async function callGeminiGenerateContent({apiKey,model,systemText,userParts,resp
   }
   const out=geminiResponseText(data);
   const parsed=parseJsonArrayLoose(out);
-  return Array.isArray(parsed)?parsed:(parsed.questions||[]);
+  const arr=Array.isArray(parsed)?parsed:(parsed.questions||parsed.items||parsed.data||[]);
+  if(!Array.isArray(arr)) throw new Error('AI trả JSON nhưng chưa có mảng questions.');
+  return arr;
 }
 async function smartParseWithAI(rawText='',opts={}){
   const chunk=String(rawText||'').slice(0,60000);
@@ -3436,6 +3455,19 @@ function syncSmartProviderDefaults(){
   }
   if(keyEl) keyEl.placeholder=provider==='gemini'?'Gemini API key dùng test local':'OpenAI API key dùng test local';
 }
+
+function smartImportGoodCount(items=[]){return (items||[]).filter(q=>!q._errors?.length).length;}
+async function smartImportTextRescue(file,opts,onProgress){
+  let raw='';
+  try{raw=await extractSmartImportFile(file,{...opts,mode:opts.mode==='vision'?'auto':opts.mode},onProgress);}catch(e){raw='';}
+  if(!raw.trim()) return {raw,items:[]};
+  let items=[];
+  if(opts.useAI){
+    try{items=await smartParseWithAI(raw,{...opts,source:file.name});}catch(e){items=[];}
+  }
+  if(!smartImportGoodCount(items)) items=localParseSmart(raw,{...opts,source:file.name});
+  return {raw,items};
+}
 function openSmartImportModal(target='bank'){
   if(!requireRole('teacher'))return;
   window.smartImportItems=[]; window.smartImportRawText='';
@@ -3448,30 +3480,49 @@ function openSmartImportModal(target='bank'){
 }
 async function runSmartImportPreview(){
   const file=$('smartImportFile')?.files?.[0]; if(!file)return toast('Thầy hãy chọn file trước','bad');
-  const opts=smartImportConfig(); localStorage.setItem('mathpro12_ai_provider',opts.provider); localStorage.setItem('mathpro12_ai_endpoint',opts.endpoint); localStorage.setItem('mathpro12_ai_model',opts.model);
+  const opts=smartImportConfig();
+  localStorage.setItem('mathpro12_ai_provider',opts.provider);
+  localStorage.setItem('mathpro12_ai_endpoint',opts.endpoint);
+  localStorage.setItem('mathpro12_ai_model',opts.model);
   const box=$('smartImportPreview'), progress=$('smartImportProgress');
-  if(box)box.innerHTML='<div class="glass-card p-5 text-center"><i class="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i><p class="mt-2 font-semibold">Đang đọc file và xử lý AI...</p></div>';
+  if(box)box.innerHTML='<div class="glass-card p-5 text-center"><i class="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i><p class="mt-2 font-semibold">Đang đọc file và xử lý AI...</p><p class="text-xs mt-1 text-slate-500">Pipeline: File → AI Vision/Text → JSON → kiểm tra LaTeX → duyệt lưu</p></div>';
   try{
-    let raw='', items=[];
+    let raw='', items=[], aiLog=[];
     const isVisionFile=(file.type==='application/pdf'||file.type?.startsWith('image/')||/\.(pdf|png|jpg|jpeg|webp)$/i.test(file.name||''));
     if(opts.useAI && opts.vision && isVisionFile){
       try{
         items=await smartParseVisionWithAI(file,opts,msg=>{if(progress)progress.textContent=msg;});
-        raw='[AI Vision đọc trực tiếp từ ảnh trang đề - không dùng text thô]';
+        raw='[AI Vision đọc trực tiếp từ ảnh/trang PDF - không dùng text thô]';
+        aiLog.push('AI Vision thành công');
       }catch(visionErr){
-        toast('AI Vision chưa xử lý được, chuyển sang text/OCR: '+(visionErr?.message||visionErr),'bad');
-        raw=await extractSmartImportFile(file,{...opts,mode:opts.mode==='vision'?'auto':opts.mode},msg=>{if(progress)progress.textContent=msg;});
-        items=opts.useAI?await smartParseWithAI(raw,{...opts,source:file.name}):localParseSmart(raw,{...opts,source:file.name});
+        aiLog.push('AI Vision lỗi: '+(visionErr?.message||visionErr));
+        if(progress)progress.textContent='AI Vision chưa xử lý được, đang chuyển sang Text/OCR + AI...';
+        const rescue=await smartImportTextRescue(file,opts,msg=>{if(progress)progress.textContent=msg;});
+        raw=rescue.raw; items=rescue.items;
       }
     }else{
       raw=await extractSmartImportFile(file,opts,msg=>{if(progress)progress.textContent=msg;});
       if(progress)progress.textContent='Đã trích xuất '+raw.length.toLocaleString('vi-VN')+' ký tự. Đang tách câu...';
-      if(opts.useAI){try{items=await smartParseWithAI(raw,{...opts,source:file.name});}catch(aiErr){toast('AI chưa xử lý được, tự chuyển sang bộ tách nội bộ: '+(aiErr?.message||aiErr),'bad');items=localParseSmart(raw,{...opts,source:file.name});}}
-      else items=localParseSmart(raw,{...opts,source:file.name});
+      if(opts.useAI){
+        try{items=await smartParseWithAI(raw,{...opts,source:file.name}); aiLog.push('AI Text thành công');}
+        catch(aiErr){aiLog.push('AI Text lỗi: '+(aiErr?.message||aiErr)); items=[];}
+      }
+      if(!smartImportGoodCount(items)) items=localParseSmart(raw,{...opts,source:file.name});
+    }
+    // Nếu Vision trả quá ít câu hoặc toàn lỗi, tự cứu bằng OCR/Text để tránh màn hình “Chưa tách được câu”.
+    if(isVisionFile && (!items.length || smartImportGoodCount(items)===0)){
+      const rescue=await smartImportTextRescue(file,opts,msg=>{if(progress)progress.textContent=msg;});
+      if(smartImportGoodCount(rescue.items)>smartImportGoodCount(items)){raw=rescue.raw; items=rescue.items; aiLog.push('Đã dùng chế độ cứu Text/OCR');}
     }
     window.smartImportRawText=raw;
-    window.smartImportItems=applyMathDiagnosticsToItems(rvValidate(items)); if(box)box.innerHTML=smartMathReportHTML(window.smartImportItems)+smartPreviewHTML(window.smartImportItems,raw); typeset();
+    window.smartImportItems=applyMathDiagnosticsToItems(rvValidate(items));
+    if(box){
+      const logHTML=aiLog.length?`<div class="mb-3 p-3 rounded-2xl bg-blue-50 text-blue-700 text-xs"><b>Nhật ký AI:</b> ${safe(aiLog.join(' • '))}</div>`:'';
+      box.innerHTML=logHTML+smartMathReportHTML(window.smartImportItems)+smartPreviewHTML(window.smartImportItems,raw);
+    }
+    typeset();
     if(progress)progress.textContent=`Hoàn tất: ${window.smartImportItems.length} câu, ${window.smartImportItems.filter(x=>x._errors?.length).length} câu cần sửa.`;
+    if(!window.smartImportItems.length) toast('Chưa tách được câu. Thầy kiểm tra lại API key hoặc thử chọn PDF tự động/OCR.', 'bad');
   }catch(err){if(box)box.innerHTML=smartPreviewHTML([],window.smartImportRawText||''); if(progress)progress.textContent=''; toast('Không import được file: '+(err?.message||err),'bad');}
 }
 function smartUseLocalParser(){
