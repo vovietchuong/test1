@@ -4863,6 +4863,162 @@ createExamSession=async function(exam){
 // Khởi tạo dữ liệu mã lớp từ lớp cũ khi tải trang.
 try{saveClassRooms(classRooms());}catch(e){console.warn('Không khởi tạo được mã lớp:',e);}
 
+
+/* ===== NÂNG CẤP AUTO RA ĐỀ FULL AI THI THẬT - 2026 =====
+   Ghi đè các hàm AI cũ, giữ nguyên toàn bộ nền tảng cũ. */
+function aiRealExamPartName(type){
+  if(type==='mc')return 'PHẦN I - Trắc nghiệm nhiều phương án lựa chọn';
+  if(type==='tf')return 'PHẦN II - Trắc nghiệm đúng/sai';
+  if(type==='short')return 'PHẦN III - Trắc nghiệm trả lời ngắn';
+  return 'Câu hỏi';
+}
+function aiRealExamTotal(need){return Number(need?.mc||0)+Number(need?.tf||0)+Number(need?.short||0)}
+function aiRealExamDefaultKey(){return localStorage.getItem('mathpro12_gemini_api_key')||localStorage.getItem('mathpro12_ai_api_key')||'';}
+function aiAutoExamSystemPrompt(){return `Bạn là hội đồng ra đề Toán THPT Việt Nam theo Chương trình GDPT 2018, định hướng đề thi tốt nghiệp THPT.
+Nhiệm vụ: tự tạo MỘT ĐỀ THI THẬT chất lượng cao theo cấu hình giáo viên nhập.
+Chỉ trả về JSON hợp lệ dạng {"questions":[...]}, không markdown, không giải thích ngoài JSON.
+
+YÊU CẦU BẮT BUỘC
+1) Không sao chép đề có bản quyền; tạo câu hỏi mới, tự nhiên, đúng chương trình.
+2) Công thức Toán viết bằng LaTeX MathJax trong $...$; dùng \\frac, \\sqrt, \\lim, \\int, \\vec, \\begin{cases}...\\end{cases} khi cần.
+3) Dạng mc: có đúng 4 phương án options, answer là 0/1/2/3, phương án nhiễu hợp lý.
+4) Dạng tf: text là lời dẫn chung; statements có đúng 4 ý a,b,c,d liên quan nhau, ý sau có thể dựa vào ý trước; answer là mảng 4 boolean.
+5) Dạng short: answer là chuỗi ngắn, ưu tiên số nguyên, phân số tối giản, số thập phân hoặc biểu thức ngắn.
+6) Mỗi câu phải có solution đủ để giáo viên kiểm chứng; không để solution rỗng.
+7) Mỗi câu thêm level, standard2018, tags, confidence.
+8) Không tạo câu mơ hồ, không tạo bài ngoài phạm vi THPT.
+9) Nếu không chắc đáp án thì không được bịa; phải tự kiểm tra lại trước khi trả JSON.
+10) Phân loại phần thi: mc = PHẦN I, tf = PHẦN II, short = PHẦN III.`;}
+function aiAutoExamPrompt(cfg){
+  const total=aiRealExamTotal(cfg.need);
+  return `Hãy tạo một ĐỀ THI THẬT môn Toán theo cấu hình sau:\n`+
+  `Tên đề: ${cfg.title}\n`+
+  `Chủ đề: ${cfg.topic==='all'?'Tổng hợp nhiều chủ đề lớp 12':topicName(cfg.topic)}\n`+
+  `Mức độ chung: ${cfg.level}\n`+
+  `Thời gian làm bài: ${cfg.duration} phút\n`+
+  `Tổng số câu: ${total}\n`+
+  `PHẦN I - Trắc nghiệm nhiều phương án lựa chọn A/B/C/D: ${cfg.need.mc} câu\n`+
+  `PHẦN II - Trắc nghiệm đúng/sai, mỗi câu 4 ý liên quan nhau: ${cfg.need.tf} câu\n`+
+  `PHẦN III - Trắc nghiệm trả lời ngắn: ${cfg.need.short} câu\n`+
+  `Yêu cầu/ma trận riêng của giáo viên: ${cfg.note||'Bám cấu trúc thi thật, có đủ nhận biết - thông hiểu - vận dụng, ưu tiên kiến thức trọng tâm lớp 12.'}\n\n`+
+  `Trả về đúng JSON schema. Với mỗi câu phải có: type, text, options/statements nếu cần, answer, solution, level, standard2018, tags, confidence. Không trả markdown.`;
+}
+function aiAutoExamConfig(){
+  return {
+    provider:($('aiExamProvider')?.value||'gemini').trim(),
+    apiKey:($('aiExamApiKey')?.value||aiRealExamDefaultKey()).trim(),
+    model:($('aiExamModel')?.value||SMART_IMPORT_DEFAULT_MODEL).trim(),
+    endpoint:($('aiExamEndpoint')?.value||'/api/generate-exam').trim(),
+    title:($('aiExamTitle')?.value||'').trim()||('Đề AI thi thật '+new Date().toLocaleDateString('vi-VN')),
+    topic:$('aiExamTopic')?.value||'all',
+    level:$('aiExamLevel')?.value||'Tổng hợp thi thật',
+    duration:Number($('aiExamDuration')?.value||90),
+    need:{mc:Number($('aiExamMC')?.value||12),tf:Number($('aiExamTF')?.value||4),short:Number($('aiExamShort')?.value||6)},
+    classTarget:$('aiExamClass')?.value||'all',
+    isPublished:$('aiExamPublished')?.value==='true',
+    maxAttempts:Number($('aiExamMaxAttempts')?.value||1),
+    note:$('aiExamNote')?.value||''
+  };
+}
+function openAIAutoExamBuilder(){
+  if(!requireRole('teacher'))return;
+  const savedKey=aiRealExamDefaultKey();
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 z-50 p-4 overflow-auto fade-in ai-auto-exam-modal';
+  m.innerHTML=`<div class="glass-card max-w-7xl mx-auto p-6">
+    <div class="flex flex-wrap justify-between gap-3 items-start">
+      <div><span class="mini-badge"><i class="fa-solid fa-shield-halved"></i> Auto ra đề FULL AI thi thật</span><h2 class="text-2xl md:text-3xl font-black mt-2">Tạo đề thi thật bằng Gemini AI</h2><p class="text-sm mt-1" style="color:var(--muted)">AI tự sinh đề theo 3 phần: A/B/C/D, đúng/sai, trả lời ngắn; có đáp án, lời giải, chuẩn CT 2018 và lưu nháp để thầy duyệt.</p></div>
+      <button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none">&times;</button>
+    </div>
+    <section class="grid xl:grid-cols-[1.05fr_.95fr] gap-4 mt-5">
+      <div class="p-4 rounded-2xl border bg-white/60">
+        <h3 class="font-black mb-3">1) Ma trận đề thi thật</h3>
+        <div class="grid md:grid-cols-2 gap-3">
+          <input id="aiExamTitle" class="border rounded-xl p-3" placeholder="Tên đề, ví dụ: Đề AI TN THPT 2026 số 1">
+          <select id="aiExamTopic" class="border rounded-xl p-3 bg-white"><option value="all">Tổng hợp nhiều chủ đề</option>${topicSelectOptionsHTML('',false)}</select>
+          <select id="aiExamLevel" class="border rounded-xl p-3 bg-white"><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option selected>Tổng hợp thi thật</option></select>
+          <input id="aiExamDuration" type="number" min="5" class="border rounded-xl p-3" value="90" placeholder="Thời gian phút">
+        </div>
+        <div class="grid md:grid-cols-3 gap-3 mt-3">
+          <label class="p-3 rounded-2xl border bg-blue-50"><b>PHẦN I</b><span class="block text-xs text-blue-700">A/B/C/D</span><input id="aiExamMC" type="number" min="0" max="50" class="mt-2 w-full border rounded-xl p-3" value="12"></label>
+          <label class="p-3 rounded-2xl border bg-emerald-50"><b>PHẦN II</b><span class="block text-xs text-emerald-700">Đúng/Sai, 4 ý/câu</span><input id="aiExamTF" type="number" min="0" max="20" class="mt-2 w-full border rounded-xl p-3" value="4"></label>
+          <label class="p-3 rounded-2xl border bg-amber-50"><b>PHẦN III</b><span class="block text-xs text-amber-700">Trả lời ngắn</span><input id="aiExamShort" type="number" min="0" max="20" class="mt-2 w-full border rounded-xl p-3" value="6"></label>
+        </div>
+        <div class="grid md:grid-cols-3 gap-3 mt-3">
+          <input id="aiExamMaxAttempts" type="number" min="0" class="border rounded-xl p-3" value="1" placeholder="Số lượt làm">
+          <select id="aiExamClass" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả lớp</option>${classes.map(c=>`<option value="${safe(c)}">${safe(c)}</option>`).join('')}</select>
+          <select id="aiExamPublished" class="border rounded-xl p-3 bg-white"><option value="false" selected>Lưu nháp để duyệt</option><option value="true">Xuất bản ngay</option></select>
+        </div>
+        <textarea id="aiExamNote" class="w-full border rounded-xl p-3 mt-3 h-32" placeholder="Yêu cầu riêng: bám TN THPT 2026, 60% cơ bản, 40% vận dụng; có câu thực tế; không dùng kiến thức ngoài chương trình..."></textarea>
+      </div>
+      <div class="p-4 rounded-2xl border bg-white/60">
+        <h3 class="font-black mb-3">2) Gemini AI / Backend bảo mật</h3>
+        <div class="grid gap-3">
+          <select id="aiExamProvider" onchange="document.getElementById('aiExamModel').value=this.value==='openai'?'gpt-4.1-mini':'gemini-2.5-flash'" class="border rounded-xl p-3 bg-white"><option value="gemini" selected>Gemini API trực tiếp</option><option value="openai">OpenAI API trực tiếp</option><option value="backend">Backend bảo mật</option></select>
+          <input id="aiExamApiKey" type="password" class="border rounded-xl p-3" value="${safe(savedKey)}" placeholder="Gemini API key dùng test local">
+          <input id="aiExamModel" class="border rounded-xl p-3" value="${safe(localStorage.getItem('mathpro12_ai_model')||'gemini-2.5-flash')}" placeholder="Model">
+          <input id="aiExamEndpoint" class="border rounded-xl p-3" value="${safe(localStorage.getItem('mathpro12_ai_endpoint')||'/api/generate-exam')}" placeholder="Endpoint backend nếu dùng production">
+        </div>
+        <div class="mt-3 p-3 rounded-2xl bg-amber-50 text-amber-700 text-sm"><b>Bảo mật:</b> bản chạy thử có thể gọi API trực tiếp. Khi đưa học sinh dùng thật, nên chuyển qua Cloud Functions để không lộ API key.</div>
+        <div class="mt-3 p-3 rounded-2xl bg-blue-50 text-blue-700 text-sm"><b>Quy trình an toàn:</b> AI tạo đề → hệ thống kiểm tra lỗi → lưu nháp → giáo viên rà đáp án/lời giải → xuất bản.</div>
+      </div>
+    </section>
+    <div id="aiExamPreview" class="mt-4 auto-check text-sm">Bấm “Xem prompt” để kiểm tra lệnh gửi AI.</div>
+    <div class="mt-5 flex flex-wrap justify-end gap-2"><button onclick="this.closest('.fixed').remove()" class="btn-soft px-5 py-3 rounded-2xl">Đóng</button><button onclick="previewAIAutoPrompt()" class="bg-indigo-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem prompt</button><button onclick="generateAIAutoExam()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> AI tạo đề thi thật</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  previewAIAutoPrompt();
+}
+function validateAIAutoExam(cfg){
+  const errors=[]; const total=aiRealExamTotal(cfg.need);
+  if(total<=0)errors.push('Cần chọn ít nhất 1 câu hỏi.');
+  if(total>80)errors.push('Không nên tạo quá 80 câu/lần để tránh quá tải AI.');
+  if(cfg.duration<=0)errors.push('Thời gian làm bài phải lớn hơn 0.');
+  if(cfg.provider!=='backend' && !cfg.apiKey)errors.push('Chưa nhập API key hoặc hãy chọn Backend bảo mật.');
+  return errors;
+}
+function previewAIAutoPrompt(){
+  const box=$('aiExamPreview'); if(!box)return; const cfg=aiAutoExamConfig();
+  const rows=[['PHẦN I',cfg.need.mc,'A/B/C/D'],['PHẦN II',cfg.need.tf,'Đúng/Sai, 4 ý/câu'],['PHẦN III',cfg.need.short,'Trả lời ngắn']];
+  box.innerHTML=`<div class="flex flex-wrap justify-between gap-3"><b><i class="fa-solid fa-terminal"></i> Prompt đề thi thật sẽ gửi AI</b><span class="mini-badge">Tổng ${aiRealExamTotal(cfg.need)} câu</span></div><div class="grid md:grid-cols-3 gap-2 mt-3">${rows.map(r=>`<div class="p-3 rounded-2xl bg-white/70 border"><b>${r[0]}</b><p class="text-sm">${r[1]} câu</p><p class="text-xs" style="color:var(--muted)">${r[2]}</p></div>`).join('')}</div><pre class="mt-3 whitespace-pre-wrap text-xs bg-white/70 border rounded-2xl p-3 max-h-72 overflow-auto">${safe(aiAutoExamPrompt(cfg))}</pre>`;
+}
+function aiAuditGeneratedQuestions(questions=[],cfg={}){
+  const issues=[]; const c={mc:0,tf:0,short:0};
+  questions.forEach((q,i)=>{
+    c[q.type]=(c[q.type]||0)+1;
+    if(!q.solution)issues.push(`Câu ${i+1} thiếu lời giải.`);
+    if(q.type==='mc' && (!Array.isArray(q.options)||q.options.length!==4))issues.push(`Câu ${i+1} trắc nghiệm chưa đủ 4 phương án.`);
+    if(q.type==='tf' && (!Array.isArray(q.statements)||q.statements.length!==4))issues.push(`Câu ${i+1} đúng/sai chưa đủ 4 ý.`);
+    if(q.type==='short' && (q.answer===undefined||q.answer===null||String(q.answer).trim()===''))issues.push(`Câu ${i+1} trả lời ngắn thiếu đáp án.`);
+  });
+  ['mc','tf','short'].forEach(t=>{if(Number(cfg.need?.[t]||0)!==c[t])issues.push(`${aiRealExamPartName(t)}: AI trả ${c[t]} câu, yêu cầu ${cfg.need[t]} câu.`);});
+  return issues;
+}
+async function generateAIAutoExam(){
+  if(!requireRole('teacher'))return;
+  const cfg=aiAutoExamConfig(); const errors=validateAIAutoExam(cfg);
+  if(errors.length)return toast(errors.join('<br>'),'bad');
+  if(cfg.provider!=='backend' && cfg.apiKey){localStorage.setItem('mathpro12_ai_api_key',cfg.apiKey); if(cfg.provider==='gemini')localStorage.setItem('mathpro12_gemini_api_key',cfg.apiKey);}
+  localStorage.setItem('mathpro12_ai_provider',cfg.provider); localStorage.setItem('mathpro12_ai_model',cfg.model); localStorage.setItem('mathpro12_ai_endpoint',cfg.endpoint);
+  const box=$('aiExamPreview'); if(box)box.innerHTML='<div class="p-4 rounded-2xl bg-blue-50 text-blue-700 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> AI đang tạo đề thi thật, đáp án và lời giải...</div>';
+  try{
+    let arr=[];
+    if(cfg.provider==='gemini') arr=await callGeminiGenerateContent({apiKey:cfg.apiKey,model:cfg.model||SMART_IMPORT_DEFAULT_MODEL,systemText:aiAutoExamSystemPrompt(),userParts:[{text:aiAutoExamPrompt(cfg)}],responseSchema:smartQuestionJsonSchema(),temperature:0.28});
+    else if(cfg.provider==='openai') arr=await callOpenAIGenerateExam(cfg);
+    else arr=await callBackendGenerateExam(cfg);
+    let questions=(arr||[]).map((q,i)=>normalizeAIQuestion(q,i,{topicId:cfg.topic==='all'?8:cfg.topic,level:q.level||cfg.level,source:'AI đề thi thật',sourceTag:'ai-real-exam',autoMath:true,standard2018:'Chương trình GDPT 2018'})).filter(q=>q.text&&q.type);
+    if(!questions.length)throw new Error('AI chưa trả về câu hỏi hợp lệ. Thầy thử giảm số câu hoặc ghi yêu cầu cụ thể hơn.');
+    const audit=aiAuditGeneratedQuestions(questions,cfg);
+    questions=questions.map((q,i)=>{const c=cleanQuestionFromBank(q);c.id='q'+uid()+'realai_'+i;c.aiGenerated=true;c.realExamGenerated=true;c.sourceQuestionId=q.id||c.id;c.partName=aiRealExamPartName(c.type);return c;});
+    const docId=String(uid()); const classIds=cfg.classTarget==='all'?[]:[cfg.classTarget];
+    const data={id:docId,title:cfg.title,topicId:cfg.topic==='all'?8:cfg.topic,duration:cfg.duration,level:'AI thi thật - '+cfg.level,description:cfg.note||'Đề thi thật được AI tự sinh theo cấu trúc 3 phần, giáo viên cần duyệt trước khi sử dụng chính thức.',classTarget:cfg.classTarget,classIds,isPublished:cfg.isPublished,maxAttempts:cfg.maxAttempts,questions,autoGenerated:true,aiGenerated:true,realExamGenerated:true,autoConfig:{mode:'ai-real-exam',topic:cfg.topic,level:cfg.level,need:cfg.need,model:cfg.model,auditWarnings:audit},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    exams.unshift(data); save();
+    await syncExamQuestionsToQuestionBank(data);
+    if(firebaseReady){await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,questionCount:data.questions.length,usesQuestionBank:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await syncExamStructureToFirestore(data);}
+    document.querySelector('.ai-auto-exam-modal')?.remove(); renderTeacherDashboard(); toast(audit.length?'Đã tạo đề AI thi thật dạng nháp, có cảnh báo cần rà soát.':'Đã tạo đề AI thi thật và lưu vào hệ thống. Thầy nên mở đề kiểm tra trước khi xuất bản.','ok');
+  }catch(err){ if(box)box.innerHTML='<div class="p-4 rounded-2xl bg-red-50 text-red-700"><b>AI tạo đề chưa thành công.</b><br>'+safe(err?.message||err)+'</div>'; toast('AI tạo đề lỗi: '+(err?.message||err),'bad'); }
+}
+
 </script>
 </body>
 </html>
