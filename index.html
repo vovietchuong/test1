@@ -2200,7 +2200,7 @@ function smartExamPanelHTML(){
   const total=typeCount.mc+typeCount.tf+typeCount.short;
   const ready=total>=10 && typeCount.mc>=4;
   const recent=generated.map(e=>'<tr class="border-b"><td class="p-3"><b>'+safe(e.title||'Đề tự động')+'</b><p class="text-xs" style="color:var(--muted)">'+safe(e.level||'Tự động')+' • '+safe(topicName(e.topicId))+'</p></td><td class="p-3">'+((e.questions||[]).length||e.questionCount||0)+'</td><td class="p-3">'+(e.isPublished===false?'<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Nháp</span>':'<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Đã xuất bản</span>')+'</td></tr>').join('')||'<tr><td colspan="3" class="p-5 text-center text-slate-500">Chưa có đề tự động nào.</td></tr>';
-  return '<section class="grid xl:grid-cols-[.9fr_1.1fr] gap-5 mb-5"><div class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3 items-start"><div><span class="mini-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Giai đoạn 7 - Bước 1</span><h3 class="font-black text-xl mt-2">Luyện đề thông minh: tạo đề tự động</h3><p class="text-sm mt-1" style="color:var(--muted)">Hệ thống dùng kho câu hỏi để sinh đề theo chủ đề, mức độ và số câu từng phần.</p></div>'+toneBadge(ready?'Sẵn sàng':'Cần thêm câu',ready?'green':'amber')+'</div><div class="grid grid-cols-3 gap-3 mt-4"><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+typeCount.mc+'</p><p class="text-xs" style="color:var(--muted)">A/B/C/D</p></div><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+typeCount.tf+'</p><p class="text-xs" style="color:var(--muted)">Đúng/Sai</p></div><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+typeCount.short+'</p><p class="text-xs" style="color:var(--muted)">Trả lời ngắn</p></div></div><button onclick="openAutoExamBuilder()" class="mt-4 w-full btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-circle-plus"></i> Tạo đề tự động ngay</button><p class="text-xs mt-3" style="color:var(--muted)">Khuyến nghị: lưu nháp trước, giáo viên kiểm tra lại rồi mới xuất bản cho học sinh.</p></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Đề tự động gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th></tr></thead><tbody>'+recent+'</tbody></table></div></div></section>';
+  return '<section class="grid xl:grid-cols-[.9fr_1.1fr] gap-5 mb-5"><div class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3 items-start"><div><span class="mini-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Giai đoạn 7 - Bước 1</span><h3 class="font-black text-xl mt-2">Luyện đề thông minh: tạo đề tự động</h3><p class="text-sm mt-1" style="color:var(--muted)">Hệ thống dùng kho câu hỏi để sinh đề theo chủ đề, mức độ và số câu từng phần.</p></div>'+toneBadge(ready?'Sẵn sàng':'Cần thêm câu',ready?'green':'amber')+'</div><div class="grid grid-cols-3 gap-3 mt-4"><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+typeCount.mc+'</p><p class="text-xs" style="color:var(--muted)">A/B/C/D</p></div><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+typeCount.tf+'</p><p class="text-xs" style="color:var(--muted)">Đúng/Sai</p></div><div class="p-3 rounded-2xl bg-white/60 border text-center"><p class="text-2xl font-black">'+typeCount.short+'</p><p class="text-xs" style="color:var(--muted)">Trả lời ngắn</p></div></div><div class="grid gap-2 mt-4"><button onclick="openAIAutoExamBuilder()" class="w-full bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-brain"></i> AI tự ra đề mới</button><button onclick="openAutoExamBuilder()" class="w-full btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-circle-plus"></i> Tạo đề từ kho câu hỏi</button></div><p class="text-xs mt-3" style="color:var(--muted)">Khuyến nghị: lưu nháp trước, giáo viên kiểm tra lại rồi mới xuất bản cho học sinh.</p></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Đề tự động gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Tên đề</th><th class="p-3">Số câu</th><th class="p-3">Trạng thái</th></tr></thead><tbody>'+recent+'</tbody></table></div></div></section>';
 }
 function validateAutoExam(){
   const need=autoNeedConfig(), av=autoAvailability(), errors=[];
@@ -2237,6 +2237,138 @@ async function generateAutoExam(){
     }
   }catch(err){toast('Đã tạo đề local, chưa đồng bộ Firestore: '+fbError(err),'bad')}
   document.querySelector('.auto-builder-modal')?.remove();renderTeacherDashboard();toast('Đã tạo đề tự động. Thầy có thể mở đề để kiểm tra trước khi xuất bản.','ok')
+}
+
+
+
+// ===== AUTO RA ĐỀ AI FULL: GEMINI TỰ SINH CÂU HỎI + ĐÁP ÁN + LỜI GIẢI =====
+function aiAutoExamSystemPrompt(){return `Bạn là chuyên gia ra đề Toán THPT Việt Nam theo Chương trình GDPT 2018.
+Nhiệm vụ: tự tạo một đề kiểm tra Toán chất lượng cao theo đúng cấu hình giáo viên nhập.
+Chỉ trả về JSON hợp lệ dạng {"questions":[...]}.
+Yêu cầu chất lượng:
+- Không sao chép đề có bản quyền; tạo câu hỏi mới, phù hợp học sinh THPT.
+- Công thức viết bằng LaTeX MathJax trong $...$.
+- Dạng mc: 4 phương án A/B/C/D, answer là 0,1,2,3 hoặc answerText là A/B/C/D.
+- Dạng tf: lời dẫn chung, 4 mệnh đề liên quan nhau, answer là mảng 4 boolean hoặc answerText là chuỗi Đ,S,Đ,S.
+- Dạng short: đáp án ngắn dạng số/biểu thức ngắn, answer là chuỗi.
+- Mỗi câu có solution ngắn gọn nhưng đủ kiểm chứng.
+- Phân bố độ khó đúng mức giáo viên yêu cầu; hạn chế câu mơ hồ.
+- Theo Chương trình GDPT 2018, ưu tiên kiến thức lớp 12/TN THPT nếu không nêu khác.`;}
+function aiAutoExamPrompt(cfg){
+  return `Hãy tạo mới một đề Toán theo cấu hình sau:\n`+
+  `Tên đề: ${cfg.title}\n`+
+  `Chủ đề: ${cfg.topic==='all'?'Tổng hợp nhiều chủ đề':topicName(cfg.topic)}\n`+
+  `Mức độ chung: ${cfg.level}\n`+
+  `Số câu trắc nghiệm A/B/C/D: ${cfg.need.mc}\n`+
+  `Số câu đúng/sai: ${cfg.need.tf}\n`+
+  `Số câu trả lời ngắn: ${cfg.need.short}\n`+
+  `Thời gian làm bài: ${cfg.duration} phút\n`+
+  `Ghi chú/ma trận/yêu cầu riêng: ${cfg.note||'Không có'}\n\n`+
+  `Trả về đúng schema JSON. Với mỗi câu thêm standard2018, level, confidence. Không trả markdown.`;
+}
+function aiAutoExamConfig(){
+  return {
+    provider:($('aiExamProvider')?.value||'gemini').trim(),
+    apiKey:($('aiExamApiKey')?.value||'').trim(),
+    model:($('aiExamModel')?.value||SMART_IMPORT_DEFAULT_MODEL).trim(),
+    endpoint:($('aiExamEndpoint')?.value||'/api/generate-exam').trim(),
+    title:($('aiExamTitle')?.value||'').trim()||('Đề AI tự sinh '+new Date().toLocaleDateString('vi-VN')),
+    topic:$('aiExamTopic')?.value||'all',
+    level:$('aiExamLevel')?.value||'Tổng hợp',
+    duration:Number($('aiExamDuration')?.value||45),
+    need:{mc:Number($('aiExamMC')?.value||0),tf:Number($('aiExamTF')?.value||0),short:Number($('aiExamShort')?.value||0)},
+    classTarget:$('aiExamClass')?.value||'all',
+    isPublished:$('aiExamPublished')?.value==='true',
+    maxAttempts:Number($('aiExamMaxAttempts')?.value||1),
+    note:$('aiExamNote')?.value||''
+  };
+}
+function openAIAutoExamBuilder(){
+  if(!requireRole('teacher'))return;
+  const m=document.createElement('div');
+  m.className='fixed inset-0 bg-black/60 z-50 p-4 overflow-auto fade-in ai-auto-exam-modal';
+  m.innerHTML=`<div class="glass-card max-w-6xl mx-auto p-6">
+    <div class="flex flex-wrap justify-between gap-3 items-start">
+      <div><span class="mini-badge"><i class="fa-solid fa-brain"></i> Auto ra đề AI</span><h2 class="text-2xl md:text-3xl font-black mt-2">Tạo đề mới bằng Gemini AI</h2><p class="text-sm mt-1" style="color:var(--muted)">AI tự sinh câu hỏi, đáp án, lời giải, rồi lưu thành đề nháp để thầy kiểm tra trước khi xuất bản.</p></div>
+      <button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none">&times;</button>
+    </div>
+    <section class="grid lg:grid-cols-[1fr_.9fr] gap-4 mt-5">
+      <div class="p-4 rounded-2xl border bg-white/60">
+        <h3 class="font-black mb-3">1) Cấu hình đề</h3>
+        <div class="grid md:grid-cols-2 gap-3">
+          <input id="aiExamTitle" class="border rounded-xl p-3" placeholder="Tên đề, ví dụ: Đề AI hàm số số 1">
+          <select id="aiExamTopic" class="border rounded-xl p-3 bg-white"><option value="all">Tổng hợp nhiều chủ đề</option>${topicSelectOptionsHTML('',false)}</select>
+          <select id="aiExamLevel" class="border rounded-xl p-3 bg-white"><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option selected>Tổng hợp</option></select>
+          <input id="aiExamDuration" type="number" min="5" class="border rounded-xl p-3" value="45" placeholder="Thời gian phút">
+          <input id="aiExamMC" type="number" min="0" max="50" class="border rounded-xl p-3" value="8" placeholder="Số câu A/B/C/D">
+          <input id="aiExamTF" type="number" min="0" max="20" class="border rounded-xl p-3" value="2" placeholder="Số câu đúng/sai">
+          <input id="aiExamShort" type="number" min="0" max="20" class="border rounded-xl p-3" value="2" placeholder="Số câu trả lời ngắn">
+          <input id="aiExamMaxAttempts" type="number" min="0" class="border rounded-xl p-3" value="1" placeholder="Số lượt làm">
+          <select id="aiExamClass" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả lớp</option>${classes.map(c=>`<option value="${safe(c)}">${safe(c)}</option>`).join('')}</select>
+          <select id="aiExamPublished" class="border rounded-xl p-3 bg-white"><option value="false" selected>Lưu nháp để duyệt</option><option value="true">Xuất bản ngay</option></select>
+        </div>
+        <textarea id="aiExamNote" class="w-full border rounded-xl p-3 mt-3 h-28" placeholder="Yêu cầu riêng: bám cấu trúc TN THPT 2026, tránh lượng giác, có 2 câu vận dụng thực tế..."></textarea>
+      </div>
+      <div class="p-4 rounded-2xl border bg-white/60">
+        <h3 class="font-black mb-3">2) Gemini / Backend</h3>
+        <div class="grid gap-3">
+          <select id="aiExamProvider" onchange="document.getElementById('aiExamModel').value=this.value==='openai'?'gpt-4.1-mini':'gemini-2.5-flash'" class="border rounded-xl p-3 bg-white"><option value="gemini" selected>Gemini API trực tiếp</option><option value="openai">OpenAI API trực tiếp</option><option value="backend">Backend bảo mật</option></select>
+          <input id="aiExamApiKey" type="password" class="border rounded-xl p-3" placeholder="API key dùng test local; production nên dùng backend">
+          <input id="aiExamModel" class="border rounded-xl p-3" value="gemini-2.5-flash" placeholder="Model">
+          <input id="aiExamEndpoint" class="border rounded-xl p-3" value="/api/generate-exam" placeholder="Endpoint backend nếu dùng production">
+        </div>
+        <div class="mt-3 p-3 rounded-2xl bg-blue-50 text-blue-700 text-sm"><b>Khuyến nghị:</b> tạo nháp trước, kiểm tra đáp án/lời giải, sau đó mới xuất bản cho học sinh.</div>
+      </div>
+    </section>
+    <div id="aiExamPreview" class="mt-4 auto-check text-sm">Bấm “Xem prompt” để kiểm tra lệnh gửi AI.</div>
+    <div class="mt-5 flex flex-wrap justify-end gap-2"><button onclick="this.closest('.fixed').remove()" class="btn-soft px-5 py-3 rounded-2xl">Đóng</button><button onclick="previewAIAutoPrompt()" class="bg-indigo-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem prompt</button><button onclick="generateAIAutoExam()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> AI tạo đề ngay</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  previewAIAutoPrompt();
+}
+function validateAIAutoExam(cfg){
+  const errors=[]; const total=cfg.need.mc+cfg.need.tf+cfg.need.short;
+  if(total<=0)errors.push('Cần chọn ít nhất 1 câu hỏi.');
+  if(total>80)errors.push('Không nên tạo quá 80 câu/lần để tránh quá tải AI.');
+  if(cfg.duration<=0)errors.push('Thời gian làm bài phải lớn hơn 0.');
+  if(cfg.provider!=='backend' && !cfg.apiKey)errors.push('Chưa nhập API key hoặc hãy chọn Backend bảo mật.');
+  return errors;
+}
+function previewAIAutoPrompt(){
+  const box=$('aiExamPreview'); if(!box)return; const cfg=aiAutoExamConfig();
+  box.innerHTML=`<div class="flex flex-wrap justify-between gap-3"><b><i class="fa-solid fa-terminal"></i> Prompt sẽ gửi AI</b><span class="mini-badge">Tổng ${cfg.need.mc+cfg.need.tf+cfg.need.short} câu</span></div><pre class="mt-3 whitespace-pre-wrap text-xs bg-white/70 border rounded-2xl p-3 max-h-72 overflow-auto">${safe(aiAutoExamPrompt(cfg))}</pre>`;
+}
+async function callOpenAIGenerateExam(cfg){
+  const res=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.apiKey},body:JSON.stringify({model:cfg.model||SMART_IMPORT_OPENAI_TEXT_MODEL,input:[{role:'system',content:aiAutoExamSystemPrompt()},{role:'user',content:aiAutoExamPrompt(cfg)}],temperature:0.35})});
+  const data=await res.json(); if(!res.ok)throw new Error(data?.error?.message||'Không gọi được OpenAI API');
+  const out=data.output_text || data.output?.flatMap(o=>o.content||[]).map(c=>c.text||'').join('\n') || '';
+  const parsed=parseJsonArrayLoose(out); return Array.isArray(parsed)?parsed:(parsed.questions||[]);
+}
+async function callBackendGenerateExam(cfg){
+  const res=await fetch(cfg.endpoint||'/api/generate-exam',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:aiAutoExamSystemPrompt(),prompt:aiAutoExamPrompt(cfg),schema:smartQuestionJsonSchema(),config:cfg})});
+  const data=await res.json(); if(!res.ok)throw new Error(data?.error||data?.message||'Backend tạo đề chưa hoạt động');
+  return Array.isArray(data)?data:(data.questions||parseJsonArrayLoose(data.output||data.text||''));
+}
+async function generateAIAutoExam(){
+  if(!requireRole('teacher'))return;
+  const cfg=aiAutoExamConfig(); const errors=validateAIAutoExam(cfg);
+  if(errors.length)return toast(errors.join('<br>'),'bad');
+  const box=$('aiExamPreview'); if(box)box.innerHTML='<div class="p-4 rounded-2xl bg-blue-50 text-blue-700 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> AI đang tạo đề, đáp án và lời giải...</div>';
+  try{
+    let arr=[];
+    if(cfg.provider==='gemini') arr=await callGeminiGenerateContent({apiKey:cfg.apiKey,model:cfg.model||SMART_IMPORT_DEFAULT_MODEL,systemText:aiAutoExamSystemPrompt(),userParts:[{text:aiAutoExamPrompt(cfg)}],responseSchema:smartQuestionJsonSchema(),temperature:0.35});
+    else if(cfg.provider==='openai') arr=await callOpenAIGenerateExam(cfg);
+    else arr=await callBackendGenerateExam(cfg);
+    let questions=(arr||[]).map((q,i)=>normalizeAIQuestion(q,i,{topicId:cfg.topic==='all'?8:cfg.topic,level:cfg.level,source:'AI auto exam',sourceTag:'ai-auto-exam',autoMath:true})).filter(q=>q.text&&q.type);
+    if(!questions.length)throw new Error('AI chưa trả về câu hỏi hợp lệ. Thầy thử giảm số câu hoặc bổ sung yêu cầu rõ hơn.');
+    questions=questions.map((q,i)=>{const c=cleanQuestionFromBank(q);c.id='q'+uid()+'ai_'+i;c.aiGenerated=true;c.sourceQuestionId=q.id||c.id;return c;});
+    const docId=String(uid()); const classIds=cfg.classTarget==='all'?[]:[cfg.classTarget];
+    const data={id:docId,title:cfg.title,topicId:cfg.topic==='all'?8:cfg.topic,duration:cfg.duration,level:'AI tự sinh - '+cfg.level,description:cfg.note||'Đề được AI tự sinh, giáo viên cần duyệt trước khi sử dụng chính thức.',classTarget:cfg.classTarget,classIds,isPublished:cfg.isPublished,maxAttempts:cfg.maxAttempts,questions,autoGenerated:true,aiGenerated:true,autoConfig:{mode:'ai-generate',topic:cfg.topic,level:cfg.level,need:cfg.need,model:cfg.model},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    exams.unshift(data); save();
+    await syncExamQuestionsToQuestionBank(data);
+    if(firebaseReady){await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,questionCount:data.questions.length,usesQuestionBank:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await syncExamStructureToFirestore(data);}
+    document.querySelector('.ai-auto-exam-modal')?.remove(); renderTeacherDashboard(); toast('Đã AI tự sinh đề và lưu vào hệ thống. Thầy nên mở đề kiểm tra trước khi xuất bản.','ok');
+  }catch(err){ if(box)box.innerHTML='<div class="p-4 rounded-2xl bg-red-50 text-red-700"><b>AI tạo đề chưa thành công.</b><br>'+safe(err?.message||err)+'</div>'; toast('AI tạo đề lỗi: '+(err?.message||err),'bad'); }
 }
 
 
@@ -3043,6 +3175,28 @@ function smartImportConfig(){
     maxVisionPages:Number($('smartVisionMaxPages')?.value||12)
   };
 }
+
+function parseAIAnswerByType(q={},type='short'){
+  const raw=(q.answer!==undefined && q.answer!==null)?q.answer:(q.answerText!==undefined?q.answerText:q.correctAnswer);
+  if(type==='mc'){
+    if(Number.isFinite(Number(raw))) return Number(raw);
+    const t=String(raw||'').trim().toUpperCase();
+    const m=t.match(/^[A-D]/) || t.match(/ĐÁP\s*ÁN\s*[:\-]?\s*([A-D])/i);
+    if(m){const ch=(m[1]||m[0]||'').trim().toUpperCase()[0]; return 'ABCD'.indexOf(ch);}
+    return '';
+  }
+  if(type==='tf'){
+    if(Array.isArray(raw)) return raw;
+    const t=String(raw||'').trim();
+    const parts=t.split(/[;,|\n]+/).map(x=>x.trim()).filter(Boolean);
+    if(parts.length>=4) return parts.slice(0,4).map(x=>/^(đ|d|true|t|1|yes|y)/i.test(x));
+    const compact=t.replace(/\s+/g,'').toUpperCase();
+    if(/^[ĐDSSTF01]{4,}$/.test(compact)) return compact.slice(0,4).split('').map(ch=>['Đ','D','T','1'].includes(ch));
+    return [false,false,false,false];
+  }
+  return raw??'';
+}
+
 function normalizeAIQuestion(q={},idx=0,opts={}){
   const type=['mc','tf','short'].includes(q.type)?q.type:(Array.isArray(q.options)?'mc':Array.isArray(q.statements)?'tf':'short');
   const raw={
@@ -3061,13 +3215,14 @@ function normalizeAIQuestion(q={},idx=0,opts={}){
   if(type==='mc'){
     const ops=Array.isArray(q.options)?q.options:[q.optionA,q.optionB,q.optionC,q.optionD];
     raw.optionA=ops[0]||''; raw.optionB=ops[1]||''; raw.optionC=ops[2]||''; raw.optionD=ops[3]||'';
-    raw.answer=Number.isFinite(Number(q.answer))?Number(q.answer):'';
+    raw.answer=parseAIAnswerByType(q,type);
   }else if(type==='tf'){
     const st=Array.isArray(q.statements)?q.statements:[q.statementA,q.statementB,q.statementC,q.statementD];
     raw.statementA=st[0]||''; raw.statementB=st[1]||''; raw.statementC=st[2]||''; raw.statementD=st[3]||'';
-    const ans=Array.isArray(q.answer)?q.answer:[q.answerA,q.answerB,q.answerC,q.answerD];
+    const parsedTF=parseAIAnswerByType(q,type);
+    const ans=Array.isArray(parsedTF)?parsedTF:[q.answerA,q.answerB,q.answerC,q.answerD];
     ['A','B','C','D'].forEach((k,i)=>raw['answer'+k]=(ans[i]===true||String(ans[i]).toLowerCase()==='true'||String(ans[i]).toLowerCase()==='đúng')?'Đúng':'Sai');
-  }else raw.answer=q.answer??'';
+  }else raw.answer=parseAIAnswerByType(q,type);
   const out=normalizeImportedQuestion(raw,idx,true);
   if(q.answer===null || typeof q.answer==='undefined') out._errors=(out._errors||[]).concat('AI chưa xác định đáp án chắc chắn');
   if(raw.confidence && raw.confidence<0.65) out._warnings=(out._warnings||[]).concat('AI báo độ tin cậy thấp');
@@ -4071,7 +4226,7 @@ function renderTeacherDashboard(){
   const actionBtn=(text,icon,fn,cls='btn-soft')=>`<button onclick="${fn}" class="${cls} px-4 py-3 rounded-2xl font-bold text-left flex items-center justify-between gap-3"><span><i class="fa-solid ${icon} mr-2"></i>${text}</span><i class="fa-solid fa-chevron-right text-xs opacity-60"></i></button>`;
   const examRows=exams.slice(0,8).map(e=>{e=normalizeExamAccess(e);const status=e.isPublished===false?'<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Nháp</span>':'<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Đã xuất bản</span>';return `<tr class="border-b"><td class="p-3"><b>${safe(e.title)}</b><p class="text-xs" style="color:var(--muted)">${safe(topicName(e.topicId))}</p></td><td class="p-3">${(e.questions||[]).length||e.questionCount||0}</td><td class="p-3">${status}</td><td class="p-3 text-xs" style="color:var(--muted)">${safe(examScheduleText(e))}</td></tr>`}).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có đề.</td></tr>';
   const recentRows=analyticsFilteredSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
-  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Giai đoạn 7</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm phân tích & can thiệp học tập</h2><p style="color:var(--muted)">Theo dõi chất lượng lớp, phát hiện học sinh cần hỗ trợ, phân tích chủ đề yếu và xuất báo cáo.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi nâng cao</h3><p class="text-sm" style="color:var(--muted)">Lọc, xuất bản, giao lớp, nhân bản và kiểm tra nhanh từng đề.</p></div><div class="flex flex-wrap gap-2"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ cấu trúc</button></div></div>${examManagerHTML()}</section></div>`;
+  $('mainView').innerHTML=`<div class="fade-in"><div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chart-pie"></i> Dashboard giáo viên - Giai đoạn 7</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm phân tích & can thiệp học tập</h2><p style="color:var(--muted)">Theo dõi chất lượng lớp, phát hiện học sinh cần hỗ trợ, phân tích chủ đề yếu và xuất báo cáo.</p></div><div class="flex flex-wrap gap-2"><button onclick="exportAnalyticsCSV()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-export"></i> Xuất thống kê</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh & lớp</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Đang quản lý')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Dùng để sinh đề')}${analyticsCard('Lớp học',classes.length,'fa-school','Giao đề theo lớp')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('AI tự ra đề mới','fa-brain','openAIAutoExamBuilder()','bg-emerald-600 text-white')}${actionBtn('Tạo đề từ kho','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Tạo đề theo ma trận','fa-table-cells-large','openMatrixExamBuilder()','bg-purple-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ PDF','fa-file-pdf','openPDFImportModal()','bg-rose-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi nâng cao</h3><p class="text-sm" style="color:var(--muted)">Lọc, xuất bản, giao lớp, nhân bản và kiểm tra nhanh từng đề.</p></div><div class="flex flex-wrap gap-2"><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ cấu trúc</button></div></div>${examManagerHTML()}</section></div>`;
   typeset();
 }
 function renderStats(){
@@ -4172,7 +4327,7 @@ function adminDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCoun
   return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-crown"></i> Admin</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm quản trị toàn hệ thống</h2><p style="color:var(--muted)">Quản lý người dùng, phân quyền, dữ liệu, bảo mật, câu hỏi, đề thi và kết quả toàn trường.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderDataTools()" class="bg-slate-800 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> Công cụ dữ liệu</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Rules</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Toàn hệ thống')}${analyticsCard('Giáo viên',users.filter(u=>u.role==='teacher').length,'fa-chalkboard-user','Đang hoạt động')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Toàn hệ thống')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh & lớp','fa-users-gear','renderClassManager()','btn-primary text-white')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi toàn hệ thống</h3><p class="text-sm" style="color:var(--muted)">Admin thấy tất cả đề, có quyền kiểm tra và điều phối.</p></div><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div>${examManagerHTML()}</section></div>`;
 }
 function teacherScopedDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows){
-  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</span><h2 class="text-3xl md:text-4xl font-black mt-2">Bảng quản lý lớp của giáo viên</h2><p style="color:var(--muted)">Theo dõi học sinh lớp mình, thêm câu hỏi, tạo đề và xem kết quả trong phạm vi được phân công.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh lớp mình</button><button onclick="openExamEditor()" class="bg-blue-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo đề</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-box-archive"></i> Kho câu hỏi</button></div></div><section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh lớp mình',totalStudents,'fa-user-graduate','Theo lớp được gán')}${analyticsCard('Đề liên quan',scopedExams().length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Câu hỏi của mình',totalQuestions,'fa-database','Có thể thêm/sửa')}${analyticsCard('Lớp được gán',teacherClassNames().length,'fa-school',teacherClassNames().join(', ')||'Chưa gán')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác giáo viên được phép</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('Tạo đề tự động','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh lớp mình','fa-users-gear','renderClassManager()','btn-primary text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây của lớp mình</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi của giáo viên</h3><p class="text-sm" style="color:var(--muted)">Chỉ hiển thị đề do giáo viên tạo hoặc giao cho lớp mình.</p></div><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div>${examManagerHTML()}</section></div>`;
+  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</span><h2 class="text-3xl md:text-4xl font-black mt-2">Bảng quản lý lớp của giáo viên</h2><p style="color:var(--muted)">Theo dõi học sinh lớp mình, thêm câu hỏi, tạo đề và xem kết quả trong phạm vi được phân công.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh lớp mình</button><button onclick="openExamEditor()" class="bg-blue-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Tạo đề</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-box-archive"></i> Kho câu hỏi</button></div></div><section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh lớp mình',totalStudents,'fa-user-graduate','Theo lớp được gán')}${analyticsCard('Đề liên quan',scopedExams().length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Câu hỏi của mình',totalQuestions,'fa-database','Có thể thêm/sửa')}${analyticsCard('Lớp được gán',teacherClassNames().length,'fa-school',teacherClassNames().join(', ')||'Chưa gán')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác giáo viên được phép</h3><div class="grid gap-2">${actionBtn('Tạo đề thủ công','fa-plus','openExamEditor()','btn-primary text-white')}${actionBtn('AI tự ra đề mới','fa-brain','openAIAutoExamBuilder()','bg-emerald-600 text-white')}${actionBtn('Tạo đề từ kho','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh lớp mình','fa-users-gear','renderClassManager()','btn-primary text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây của lớp mình</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi của giáo viên</h3><p class="text-sm" style="color:var(--muted)">Chỉ hiển thị đề do giáo viên tạo hoặc giao cho lớp mình.</p></div><button onclick="openExamEditor()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-plus"></i> Thêm đề</button></div>${examManagerHTML()}</section></div>`;
 }
 renderTeacherDashboard=function(){
   if(!requireRole('teacher'))return;
