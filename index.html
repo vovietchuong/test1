@@ -235,6 +235,24 @@
     .achievement-pill{display:inline-flex;align-items:center;gap:.35rem;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.13);color:white;border-radius:999px;padding:.35rem .7rem;font-size:.78rem;font-weight:900}
     @media(max-width:900px){.achievement-filter{grid-template-columns:1fr}.achievement-rank-card{grid-template-columns:auto 1fr}.achievement-rank-card>div:last-child{grid-column:1/-1;text-align:left!important}}
 
+
+    /* ===== ADMIN DASHBOARD PRO - SẮP XẾP KHOA HỌC 2026-04-29 ===== */
+    .admin-pro-shell{display:grid;grid-template-columns:280px minmax(0,1fr);gap:1.25rem;align-items:start}
+    .admin-pro-sidebar{position:sticky;top:5.75rem;max-height:calc(100vh - 6.5rem);overflow:auto;padding:1rem}
+    .admin-pro-menu{display:grid;gap:.45rem}.admin-pro-menu-title{font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:.75rem .25rem .25rem}
+    .admin-pro-menu button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.78rem .85rem;border-radius:1rem;border:1px solid transparent;background:transparent;font-weight:850;text-align:left;transition:.16s ease;color:var(--text)}
+    .admin-pro-menu button:hover{background:rgba(37,99,235,.09);border-color:var(--line);transform:translateX(2px)}.admin-pro-menu button span{display:flex;align-items:center;gap:.65rem}.admin-pro-menu button i:first-child{width:1.15rem;text-align:center;color:var(--brand)}
+    .admin-pro-hero{position:relative;overflow:hidden;border-radius:1.8rem;padding:1.35rem;background:linear-gradient(135deg,#0f172a,#1d4ed8 52%,#06b6d4);color:white;border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 88px -40px rgba(2,6,23,.72)}
+    .admin-pro-hero:before{content:"";position:absolute;right:-5rem;top:-7rem;width:24rem;height:24rem;border-radius:999px;background:rgba(255,255,255,.13)}.admin-pro-hero>*{position:relative;z-index:1}
+    .admin-pro-pill{display:inline-flex;align-items:center;gap:.38rem;padding:.35rem .7rem;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);font-size:.78rem;font-weight:900;color:white}
+    .admin-pro-filter{display:grid;grid-template-columns:1fr 1fr .75fr .75fr auto;gap:.75rem;align-items:end}.admin-pro-section-title{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:1.15rem 0 .75rem}.admin-pro-section-title h3{font-size:1.25rem;font-weight:950}
+    .admin-pro-command-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem}.admin-pro-command{display:flex;align-items:center;justify-content:space-between;gap:.75rem;border:1px solid var(--line);border-radius:1.15rem;padding:1rem;background:rgba(255,255,255,.56);font-weight:900;transition:.16s ease}
+    html[data-theme="dark"] .admin-pro-command{background:rgba(15,23,42,.52)}.admin-pro-command:hover{transform:translateY(-2px);box-shadow:0 20px 48px -34px rgba(2,6,23,.55);border-color:#60a5fa}.admin-pro-command small{display:block;font-weight:700;color:var(--muted);margin-top:.12rem}
+    .admin-pro-icon{width:2.55rem;height:2.55rem;border-radius:1rem;display:grid;place-items:center;background:rgba(37,99,235,.10);color:var(--brand);border:1px solid var(--line);flex:none}.admin-pro-alert{border:1px solid var(--line);border-radius:1.15rem;padding:1rem;background:rgba(255,255,255,.58)}
+    html[data-theme="dark"] .admin-pro-alert{background:rgba(15,23,42,.52)}.admin-pro-alert.bad{border-color:rgba(220,38,38,.25);background:rgba(220,38,38,.075)}.admin-pro-alert.warn{border-color:rgba(217,119,6,.28);background:rgba(217,119,6,.075)}.admin-pro-alert.good{border-color:rgba(22,163,74,.25);background:rgba(22,163,74,.075)}
+    .admin-pro-table{width:100%;font-size:.9rem}.admin-pro-table th{font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:950}.admin-pro-table th,.admin-pro-table td{padding:.82rem;border-bottom:1px solid var(--line);vertical-align:top}.admin-pro-split{display:grid;grid-template-columns:1.08fr .92fr;gap:1rem}
+    @media(max-width:1100px){.admin-pro-shell{grid-template-columns:1fr}.admin-pro-sidebar{position:relative;top:auto;max-height:none}.admin-pro-filter{grid-template-columns:1fr 1fr}.admin-pro-filter button{grid-column:1/-1}.admin-pro-split{grid-template-columns:1fr}}@media(max-width:640px){.admin-pro-filter{grid-template-columns:1fr}.admin-pro-hero{padding:1rem}.admin-pro-command-grid{grid-template-columns:1fr}}
+
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
   </style>
 </head>
@@ -5179,6 +5197,130 @@ const __oldCanStudentSeeExam=canStudentSeeExam;
 canStudentSeeExam=function(e){if(isAdminUser(currentUser)||isTeacherUser(currentUser))return true;return __oldCanStudentSeeExam(e);}
 const __oldGetExamAvailability=getExamAvailability;
 getExamAvailability=function(e,user=currentUser){if(user?.role==='admin')return {ok:true,label:'Admin xem đề',reason:''};return __oldGetExamAvailability(e,user);}
+
+/* ===== FULL ADMIN DASHBOARD CODE - SẮP XẾP KHOA HỌC 2026-04-29 =====
+   Ghi đè dashboard cũ theo cấu trúc: Tổng quan → Người dùng → Kho câu hỏi → Đề thi → Kết quả → Hệ thống.
+   Các hàm cũ vẫn được giữ nguyên để không phá luồng tạo đề, import, phân quyền và Firestore.
+*/
+const ADMIN_DASHBOARD_PRO_VERSION='admin-dashboard-pro-2026-04-29';
+function adminAllStudents(){return users.filter(u=>String(u.role||'student')==='student' || !(typeof isPrivilegedRole==='function'&&isPrivilegedRole(u.role)));}
+function adminRecentSubmissions(limit=8){return analyticsFilteredSubmissions().slice().sort((a,b)=>(parseVNDateTime(b.createdAt||b.submittedAt||b.date)||0)-(parseVNDateTime(a.createdAt||a.submittedAt||a.date)||0)).slice(0,limit);}
+function adminDateLabel(){
+  const cls=analyticsState.className==='all'?'Tất cả lớp':analyticsState.className;
+  const exam=analyticsState.examId==='all'?'Tất cả đề':(exams.find(e=>String(e.id)===String(analyticsState.examId))?.title||'Đề đã chọn');
+  const time=(analyticsState.from||analyticsState.to)?`${analyticsState.from||'...'} → ${analyticsState.to||'...'}`:'Toàn thời gian';
+  return {cls,exam,time};
+}
+function adminScopeSubmissions(){return analyticsFilteredSubmissions();}
+function adminWeakTopicRows(arr=adminScopeSubmissions()){
+  const map={};
+  arr.forEach(s=>(s.details||[]).forEach(d=>{
+    const name=d.topicName||topicName(d.topicId)||'Chủ đề khác';
+    map[name]=map[name]||{name,total:0,wrong:0};
+    map[name].total++;
+    if(!d.ok) map[name].wrong++;
+  }));
+  return Object.values(map).map(x=>({...x,rate:x.total?Math.round(x.wrong*100/x.total):0})).sort((a,b)=>b.rate-a.rate||b.wrong-a.wrong);
+}
+function adminNeedSupportRows(arr=adminScopeSubmissions()){
+  const by=groupBy(arr,s=>String(s.studentId||s.studentEmail||s.studentName||''));
+  return adminAllStudents().map(u=>{
+    const key=String(u.id||u.email||u.username||'');
+    const list=by[key]||arr.filter(s=>String(s.studentEmail||'')===String(u.email||u.username||''));
+    const avg=avgOf(list), count=list.length, warn=list.reduce((t,s)=>t+(Number(s.warnings)||0),0);
+    let level='Chưa làm bài', tone='warn';
+    if(count && avg<50){level='Cần can thiệp'; tone='bad';}
+    else if(count && avg<70){level='Theo dõi thêm'; tone='warn';}
+    else if(count){level='Ổn định'; tone='good';}
+    return {u,list,avg,count,warn,level,tone};
+  }).filter(x=>x.count===0 || x.avg<70 || x.warn>0).sort((a,b)=>(a.tone==='bad'?-1:a.tone==='warn'?0:1)-(b.tone==='bad'?-1:b.tone==='warn'?0:1)||a.avg-b.avg).slice(0,10);
+}
+function adminMenuGroup(title,items){
+  return `<div class="admin-pro-menu-title">${safe(title)}</div>${items.map(it=>`<button onclick="${it.fn}"><span><i class="fa-solid ${it.icon}"></i>${safe(it.text)}</span><i class="fa-solid fa-chevron-right text-xs opacity-50"></i></button>`).join('')}`;
+}
+function adminSidebarHTML(){
+  const isAdmin=isAdminUser(currentUser);
+  return `<aside class="admin-pro-sidebar glass-card no-print"><div class="flex items-center gap-3 mb-3"><div class="w-11 h-11 rounded-2xl btn-primary text-white grid place-items-center"><i class="fa-solid fa-crown"></i></div><div><b>${isAdmin?'Admin hệ thống':'Giáo viên'}</b><p class="text-xs" style="color:var(--muted)">${safe(currentUser?.fullname||currentUser?.email||'')}</p></div></div><div class="admin-pro-menu">
+    ${adminMenuGroup('Tổng quan',[{text:'Dashboard',icon:'fa-chart-pie',fn:'renderTeacherDashboard()'},{text:'Thành tích nổi bật',icon:'fa-trophy',fn:'renderAchievements()'},{text:'Xuất thống kê',icon:'fa-file-export',fn:'exportAnalyticsCSV()'}])}
+    ${adminMenuGroup('Người dùng & lớp',[{text:'Phân quyền người dùng',icon:'fa-user-shield',fn:'renderUserManager()'},{text:'Lớp học',icon:'fa-school',fn:'renderClassManager()'}])}
+    ${adminMenuGroup('Học liệu & đề thi',[{text:'Ngân hàng câu hỏi',icon:'fa-database',fn:'renderQuestionBank()'},{text:'Tạo đề trong kho',icon:'fa-file-circle-plus',fn:'openQuestionBankExamWorkspace()'},{text:'Tạo đề tự động',icon:'fa-wand-magic-sparkles',fn:'openAutoExamBuilder()'},{text:'Tạo đề PDF',icon:'fa-file-pdf',fn:'openPdfExamEditor()'}])}
+    ${adminMenuGroup('Import AI',[{text:'Nhập Word',icon:'fa-file-word',fn:'openWordImportModal()'},{text:'Nhập LaTeX',icon:'fa-square-root-variable',fn:"openLatexImportModal('bank')"},{text:'AI Vision PDF/Ảnh',icon:'fa-robot',fn:"openSmartImportModal('bank')"}])}
+    ${isAdmin?adminMenuGroup('Hệ thống',[{text:'Công cụ dữ liệu',icon:'fa-screwdriver-wrench',fn:'renderDataTools()'},{text:'Sao lưu hệ thống',icon:'fa-download',fn:'exportFullSystemBackup()'},{text:'Rules bảo mật',icon:'fa-shield-halved',fn:'showSecurityRules()'}]):''}
+  </div></aside>`;
+}
+function adminFilterProHTML(){
+  return `<section class="glass-card p-4 mb-5"><div class="admin-pro-filter"><label><span class="text-xs font-black" style="color:var(--muted)">Lớp</span><select id="anaClass" class="exam-admin-input mt-1"><option value="all">Tất cả lớp</option>${classes.map(c=>`<option value="${safe(c)}" ${analyticsState.className===c?'selected':''}>${safe(c)}</option>`).join('')}</select></label><label><span class="text-xs font-black" style="color:var(--muted)">Đề thi</span><select id="anaExam" class="exam-admin-input mt-1"><option value="all">Tất cả đề</option>${exams.map(e=>`<option value="${safe(e.id)}" ${String(analyticsState.examId)===String(e.id)?'selected':''}>${safe(e.title)}</option>`).join('')}</select></label><label><span class="text-xs font-black" style="color:var(--muted)">Từ ngày</span><input id="anaFrom" type="date" value="${safe(analyticsState.from||'')}" class="exam-admin-input mt-1"></label><label><span class="text-xs font-black" style="color:var(--muted)">Đến ngày</span><input id="anaTo" type="date" value="${safe(analyticsState.to||'')}" class="exam-admin-input mt-1"></label><button onclick="applyAnalyticsFilters()" class="btn-primary text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-filter"></i> Lọc dashboard</button></div></section>`;
+}
+function adminHeroHTML(){
+  const arr=adminScopeSubmissions(); const avg=avgOf(arr); const labels=adminDateLabel();
+  const today=new Date().toISOString().slice(0,10);
+  const todayCount=arr.filter(s=>{const d=parseVNDateTime(s.createdAt||s.submittedAt||s.date);return d&&d.toISOString().slice(0,10)===today;}).length;
+  const weak=adminNeedSupportRows(arr).filter(x=>x.tone==='bad').length;
+  return `<section class="admin-pro-hero mb-5"><div class="flex flex-wrap justify-between gap-5 items-start"><div><span class="admin-pro-pill"><i class="fa-solid fa-layer-group"></i> ${ADMIN_DASHBOARD_PRO_VERSION}</span><h2 class="text-3xl md:text-5xl font-black mt-3">Trung tâm quản trị MathPro 12</h2><p class="mt-2 text-blue-100 max-w-3xl">Dashboard đã sắp xếp theo quy trình vận hành: tổng quan dữ liệu, quản lý người dùng, ngân hàng câu hỏi, đề thi, kết quả và hệ thống.</p><div class="flex flex-wrap gap-2 mt-4"><span class="admin-pro-pill"><i class="fa-solid fa-school"></i> ${safe(labels.cls)}</span><span class="admin-pro-pill"><i class="fa-solid fa-file-pen"></i> ${safe(labels.exam)}</span><span class="admin-pro-pill"><i class="fa-solid fa-calendar"></i> ${safe(labels.time)}</span></div></div><div class="grid grid-cols-2 gap-3 min-w-[260px]"><div class="p-4 rounded-2xl bg-white/14 border border-white/15"><p class="text-xs text-cyan-100 font-bold">Điểm TB</p><b class="text-4xl">${avg}%</b></div><div class="p-4 rounded-2xl bg-white/14 border border-white/15"><p class="text-xs text-cyan-100 font-bold">Lượt hôm nay</p><b class="text-4xl">${todayCount}</b></div><div class="p-4 rounded-2xl bg-white/14 border border-white/15"><p class="text-xs text-cyan-100 font-bold">Cần hỗ trợ</p><b class="text-4xl">${weak}</b></div><div class="p-4 rounded-2xl bg-white/14 border border-white/15"><p class="text-xs text-cyan-100 font-bold">Cảnh báo</p><b class="text-4xl">${arr.reduce((t,s)=>t+(Number(s.warnings)||0),0)}</b></div></div></div></section>`;
+}
+function adminKPIHTML(){
+  const arr=adminScopeSubmissions(); const students=analyticsStudentsInScope(); const activeIds=new Set(arr.map(s=>String(s.studentId||'')));
+  const publishedCount=exams.filter(e=>normalizeExamAccess(e).isPublished!==false).length; const draftCount=exams.length-publishedCount;
+  return `<section class="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-5">${analyticsCard('Học sinh',students.length,'fa-user-graduate','Theo phạm vi lọc')}${analyticsCard('Giáo viên',users.filter(u=>u.role==='teacher').length,'fa-chalkboard-user','Đang có quyền')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',questionBank.length || exams.reduce((s,e)=>s+((e.questions||[]).length||0),0),'fa-database','Nguồn tạo đề')}${analyticsCard('Lượt nộp',arr.length,'fa-paper-plane','Từ examResults')}${analyticsCard('Tham gia',students.length?Math.round(activeIds.size*100/students.length)+'%':'0%','fa-user-check',`${activeIds.size}/${students.length} học sinh`,activeIds.size?'green':'amber')}</section>`;
+}
+function adminCommandHTML(text,sub,icon,fn,cls=''){
+  return `<button onclick="${fn}" class="admin-pro-command ${cls}"><span class="flex items-center gap-3"><span class="admin-pro-icon"><i class="fa-solid ${icon}"></i></span><span>${safe(text)}<small>${safe(sub)}</small></span></span><i class="fa-solid fa-chevron-right opacity-50"></i></button>`;
+}
+function adminCommandCenterHTML(){
+  const admin=isAdminUser(currentUser);
+  return `<section class="glass-card p-5 mb-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-table-cells text-blue-600"></i> Trung tâm thao tác nhanh</h3><span class="mini-badge">Theo nhóm chức năng</span></div><div class="admin-pro-command-grid">
+    ${adminCommandHTML('Phân quyền người dùng','Duyệt giáo viên, đổi vai trò','fa-user-shield','renderUserManager()')}
+    ${adminCommandHTML('Quản lý lớp học','Lớp theo mã riêng, học sinh theo giáo viên','fa-school','renderClassManager()')}
+    ${adminCommandHTML('Ngân hàng câu hỏi','Lọc, sửa, kiểm tra trùng, xuất Excel','fa-database','renderQuestionBank()')}
+    ${adminCommandHTML('Tạo đề từ kho','Tạo đề thủ công ngay trong ngân hàng','fa-file-circle-plus','openQuestionBankExamWorkspace()')}
+    ${adminCommandHTML('Tạo đề tự động','Sinh đề theo chủ đề, mức độ, ma trận','fa-wand-magic-sparkles','openAutoExamBuilder()')}
+    ${adminCommandHTML('Import AI Vision','Đọc PDF/ảnh/Word/LaTeX vào kho','fa-robot',"openSmartImportModal('bank')")}
+    ${adminCommandHTML('Thành tích nổi bật','Xếp hạng và huy hiệu học tập','fa-trophy','renderAchievements()')}
+    ${admin?adminCommandHTML('Sao lưu & dữ liệu','Backup, restore, kiểm tra lỗi hệ thống','fa-screwdriver-wrench','renderDataTools()'):''}
+  </div></section>`;
+}
+function adminAlertCenterHTML(){
+  const arr=adminScopeSubmissions();
+  const weak=adminNeedSupportRows(arr);
+  const weakTopics=adminWeakTopicRows(arr).slice(0,5);
+  const pending=teacherPendingUsers().length;
+  const draft=exams.filter(e=>normalizeExamAccess(e).isPublished===false).length;
+  const issues=(typeof dataQualityReport==='function')?dataQualityReport():[];
+  const cards=[];
+  if(weak.filter(x=>x.tone==='bad').length) cards.push({tone:'bad',icon:'fa-user-injured',title:'Học sinh cần can thiệp',msg:`${weak.filter(x=>x.tone==='bad').length} học sinh có điểm trung bình dưới 50%.`,fn:'renderAchievements()'});
+  if(weakTopics.length) cards.push({tone:'warn',icon:'fa-layer-group',title:'Chủ đề yếu nổi bật',msg:`${weakTopics[0].name}: sai ${weakTopics[0].rate}% trên dữ liệu đang lọc.`,fn:'renderQuestionBank()'});
+  if(pending) cards.push({tone:'warn',icon:'fa-user-clock',title:'Tài khoản chờ duyệt',msg:`Có ${pending} yêu cầu giáo viên cần admin xét duyệt.`,fn:'renderUserManager()'});
+  if(draft) cards.push({tone:'warn',icon:'fa-eye-slash',title:'Đề thi đang nháp',msg:`Có ${draft} đề chưa xuất bản hoặc chưa giao lớp.`,fn:'document.getElementById("teacherExamManager")?.scrollIntoView({behavior:"smooth"})'});
+  if(issues.filter(x=>x.level==='bad').length) cards.push({tone:'bad',icon:'fa-bug',title:'Lỗi dữ liệu cần sửa',msg:`Có ${issues.filter(x=>x.level==='bad').length} lỗi dữ liệu nghiêm trọng.`,fn:'renderDataTools()'});
+  if(!cards.length) cards.push({tone:'good',icon:'fa-circle-check',title:'Hệ thống ổn định',msg:'Chưa phát hiện cảnh báo lớn trong phạm vi hiện tại.',fn:'renderTeacherDashboard()'});
+  return `<section class="glass-card p-5 mb-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-bell text-amber-600"></i> Trung tâm cảnh báo</h3><span class="mini-badge">Tự động từ examResults</span></div><div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">${cards.map(c=>`<button onclick='${c.fn}' class="admin-pro-alert ${c.tone} text-left"><div class="flex gap-3"><div class="admin-pro-icon"><i class="fa-solid ${c.icon}"></i></div><div><b>${safe(c.title)}</b><p class="text-sm mt-1" style="color:var(--muted)">${safe(c.msg)}</p></div></div></button>`).join('')}</div></section>`;
+}
+function adminWeakTopicHTML(){
+  const rows=adminWeakTopicRows().slice(0,8);
+  return rows.map(r=>`<div class="p-3 rounded-2xl border bg-white/50 dark:bg-slate-900/40 mb-2"><div class="flex justify-between gap-2"><b class="truncate">${safe(r.name)}</b><span class="mini-badge">Sai ${r.rate}%</span></div><div class="bar-track mt-2"><div class="bar-fill" style="width:${r.rate}%"></div></div><p class="text-xs mt-1" style="color:var(--muted)">${r.wrong}/${r.total} lượt sai • ${r.rate>=60?'Nên tạo đề bù ngay':r.rate>=35?'Cần luyện thêm':'Ổn'}</p></div>`).join('')||'<p class="text-sm text-slate-500">Chưa có dữ liệu chủ đề yếu.</p>';
+}
+function adminSupportTableHTML(){
+  const rows=adminNeedSupportRows();
+  return `<div class="overflow-x-auto"><table class="admin-pro-table"><thead><tr><th>Học sinh</th><th>Lớp</th><th>TB</th><th>Lượt</th><th>Cảnh báo</th><th>Trạng thái</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${safe(x.u.fullname||x.u.email||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(x.u.email||x.u.username||'')}</p></td><td>${safe(x.u.className||'Chưa phân lớp')}</td><td><b>${x.count?x.avg+'%':'-'}</b></td><td>${x.count}</td><td class="${x.warn?'text-red-600 font-bold':''}">${x.warn}</td><td><span class="px-2 py-1 rounded-full text-xs font-black ${x.tone==='bad'?'bg-red-100 text-red-700':x.tone==='warn'?'bg-amber-100 text-amber-700':'bg-green-100 text-green-700'}">${safe(x.level)}</span></td></tr>`).join('')||'<tr><td colspan="6" class="text-center text-slate-500">Chưa có học sinh cần hỗ trợ.</td></tr>'}</tbody></table></div>`;
+}
+function adminRecentRowsHTML(){
+  const rows=adminRecentSubmissions(10);
+  return `<div class="overflow-x-auto"><table class="admin-pro-table"><thead><tr><th>Học sinh</th><th>Đề thi</th><th>Điểm</th><th>Cảnh báo</th><th>Ngày</th></tr></thead><tbody>${rows.map(s=>`<tr><td><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td>${safe(s.examTitle||'')}</td><td><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td><td class="text-xs" style="color:var(--muted)">${safe(s.date||s.submittedAt||'')}</td></tr>`).join('')||'<tr><td colspan="5" class="text-center text-slate-500">Chưa có lượt làm.</td></tr>'}</tbody></table></div>`;
+}
+function adminAnalyticsBoardHTML(){
+  return `<section class="admin-pro-split mb-5"><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-chart-line text-blue-600"></i> Xu hướng điểm</h3><button onclick="renderAchievements()" class="btn-soft px-3 py-2 rounded-xl font-bold">Xem thành tích</button></div>${weeklyTrendHTML(adminScopeSubmissions())}</div><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-layer-group text-amber-600"></i> Chủ đề yếu</h3><button onclick="openAutoExamBuilder()" class="btn-soft px-3 py-2 rounded-xl font-bold">Tạo đề bù</button></div>${adminWeakTopicHTML()}</div></section><section class="admin-pro-split mb-5"><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-user-doctor text-red-600"></i> Học sinh cần hỗ trợ</h3><button onclick="renderClassManager()" class="btn-soft px-3 py-2 rounded-xl font-bold">Quản lý lớp</button></div>${adminSupportTableHTML()}</div><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Lượt làm gần đây</h3><button onclick="exportAnalyticsCSV()" class="btn-soft px-3 py-2 rounded-xl font-bold">Xuất CSV</button></div>${adminRecentRowsHTML()}</div></section>`;
+}
+function adminExamManagerProHTML(){
+  return `<section id="teacherExamManager" class="glass-card p-5 mb-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl"><i class="fa-solid fa-file-lines text-blue-600"></i> Quản lý đề thi</h3><p class="text-sm" style="color:var(--muted)">Tạo đề, giao lớp, bật/tắt đề, đồng bộ cấu trúc questionBanks/examQuestions.</p></div><div class="flex flex-wrap gap-2"><button onclick="openQuestionBankExamWorkspace()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button><button onclick="openPdfExamEditor()" class="bg-rose-700 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-pdf"></i> Tạo đề PDF</button><button onclick="migrateAllExamStructures()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ</button></div></div>${examManagerHTML()}</section>`;
+}
+function renderTeacherDashboard(){
+  if(!requireRole('teacher'))return;
+  setExamFocusMode(false);
+  const admin=isAdminUser(currentUser);
+  const html=`<div class="admin-pro-shell fade-in">${adminSidebarHTML()}<div class="min-w-0">${adminHeroHTML()}${adminFilterProHTML()}${adminKPIHTML()}${adminCommandCenterHTML()}${adminAlertCenterHTML()}${adminAnalyticsBoardHTML()}${admin?adminSystemHealthPanel():dataHealthHTML()}${admin?adminSettingsHTML():''}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}${admin?adminAuditPanel():''}${adminExamManagerProHTML()}</div></div>`;
+  $('mainView').innerHTML=html;
+  typeset();
+}
 
 async function bootstrap(){
   $('mainView').innerHTML='<div class="glass-card p-8 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-3 font-semibold">Đang kết nối Firebase và tải dữ liệu...</p></div>';
