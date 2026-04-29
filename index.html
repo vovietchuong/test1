@@ -191,6 +191,24 @@
     @media(max-width:1024px){.compact-exam-topbar h2{max-width:100%}.exam-left-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:640px){.exam-left-actions{grid-template-columns:1fr}.exam-left-timer{font-size:1.35rem}.compact-exam-topbar h2{white-space:normal}}
 
+
+    /* ===== MỤC LỤC VÀ SẮP XẾP PHẦN ĐỀ THI TỪ NGÂN HÀNG ===== */
+    .exam-part-toc{border:1px solid var(--line);border-radius:1.25rem;padding:1rem;background:rgba(37,99,235,.055)}
+    .exam-part-toc-title{font-weight:950;margin-bottom:.65rem;display:flex;align-items:center;gap:.5rem;color:var(--brand)}
+    .exam-part-toc-list{display:grid;gap:.5rem}
+    .exam-part-toc-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem .8rem;border-radius:1rem;border:1px solid var(--line);background:rgba(255,255,255,.62);font-size:.86rem;font-weight:900}
+    html[data-theme="dark"] .exam-part-toc-item{background:rgba(15,23,42,.55)}
+    .exam-part-title{scroll-margin-top:8.5rem;border:1px solid var(--line);border-radius:1.25rem;padding:1rem;background:linear-gradient(100deg,rgba(37,99,235,.12),rgba(6,182,212,.10));box-shadow:0 18px 40px -32px rgba(37,99,235,.45)}
+    .exam-part-title h3{font-size:1.15rem;font-weight:950;color:var(--brand)}
+    .exam-part-title p{font-size:.82rem;color:var(--muted);margin-top:.2rem}
+    .question-nav-part{margin-top:.85rem}
+    .question-nav-part:first-child{margin-top:0}
+    .question-nav-part-title{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.65rem 0 .45rem;font-size:.78rem;font-weight:950;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    body.exam-focus .exam-part-toc{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.12)}
+    body.exam-focus .exam-part-toc-item{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.13);color:#e5eefc}
+    body.exam-focus .exam-part-title{background:rgba(255,255,255,.92)}
+    html[data-theme="dark"] body.exam-focus .exam-part-title{background:rgba(15,23,42,.94)}
+
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
   </style>
 </head>
@@ -641,6 +659,60 @@ function examScheduleText(e){
 }
 
 function shuffleArray(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function examRoman(num){return ['I','II','III','IV','V','VI'][Number(num)-1]||String(num)}
+const EXAM_PART_ORDER=['mc','tf','short'];
+const EXAM_PART_META={
+  mc:{title:'Trắc nghiệm nhiều phương án lựa chọn',shortTitle:'Trắc nghiệm',icon:'fa-list-check'},
+  tf:{title:'Trắc nghiệm đúng / sai',shortTitle:'Đúng / Sai',icon:'fa-toggle-on'},
+  short:{title:'Trắc nghiệm trả lời ngắn',shortTitle:'Trả lời ngắn',icon:'fa-keyboard'}
+};
+function normalizeQuestionType(type=''){
+  type=String(type||'').toLowerCase().trim();
+  if(['multiple_choice','choice','abced','abcd'].includes(type))return 'mc';
+  if(['truefalse','true_false','ds','tf'].includes(type))return 'tf';
+  if(['shortans','short_answer','answer','numeric'].includes(type))return 'short';
+  return type;
+}
+function examPartRank(q){
+  const t=normalizeQuestionType(q?.type);
+  const idx=EXAM_PART_ORDER.indexOf(t);
+  return idx>=0?idx:99;
+}
+function sortQuestionsByExamPart(questions=[]){
+  return (questions||[]).map((q,idx)=>({...q,type:normalizeQuestionType(q.type),_originalOrder:idx}))
+    .sort((a,b)=>examPartRank(a)-examPartRank(b)||Number(a.order||a._originalOrder||0)-Number(b.order||b._originalOrder||0))
+    .map(({_originalOrder,...q})=>q);
+}
+function examQuestionEntries(questions=selectedExam?.questions||[]){
+  return (questions||[]).map((q,index)=>({q,index,type:normalizeQuestionType(q.type)}));
+}
+function activeExamParts(questions=selectedExam?.questions||[]){
+  const entries=examQuestionEntries(questions);
+  return EXAM_PART_ORDER.map((type,partIdx)=>({type,partIdx,meta:EXAM_PART_META[type],items:entries.filter(e=>e.type===type)})).filter(p=>p.items.length);
+}
+function hasMultipleExamParts(questions=selectedExam?.questions||[]){return activeExamParts(questions).length>=2}
+function renderExamPartToc(questions=selectedExam?.questions||[]){
+  const parts=activeExamParts(questions);
+  if(parts.length<2) return '';
+  return `<div class="exam-part-toc mb-4"><div class="exam-part-toc-title"><i class="fa-solid fa-table-list"></i> Mục lục phần thi</div><div class="exam-part-toc-list">${parts.map((p,i)=>`<button type="button" onclick="goToExamPart('${p.type}')" class="exam-part-toc-item"><span>PHẦN ${examRoman(i+1)}. ${safe(p.meta.shortTitle)}</span><b>${p.items.length} câu</b></button>`).join('')}</div></div>`;
+}
+function renderQuestionNavigatorGrid(){
+  const parts=activeExamParts();
+  if(parts.length<2){
+    return `<div id="questionNavGrid" class="question-nav-grid">${(selectedExam.questions||[]).map((q,i)=>`<button id="qnav-${i}" onclick="goToQuestion(${i})" class="qnav-btn ${isQuestionAnswered(q)?'answered':''}" title="Câu ${i+1}">${i+1}</button>`).join('')}</div>`;
+  }
+  return `<div id="questionNavGrid">${parts.map((p,pi)=>`<div class="question-nav-part"><div class="question-nav-part-title"><span>PHẦN ${examRoman(pi+1)}. ${safe(p.meta.shortTitle)}</span><span>${p.items.length} câu</span></div><div class="question-nav-grid">${p.items.map(({q,index})=>`<button id="qnav-${index}" onclick="goToQuestion(${index})" class="qnav-btn ${isQuestionAnswered(q)?'answered':''}" title="Câu ${index+1}">${index+1}</button>`).join('')}</div></div>`).join('')}</div>`;
+}
+function goToExamPart(type){
+  const el=document.getElementById('exam-part-'+normalizeQuestionType(type));
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderExamQuestionsByPart(questions=[]){
+  const parts=activeExamParts(questions);
+  if(parts.length<2) return (questions||[]).map(renderQuestion).join('');
+  return renderExamPartToc(questions)+parts.map((p,pi)=>`<div id="exam-part-${p.type}" class="exam-part-title"><h3><i class="fa-solid ${p.meta.icon}"></i> PHẦN ${examRoman(pi+1)}. ${safe(p.meta.title)}</h3><p>${p.items.length} câu • Hệ thống đã sắp xếp đúng thứ tự chuẩn: trắc nghiệm → đúng/sai → trả lời ngắn.</p></div>${p.items.map(({q,index})=>renderQuestion(q,index)).join('')}`).join('');
+}
 function buildAnswerKey(exam){
   const key={};
   (exam.questions||[]).forEach(q=>key[q.id]={type:q.type,answer:JSON.parse(JSON.stringify(q.answer??null)),solution:q.solution||'',options:q.options||[],statements:q.statements||[]});
@@ -651,7 +723,8 @@ function sanitizeExamForStudent(exam){
 }
 function prepareExamInstance(exam){
   const copy=JSON.parse(JSON.stringify(exam)); copy.originalId=String(exam.id); copy.instanceId=String(uid());
-  copy.questions=shuffleArray(copy.questions||[]).map(q=>{ if(q.type==='mc'&&Array.isArray(q.options)){const pairs=q.options.map((text,idx)=>({text,idx}));const sh=shuffleArray(pairs);q.options=sh.map(x=>x.text);q.answer=sh.findIndex(x=>x.idx===Number(q.answer));} return q;});
+  // Trộn câu trong từng nhóm, nhưng luôn giữ thứ tự phần chuẩn: MC → Đúng/Sai → Trả lời ngắn.
+  copy.questions=sortQuestionsByExamPart(shuffleArray(copy.questions||[]).map(q=>{ if(normalizeQuestionType(q.type)==='mc'&&Array.isArray(q.options)){q.type='mc';const pairs=q.options.map((text,idx)=>({text,idx}));const sh=shuffleArray(pairs);q.options=sh.map(x=>x.text);q.answer=sh.findIndex(x=>x.idx===Number(q.answer));}else{q.type=normalizeQuestionType(q.type);} return q;}));
   examAnswerKey=buildAnswerKey(copy);
   return currentUser?.role==='student'?sanitizeExamForStudent(copy):copy;
 }
@@ -991,7 +1064,8 @@ function renderQuestionNavigator(){
       <div><h3 class="font-black text-lg"><i class="fa-solid fa-list-check text-blue-600"></i> Bảng câu hỏi</h3><p class="text-xs mt-1" style="color:var(--muted)">Nhấn số câu để chuyển nhanh.</p></div>
       <span class="exam-status-pill ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> <b id="statWarn">${examWarnings}</b></span>
     </div>
-    <div id="questionNavGrid" class="question-nav-grid">${(selectedExam.questions||[]).map((q,i)=>`<button id="qnav-${i}" onclick="goToQuestion(${i})" class="qnav-btn ${isQuestionAnswered(q)?'answered':''}" title="Câu ${i+1}">${i+1}</button>`).join('')}</div>
+    ${renderExamPartToc(selectedExam.questions||[])}
+    ${renderQuestionNavigatorGrid()}
     <div class="grid grid-cols-2 gap-2 mt-4 text-center">
       <div class="exam-stat-tile"><p id="statDone" class="text-xl font-black text-green-600">${stats.done}</p><p class="text-[11px]" style="color:var(--muted)">Đã làm</p></div>
       <div class="exam-stat-tile"><p id="statRemain" class="text-xl font-black text-amber-600">${stats.remain}</p><p class="text-[11px]" style="color:var(--muted)">Còn lại</p></div>
@@ -1024,7 +1098,7 @@ function goToQuestion(i){
 function renderExamRoom(){
   setExamFocusMode(true);
   const e=selectedExam, stats=examProgressStats();
-  $('mainView').innerHTML=`<div class="exam-focus-shell fade-in"><div class="exam-focus-frame"><div class="exam-topbar exam-focus-topbar compact-exam-topbar glass-card"><div class="flex flex-wrap justify-between items-center gap-3"><div class="flex flex-wrap items-center gap-3 min-w-0"><div class="focus-brand"><div class="focus-brand-logo"><i class="fa-solid fa-shield-halved"></i></div><div><div class="text-xs uppercase tracking-[.18em] font-black text-cyan-200">Phòng thi trực tuyến</div><h2 class="text-xl md:text-2xl font-black truncate">${safe(e.title)}</h2></div></div><p class="text-sm w-full md:w-auto" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${examSessionId?`<span class="mini-badge"><i class="fa-solid fa-fingerprint"></i> Phiên thi: ${safe(String(examSessionId).slice(-6))}</span>`:''} ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''}</p></div><div class="focus-command-bar"><span class="mini-badge"><i class="fa-solid fa-arrow-left"></i> Timer & tiến độ ở bảng trái</span></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-3 mt-3 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ tập trung:</b> hệ thống ghi nhận rời tab/toàn màn hình; từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="exam-shell focus-exam-body">${renderQuestionNavigator()}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div></div></div></div>`;
+  $('mainView').innerHTML=`<div class="exam-focus-shell fade-in"><div class="exam-focus-frame"><div class="exam-topbar exam-focus-topbar compact-exam-topbar glass-card"><div class="flex flex-wrap justify-between items-center gap-3"><div class="flex flex-wrap items-center gap-3 min-w-0"><div class="focus-brand"><div class="focus-brand-logo"><i class="fa-solid fa-shield-halved"></i></div><div><div class="text-xs uppercase tracking-[.18em] font-black text-cyan-200">Phòng thi trực tuyến</div><h2 class="text-xl md:text-2xl font-black truncate">${safe(e.title)}</h2></div></div><p class="text-sm w-full md:w-auto" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${examSessionId?`<span class="mini-badge"><i class="fa-solid fa-fingerprint"></i> Phiên thi: ${safe(String(examSessionId).slice(-6))}</span>`:''} ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''}</p></div><div class="focus-command-bar"><span class="mini-badge"><i class="fa-solid fa-arrow-left"></i> Timer & tiến độ ở bảng trái</span></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-3 mt-3 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ tập trung:</b> hệ thống ghi nhận rời tab/toàn màn hình; từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="exam-shell focus-exam-body">${renderQuestionNavigator()}<div class="space-y-5">${renderExamQuestionsByPart(e.questions||[])}</div></div></div></div>`;
   updateTimer(); updateExamProgressUI(); setTimeout(()=>goToQuestion(0),50); typeset();
 }
 
@@ -5491,7 +5565,7 @@ async function openAutoExamBuilder(){
   m.innerHTML=`<div class="glass-card max-w-7xl mx-auto p-6"><div class="flex flex-wrap justify-between gap-3 items-start"><div><span class="mini-badge"><i class="fa-solid fa-shield-halved"></i> Tạo đề thi thật từ kho</span><h2 class="text-2xl md:text-3xl font-black mt-2">Bộ tạo đề full chuẩn thi thật</h2><p class="text-sm mt-1" style="color:var(--muted)">Chọn câu thủ công hoặc tự động cân bằng mức độ. Đề được lưu nháp, liên kết questionBanks/examQuestions và có thể xuất bản cho học sinh.</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none">&times;</button></div><section class="grid xl:grid-cols-[.9fr_1.1fr] gap-4 mt-5"><div class="p-4 rounded-2xl border bg-white/60 dark:bg-slate-900/40"><h3 class="font-black mb-3">1) Thông tin đề</h3><div class="grid md:grid-cols-2 gap-3"><input id="bankExamTitle" class="border rounded-xl p-3 md:col-span-2" placeholder="Tên đề thi"><input id="bankExamDuration" type="number" min="5" value="90" class="border rounded-xl p-3" placeholder="Thời gian phút"><input id="bankExamMaxAttempts" type="number" min="0" value="1" class="border rounded-xl p-3" placeholder="Số lượt làm"><select id="bankExamClass" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả lớp</option>${classes.map(c=>`<option value="${safe(c)}">${safe(c)}</option>`).join('')}</select><select id="bankExamPublished" class="border rounded-xl p-3 bg-white"><option value="false" selected>Lưu nháp để duyệt</option><option value="true">Xuất bản ngay</option></select><textarea id="bankExamDesc" class="border rounded-xl p-3 md:col-span-2" placeholder="Mô tả">Đề được tạo từ kho câu hỏi theo cấu trúc thi thật, giáo viên đã duyệt trước khi giao học sinh.</textarea></div><h3 class="font-black mt-5 mb-3">2) Cấu trúc đề</h3><div class="grid grid-cols-3 gap-2"><label class="p-3 rounded-2xl border bg-blue-50"><b>PHẦN I</b><span class="block text-xs">A/B/C/D</span><input id="bankExamMC" oninput="bankExamRefreshSummary()" type="number" min="0" class="mt-2 w-full border rounded-xl p-2" value="18"></label><label class="p-3 rounded-2xl border bg-cyan-50"><b>PHẦN II</b><span class="block text-xs">Đúng/Sai</span><input id="bankExamTF" oninput="bankExamRefreshSummary()" type="number" min="0" class="mt-2 w-full border rounded-xl p-2" value="4"></label><label class="p-3 rounded-2xl border bg-amber-50"><b>PHẦN III</b><span class="block text-xs">Trả lời ngắn</span><input id="bankExamShort" oninput="bankExamRefreshSummary()" type="number" min="0" class="mt-2 w-full border rounded-xl p-2" value="6"></label></div><div class="grid grid-cols-2 gap-2 mt-3"><button onclick="bankExamPreset('thpt')" class="btn-soft px-3 py-2 rounded-xl font-bold">Mẫu TN THPT</button><button onclick="bankExamPreset('quick45')" class="btn-soft px-3 py-2 rounded-xl font-bold">Mẫu 45 phút</button><button onclick="bankExamPreset('practice')" class="btn-soft px-3 py-2 rounded-xl font-bold">Mẫu luyện nhanh</button><button onclick="bankExamPreset('full50')" class="btn-soft px-3 py-2 rounded-xl font-bold">Mẫu 50 câu</button></div></div><div class="p-4 rounded-2xl border bg-white/60 dark:bg-slate-900/40"><h3 class="font-black mb-3">3) Lọc và chọn câu hỏi</h3><div class="grid md:grid-cols-2 gap-3"><input id="bankExamSearch" oninput="bankExamRefresh()" class="border rounded-xl p-3" placeholder="Tìm nội dung, tag, lời giải..."><select id="bankExamTopic" onchange="bankExamRefresh()" class="border rounded-xl p-3 bg-white">${topicSelectOptionsHTML('all',true)}</select><select id="bankExamType" onchange="bankExamRefresh()" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả dạng</option><option value="mc">Trắc nghiệm</option><option value="tf">Đúng/Sai</option><option value="short">Trả lời ngắn</option></select><select id="bankExamLevel" onchange="bankExamRefresh()" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả mức độ</option><option>Nhận biết</option><option>Thông hiểu</option><option>Vận dụng</option><option>Vận dụng cao</option><option>Cơ bản</option><option>Tổng hợp</option></select></div><div class="flex flex-wrap gap-2 mt-3"><button onclick="bankExamAutoPickIds()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-wand-magic-sparkles"></i> Tự chọn cân bằng</button><button onclick="bankExamSetAllVisible(true)" class="btn-soft px-4 py-2 rounded-2xl font-bold">Chọn tất cả đang lọc</button><button onclick="bankExamSetAllVisible(false)" class="btn-soft px-4 py-2 rounded-2xl font-bold">Bỏ chọn</button><button onclick="bankExamPreviewFinal()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Preview đề</button></div><div id="bankExamSummary" class="mt-3 auto-check"></div></div></section><section class="mt-4"><div class="flex justify-between items-center gap-2 mb-2"><h3 class="font-black text-xl">Danh sách câu hỏi trong kho</h3><span class="text-sm" style="color:var(--muted)">Hiển thị tối đa 120 câu để tránh nặng trình duyệt</span></div><div id="bankExamList" class="grid xl:grid-cols-2 gap-3 max-h-[58vh] overflow-auto pr-1"></div></section><div class="sticky bottom-0 mt-4 p-3 rounded-2xl bg-white/90 dark:bg-slate-900/90 border backdrop-blur flex flex-wrap justify-end gap-2"><button onclick="this.closest('.fixed').remove()" class="btn-soft px-5 py-3 rounded-2xl">Đóng</button><button onclick="bankExamPreviewFinal()" class="bg-indigo-600 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem đề trước</button><button onclick="generateBankRealExam()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-circle-plus"></i> Tạo đề thi thật</button></div></div>`;
   document.body.appendChild(m); bankExamPreset('thpt'); bankExamRefresh();
 }
-function bankExamBuildQuestions(){const ids=bankExamSelectedIds(); const picked=bankExamPublishedPool().filter(q=>ids.includes(String(q.id))); const order={mc:1,tf:2,short:3}; return shuffleArray(picked).sort((a,b)=>(order[a.type]||9)-(order[b.type]||9)).map((q,i)=>{const c=cleanQuestionFromBank(q);c.id='q'+uid()+'bank_'+i;c.sourceQuestionId=String(q.id);c.realBankExam=true;c.partName=bankExamTypeLabel(c.type);return c;});}
+function bankExamBuildQuestions(){const ids=bankExamSelectedIds(); const picked=bankExamPublishedPool().filter(q=>ids.includes(String(q.id))); return sortQuestionsByExamPart(shuffleArray(picked)).map((q,i)=>{const c=cleanQuestionFromBank(q);c.type=normalizeQuestionType(c.type);c.id='q'+uid()+'bank_'+i;c.sourceQuestionId=String(q.id);c.realBankExam=true;c.partName=bankExamTypeLabel(c.type);return c;});}
 function bankExamValidate(questions){const need=bankExamNeed(), c={mc:0,tf:0,short:0}; questions.forEach(q=>c[q.type]=(c[q.type]||0)+1); const errors=[]; ['mc','tf','short'].forEach(t=>{if(c[t]!==need[t])errors.push(`${bankExamTypeLabel(t)}: cần ${need[t]}, đang chọn ${c[t]}.`);}); if(!String($('bankExamTitle')?.value||'').trim())errors.push('Chưa nhập tên đề.'); if(Number($('bankExamDuration')?.value||0)<=0)errors.push('Thời gian làm bài phải lớn hơn 0.'); questions.forEach((q,i)=>{if(qBankQuestionHasCriticalIssue?.(q))errors.push('Câu '+(i+1)+' có lỗi cấu trúc cần sửa trước khi đưa vào đề.');}); return errors;}
 function bankExamPreviewFinal(){const questions=bankExamBuildQuestions(), errors=bankExamValidate(questions); if(errors.length)return toast(errors.slice(0,5).join('<br>')+(errors.length>5?'<br>...':''),'bad'); const modal=document.createElement('div'); modal.className='fixed inset-0 bg-black/60 z-[70] p-4 overflow-auto fade-in'; modal.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between gap-3"><div><span class="mini-badge"><i class="fa-solid fa-eye"></i> Preview đề</span><h2 class="text-2xl font-black mt-2">${safe($('bankExamTitle').value)}</h2><p class="text-sm" style="color:var(--muted)">${questions.length} câu • ${safe($('bankExamDuration').value)} phút • ${safe($('bankExamPublished').value==='true'?'Xuất bản ngay':'Lưu nháp')}</p></div><button onclick="this.closest('.fixed').remove()" class="text-3xl">&times;</button></div><div class="space-y-4 mt-5">${questions.map((q,i)=>`<section class="p-4 rounded-2xl border bg-white/70 dark:bg-slate-900/40"><div class="flex flex-wrap justify-between gap-2"><b>Câu ${i+1}. ${safe(bankExamTypeLabel(q.type))}</b><span class="mini-badge">${safe(q.level||'')}</span></div><div class="math-content mt-2">${richMathHTML(q.text||'')}</div><div class="mt-2 text-sm" style="color:var(--muted)">Đáp án: ${safe(answerText(q).replace(/<[^>]+>/g,''))}</div></section>`).join('')}</div><div class="mt-5 flex justify-end"><button onclick="this.closest('.fixed').remove()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold">Đã kiểm tra</button></div></div>`; document.body.appendChild(modal); typeset();}
 async function generateBankRealExam(){if(!requireRole('teacher'))return; const questions=bankExamBuildQuestions(), errors=bankExamValidate(questions); if(errors.length)return toast(errors.slice(0,5).join('<br>')+(errors.length>5?'<br>...':''),'bad'); const docId=String(uid()), classTarget=$('bankExamClass')?.value||'all', classIds=classTarget==='all'?[]:[classTarget], need=bankExamNeed(), topic=$('bankExamTopic')?.value||'all'; const data={id:docId,title:$('bankExamTitle').value.trim(),topicId:topic==='all'?8:topic,duration:Number($('bankExamDuration')?.value||90),level:'Đề thi thật từ kho',description:$('bankExamDesc')?.value||'Đề được tạo từ kho câu hỏi.',classTarget,classIds,isPublished:$('bankExamPublished')?.value==='true',maxAttempts:Number($('bankExamMaxAttempts')?.value||1),questions,autoGenerated:true,realBankExam:true,usesQuestionBank:true,autoConfig:{mode:'real-bank-exam',topic,need,createdFromSelectedIds:questions.map(q=>q.sourceQuestionId)},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; exams.unshift(data); save(); try{if(firebaseReady){await db.collection('exams').doc(docId).set({...data,createdBy:currentUser?.id||null,questionCount:data.questions.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); await syncExamStructureToFirestore(data);} else {await syncExamQuestionsToQuestionBank(data); localStorage.setItem('mathpro12_examQuestionIds_'+docId,JSON.stringify(data.questions.map(q=>getQuestionBankId(q))));}}catch(err){toast('Đã tạo đề local, chưa đồng bộ Firestore: '+fbError(err),'bad');} document.querySelector('.bank-exam-builder-modal')?.remove(); renderTeacherDashboard(); toast('Đã tạo đề thi thật từ kho. Đề đang '+(data.isPublished?'được xuất bản':'ở trạng thái nháp')+'.','ok');}
