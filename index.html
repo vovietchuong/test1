@@ -3774,9 +3774,32 @@ function openExamEditor(id=null){
   refreshEditorQuestions(); updatePdfKeyPreview(); toggleExamEditorMode();
 }
 
+
+/* ===== FIX: đảm bảo nút "Chọn từ kho" luôn mở được ===== */
+async function ensureQuestionBankReady(){
+  try{
+    if(firebaseReady && isTeacherUser(currentUser)){
+      await loadQuestionBankFromFirestore().catch(()=>false);
+    }
+  }catch(err){console.warn("Không tải được kho câu hỏi từ Firestore:",err);}
+  if(!Array.isArray(questionBank)) questionBank=[];
+  if(!questionBank.length){
+    questionBank=questionBankFromLocalExams();
+  }
+  if(typeof qBankNormalizeList==="function") qBankNormalizeList();
+  if(!questionBank.length){
+    toast("Kho câu hỏi đang trống. Thầy cần thêm/import câu hỏi hoặc đồng bộ đề cũ vào kho trước.","bad");
+    return false;
+  }
+  return true;
+}
+
 function cleanQuestionFromBank(q){const copy=JSON.parse(JSON.stringify(q||{}));copy.sourceQuestionId=copy.sourceQuestionId||copy.id;delete copy.createdAt;delete copy.updatedAt;return copy;}
 async function openQuestionBankPicker(){
-  if(!window.editorQ)window.editorQ=[];await ensureQuestionBankReady();window.bankPicked={};
+  if(!window.editorQ)window.editorQ=[];
+  const ok=await ensureQuestionBankReady();
+  if(!ok) return;
+  window.bankPicked={};
   const m=document.createElement('div');m.className='fixed inset-0 bg-black/60 z-[70] p-4 overflow-auto fade-in bank-picker-modal';
   const topicOptions=topicSelectOptionsHTML('',false);
   m.innerHTML='<div class="glass-card max-w-6xl mx-auto p-6"><div class="flex flex-wrap justify-between items-center gap-3"><div><h2 class="text-2xl font-black">🏦 Chọn câu hỏi từ kho</h2><p class="text-sm" style="color:var(--muted)">Lọc câu hỏi, tick chọn rồi bấm đưa vào đề đang soạn.</p></div><button onclick="this.closest(\'.fixed\').remove()" class="text-2xl">&times;</button></div><div class="grid md:grid-cols-4 gap-3 mt-4"><select id="bankTopicFilter" onchange="renderBankPickerList()" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả chủ đề</option>'+topicOptions+'</select><select id="bankTypeFilter" onchange="renderBankPickerList()" class="border rounded-xl p-3 bg-white"><option value="all">Tất cả dạng</option><option value="mc">Trắc nghiệm</option><option value="tf">Đúng/Sai</option><option value="short">Trả lời ngắn</option></select><input id="bankSearch" oninput="renderBankPickerList()" class="border rounded-xl p-3" placeholder="Tìm nội dung câu hỏi..."><button onclick="addPickedQuestionsToEditor()" class="btn-primary text-white rounded-xl font-bold">Thêm câu đã chọn</button></div><div class="mt-3 flex flex-wrap gap-2 text-sm"><button onclick="pickAllVisibleQuestions(true)" class="btn-soft px-3 py-2 rounded-xl">Chọn tất cả đang lọc</button><button onclick="pickAllVisibleQuestions(false)" class="btn-soft px-3 py-2 rounded-xl">Bỏ chọn</button><span id="bankPickCount" class="px-3 py-2 rounded-xl bg-slate-100">Đã chọn 0 câu</span></div><div id="bankPickerList" class="space-y-3 mt-4 max-h-[62vh] overflow-auto pr-2"></div></div>';
