@@ -5673,5 +5673,89 @@ const __profileGetUserProfile=getUserProfile;
 getUserProfile=async function(user){const profile=await __profileGetUserProfile(user);if(profile&&profile.role==='student'){const codes=studentClassCodes(profile);if(codes.length&&(!Array.isArray(profile.classCodes)||!profile.classCodes.length)){const patch=buildStudentClassPatch(profile,codes);Object.assign(profile,patch);if(firebaseReady){try{await db.collection('users').doc(String(profile.id)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){}}}}return profile;};
 
 </script>
+
+<!-- ===== PATCH 2026-04-29: BỎ MÃ LỚP KHI ĐĂNG KÝ, HỌC SINH NHẬP SAU TRONG HỒ SƠ ===== -->
+<script>
+(function(){
+  window.showRegister=function(){
+    document.querySelector('.fixed')?.remove();
+    const m=document.createElement('div');
+    m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';
+    m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative">
+      <button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button>
+      <h2 class="text-2xl font-black text-center">Đăng ký tài khoản</h2>
+      <p class="text-center text-sm mt-1" style="color:var(--muted)">Tài khoản mới không cần nhập mã lớp. Sau khi đăng nhập, học sinh vào <b>Hồ sơ cá nhân</b> để nhập mã lớp do giáo viên cung cấp.</p>
+      <div class="space-y-3 mt-5">
+        <input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên">
+        <input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập, ví dụ: hs12a1@gmail.com">
+        <input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu ít nhất 6 ký tự">
+        <select id="regRole" class="w-full px-4 py-3 rounded-2xl border bg-white">
+          <option value="student">Học sinh</option>
+          <option value="teacher">Giáo viên đã được duyệt email</option>
+        </select>
+        <div class="p-3 rounded-2xl bg-blue-50 border border-blue-100 text-xs text-blue-800">
+          <b>Ghi chú:</b> học sinh có thể tham gia nhiều lớp sau này bằng mã lớp trong Hồ sơ cá nhân. Không cần nhập lớp lúc đăng ký.
+        </div>
+        <button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  };
+
+  window.doRegister=async function(){
+    const email=emailFromLogin(($('regU')?.value||'').trim());
+    const password=$('regP')?.value||'';
+    const fullname=($('regName')?.value||'').trim()||email;
+    const requestedRole=$('regRole')?.value||'student';
+    const role=detectRegisterRole(email,requestedRole);
+    if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
+    if(password.length<6) return toast('Mật khẩu Firebase cần ít nhất 6 ký tự','bad');
+    if(requestedRole==='teacher' && role!=='teacher') toast('Email này chưa được duyệt giáo viên, hệ thống sẽ tạo tài khoản học sinh.','info');
+    try{
+      const cred=await auth.createUserWithEmailAndPassword(email,password);
+      const teacherRequest=(requestedRole==='teacher' && role!=='teacher');
+      let profile={
+        id:cred.user.uid,
+        email,
+        username:email,
+        fullname,
+        role,
+        className:'Chưa tham gia lớp',
+        classCode:'',
+        classCodes:[],
+        joinedClassCodes:[],
+        primaryClassCode:'',
+        classMemberships:[],
+        teacherId:'',
+        teacherName:'',
+        teacherRequest,
+        teacherRequestAt:teacherRequest?firebase.firestore.FieldValue.serverTimestamp():null,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if(role==='teacher'||role==='admin'){
+        profile={id:cred.user.uid,email,username:email,fullname,role,teacherRequest:false,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+      }
+      await db.collection('users').doc(cred.user.uid).set(profile,{merge:true});
+      currentUser={...profile,id:cred.user.uid};
+      users=users.filter(u=>String(u.id)!==String(cred.user.uid));
+      users.push(currentUser);
+      save();
+      document.querySelector('.fixed')?.remove();
+      renderHeader();
+      if(role==='teacher'||role==='admin'){
+        await seedExamsToFirestore();
+        renderTeacherDashboard();
+        toast(role==='admin'?'Đăng ký admin thành công':'Đăng ký giáo viên thành công','ok');
+      }else{
+        renderProfile();
+        toast('Đăng ký thành công. Em hãy nhập mã lớp trong Hồ sơ cá nhân để vào lớp.','ok');
+      }
+    }catch(err){
+      toast('Đăng ký thất bại: '+fbError(err),'bad');
+    }
+  };
+})();
+</script>
 </body>
 </html>
