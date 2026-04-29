@@ -173,6 +173,24 @@
     @media(max-width:1100px){.pdf-exam-layout{grid-template-columns:1fr}.pdf-viewer-card,.pdf-answer-panel{position:relative;top:auto;max-height:none}.pdf-answer-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:640px){.pdf-answer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pdf-toolbar{justify-content:flex-start}.pdf-tool-btn{flex:1}.pdf-canvas-wrap{padding:.5rem}}
 
+
+
+    /* ===== NÂNG CẤP UI THI: ĐẨY TIMER / TIẾN ĐỘ SANG SIDEBAR TRÁI ===== */
+    .exam-focus-topbar.compact-exam-topbar{padding:.85rem 1rem!important;border-radius:1.25rem!important}
+    .compact-exam-topbar .focus-brand{padding:.55rem .75rem}
+    .compact-exam-topbar .focus-brand-logo{width:2.15rem;height:2.15rem;border-radius:.75rem}
+    .compact-exam-topbar h2{max-width:min(58vw,760px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .exam-left-dashboard{display:grid;gap:.75rem;margin-bottom:1rem}
+    .exam-left-timer{display:flex;align-items:center;justify-content:center;gap:.55rem;padding:.85rem 1rem;border-radius:1.15rem;background:rgba(2,6,23,.92);color:white;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:950;font-size:1.55rem;letter-spacing:.04em;border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 34px -24px rgba(0,0,0,.8)}
+    .exam-left-actions{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
+    .exam-left-actions button{min-height:2.65rem;justify-content:center}
+    .exam-side-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
+    .exam-side-pill{display:flex;align-items:center;justify-content:center;gap:.35rem;border:1px solid var(--line);border-radius:1rem;padding:.7rem .5rem;background:rgba(37,99,235,.08);font-size:.82rem;font-weight:900}
+    body.exam-focus .exam-side-pill{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.12);color:#e5eefc}
+    body.exam-focus .exam-left-timer{background:rgba(0,0,0,.72)}
+    @media(max-width:1024px){.compact-exam-topbar h2{max-width:100%}.exam-left-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:640px){.exam-left-actions{grid-template-columns:1fr}.exam-left-timer{font-size:1.35rem}.compact-exam-topbar h2{white-space:normal}}
+
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
   </style>
 </head>
@@ -953,17 +971,30 @@ function examProgressStats(){
 function renderQuestionNavigator(){
   const stats=examProgressStats();
   return `<aside class="exam-sidebar glass-card p-5 no-print">
+    <div class="exam-left-dashboard">
+      <div class="exam-left-timer" id="timerBox"><i class="fa-regular fa-clock"></i> --:--</div>
+      <div class="exam-side-status-grid">
+        <div class="exam-side-pill"><i class="fa-solid fa-pen-to-square text-green-500"></i> Đã làm <b id="examDoneCount">${stats.done}</b>/<b id="examTotalCount">${stats.total}</b></div>
+        <div class="exam-side-pill"><i class="fa-solid fa-hourglass-half text-amber-500"></i> Còn <b id="examRemainCount">${stats.remain}</b> câu</div>
+      </div>
+      <div>
+        <div class="exam-progress-label"><span>Tiến độ làm bài</span><span id="examProgressPercentSide">${stats.percent}%</span></div>
+        <div class="exam-progress-track"><div id="examProgressFillSide" class="exam-progress-fill" style="width:${stats.percent}%"></div></div>
+      </div>
+      <div class="exam-left-actions">
+        <button onclick="mobileToggleQuestionPanel()" class="focus-mobile-nav btn-soft px-3 py-2 rounded-2xl font-bold"><i class="fa-solid fa-table-cells"></i> Bảng câu</button>
+        <button onclick="openSubmitConfirm(false)" class="focus-submit-btn px-3 py-2 rounded-2xl font-bold"><i class="fa-solid fa-paper-plane"></i> Nộp bài</button>
+        <button onclick="exitExamToList()" class="focus-danger-btn px-3 py-2 rounded-2xl font-bold"><i class="fa-solid fa-right-from-bracket"></i> Thoát</button>
+      </div>
+    </div>
     <div class="flex items-start justify-between gap-3 mb-4">
       <div><h3 class="font-black text-lg"><i class="fa-solid fa-list-check text-blue-600"></i> Bảng câu hỏi</h3><p class="text-xs mt-1" style="color:var(--muted)">Nhấn số câu để chuyển nhanh.</p></div>
-      <span class="exam-status-pill"><i class="fa-solid fa-circle-check"></i> ${stats.done}/${stats.total}</span>
+      <span class="exam-status-pill ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> <b id="statWarn">${examWarnings}</b></span>
     </div>
-    <div class="exam-progress-label"><span>Tiến độ làm bài</span><span id="examProgressPercentSide">${stats.percent}%</span></div>
-    <div class="exam-progress-track mb-4"><div id="examProgressFillSide" class="exam-progress-fill" style="width:${stats.percent}%"></div></div>
     <div id="questionNavGrid" class="question-nav-grid">${(selectedExam.questions||[]).map((q,i)=>`<button id="qnav-${i}" onclick="goToQuestion(${i})" class="qnav-btn ${isQuestionAnswered(q)?'answered':''}" title="Câu ${i+1}">${i+1}</button>`).join('')}</div>
-    <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+    <div class="grid grid-cols-2 gap-2 mt-4 text-center">
       <div class="exam-stat-tile"><p id="statDone" class="text-xl font-black text-green-600">${stats.done}</p><p class="text-[11px]" style="color:var(--muted)">Đã làm</p></div>
       <div class="exam-stat-tile"><p id="statRemain" class="text-xl font-black text-amber-600">${stats.remain}</p><p class="text-[11px]" style="color:var(--muted)">Còn lại</p></div>
-      <div class="exam-stat-tile"><p id="statWarn" class="text-xl font-black text-red-600">${examWarnings}</p><p class="text-[11px]" style="color:var(--muted)">Cảnh báo</p></div>
     </div>
   </aside>`;
 }
@@ -993,7 +1024,7 @@ function goToQuestion(i){
 function renderExamRoom(){
   setExamFocusMode(true);
   const e=selectedExam, stats=examProgressStats();
-  $('mainView').innerHTML=`<div class="exam-focus-shell fade-in"><div class="exam-focus-frame"><div class="exam-topbar exam-focus-topbar glass-card p-5"><div class="flex flex-wrap justify-between gap-3"><div class="flex flex-wrap items-center gap-3 min-w-0"><div class="focus-brand"><div class="focus-brand-logo"><i class="fa-solid fa-shield-halved"></i></div><div><div class="text-xs uppercase tracking-[.18em] font-black text-cyan-200">Phòng thi trực tuyến</div><h2 class="text-xl md:text-2xl font-black truncate">${safe(e.title)}</h2></div></div><p class="text-sm w-full md:w-auto" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${examSessionId?`<span class="mini-badge"><i class="fa-solid fa-fingerprint"></i> Phiên thi: ${safe(String(examSessionId).slice(-6))}</span>`:''} ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''} ${currentUser?.role==='student'?`<span class="mini-badge ${examWarnings?'warning-pulse':''}"><i class="fa-solid fa-triangle-exclamation"></i> Rời tab: ${examWarnings}</span>`:''}</p></div><div class="focus-command-bar"><span class="exam-status-pill"><i class="fa-solid fa-pen-to-square"></i> Đã làm <b id="examDoneCount">${stats.done}</b>/<b id="examTotalCount">${stats.total}</b></span><span class="exam-status-pill"><i class="fa-solid fa-hourglass-half"></i> Còn <b id="examRemainCount">${stats.remain}</b> câu</span><span id="timerBox" class="px-4 py-2 rounded-2xl bg-black/70 text-white font-mono border border-white/10">--:--</span><button onclick="mobileToggleQuestionPanel()" class="focus-mobile-nav btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-table-cells"></i> Bảng câu</button><button onclick="openSubmitConfirm(false)" class="focus-submit-btn px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-paper-plane"></i> Nộp bài</button><button onclick="exitExamToList()" class="focus-danger-btn px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-right-from-bracket"></i> Thoát</button></div></div><div class="mt-4"><div class="exam-progress-label"><span>Tiến trình bài thi</span><span id="examProgressPercent">${stats.percent}%</span></div><div class="exam-progress-track"><div id="examProgressFill" class="exam-progress-fill" style="width:${stats.percent}%"></div></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-4 mt-4 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ tập trung:</b> đã ẩn thanh menu ngoài phòng thi. Hệ thống ghi nhận rời tab, thoát toàn màn hình, chuột phải, copy/paste và phím tắt. Từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="exam-shell focus-exam-body">${renderQuestionNavigator()}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div></div></div></div>`;
+  $('mainView').innerHTML=`<div class="exam-focus-shell fade-in"><div class="exam-focus-frame"><div class="exam-topbar exam-focus-topbar compact-exam-topbar glass-card"><div class="flex flex-wrap justify-between items-center gap-3"><div class="flex flex-wrap items-center gap-3 min-w-0"><div class="focus-brand"><div class="focus-brand-logo"><i class="fa-solid fa-shield-halved"></i></div><div><div class="text-xs uppercase tracking-[.18em] font-black text-cyan-200">Phòng thi trực tuyến</div><h2 class="text-xl md:text-2xl font-black truncate">${safe(e.title)}</h2></div></div><p class="text-sm w-full md:w-auto" style="color:var(--muted)">${topicName(e.topicId)} • ${e.questions.length} câu • <span class="mini-badge"><i class="fa-solid fa-shuffle"></i> Đã trộn đề</span> ${examSessionId?`<span class="mini-badge"><i class="fa-solid fa-fingerprint"></i> Phiên thi: ${safe(String(examSessionId).slice(-6))}</span>`:''} ${e.loadedFromQuestionBank?`<span class="mini-badge"><i class="fa-solid fa-database"></i> Từ kho câu hỏi</span>`:''}</p></div><div class="focus-command-bar"><span class="mini-badge"><i class="fa-solid fa-arrow-left"></i> Timer & tiến độ ở bảng trái</span></div></div></div>${currentUser?.role==='student'?`<div class="anti-cheat-box rounded-2xl p-3 mt-3 text-sm"><b><i class="fa-solid fa-shield-halved"></i> Chế độ tập trung:</b> hệ thống ghi nhận rời tab/toàn màn hình; từ 3 cảnh báo bài sẽ tự nộp.</div>`:''}<div class="exam-shell focus-exam-body">${renderQuestionNavigator()}<div class="space-y-5">${e.questions.map(renderQuestion).join('')}</div></div></div></div>`;
   updateTimer(); updateExamProgressUI(); setTimeout(()=>goToQuestion(0),50); typeset();
 }
 
