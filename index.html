@@ -5144,66 +5144,160 @@ updateStudentClass=async function(userId,className){
 
 
 
-// Ghi đè nội dung Firestore Rules theo mô hình admin/teacher/student mới
+// Ghi đè nội dung Firestore Rules theo mô hình admin/teacher/student mới + Đấu trường PRO
 showSecurityRules=function(){
   if(!adminOnlyGuard())return;
   const rules=`rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn(){ return request.auth != null; }
-    function myUser(){ return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-    function myRole(){ return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? myUser().data.role : 'guest'; }
-    function isAdmin(){ return myRole() == 'admin'; }
-    function isTeacher(){ return myRole() == 'teacher' || isAdmin(); }
-    function isOwner(userId){ return signedIn() && request.auth.uid == userId; }
-    function sameTeacher(){ return isTeacher() && (resource.data.createdBy == request.auth.uid || resource.data.teacherId == request.auth.uid || isAdmin()); }
-    function sameTeacherNew(){ return isTeacher() && (request.resource.data.createdBy == request.auth.uid || request.resource.data.teacherId == request.auth.uid || isAdmin()); }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userExists() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return userExists() ? userDoc().data.role : "";
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == "admin";
+    }
+
+    function isTeacher() {
+      return signedIn() && role() == "teacher";
+    }
+
+    function isTeacherOrAdmin() {
+      return isTeacher() || isAdmin();
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isTeacher();
-      allow create: if isOwner(userId) && request.resource.data.role in ['student','teacher'];
+      allow read: if isOwner(userId) || isTeacherOrAdmin();
+
+      allow create: if isOwner(userId)
+        && request.resource.data.id == request.auth.uid
+        && request.resource.data.role in ["student", "teacher"];
+
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
     match /questionBanks/{questionId} {
       allow read: if signedIn();
-      allow create: if isTeacher() && sameTeacherNew();
-      allow update, delete: if isAdmin() || sameTeacher();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
     }
 
     match /exams/{examId} {
-      allow read: if true;
-      allow create: if isTeacher() && sameTeacherNew();
-      allow update, delete: if isAdmin() || sameTeacher();
+      allow read: if signedIn();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
     }
 
     match /examQuestions/{id} {
       allow read: if signedIn();
-      allow create: if isTeacher();
-      allow update, delete: if isAdmin() || isTeacher();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
     }
 
     match /examSessions/{sessionId} {
-      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
-      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
-      allow update: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
+      allow create: if signedIn()
+        && request.resource.data.studentId == request.auth.uid;
+
+      allow read, update: if signedIn()
+        && (
+          resource.data.studentId == request.auth.uid
+          || isTeacherOrAdmin()
+        );
+
       allow delete: if isAdmin();
     }
 
     match /examResults/{resultId} {
-      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
-      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
-      allow update, delete: if isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.studentId == request.auth.uid;
+
+      allow read: if signedIn()
+        && (
+          resource.data.studentId == request.auth.uid
+          || isTeacherOrAdmin()
+        );
+
+      allow update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow read: if signedIn();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ===== ĐẤU TRƯỜNG - ĐÃ KHỚP CODE userId ===== */
+
+    match /arenaRooms/{roomId} {
+      allow read: if signedIn();
+
+      allow create: if isTeacherOrAdmin()
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /arenaSessions/{sessionId} {
+      // Code Đấu trường dùng userId, không dùng studentId.
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update: if signedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || isTeacherOrAdmin()
+        );
+
+      allow delete: if isTeacherOrAdmin();
+    }
+
+    match /arenaRanks/{userId} {
+      allow read: if signedIn();
+
+      allow create, update: if signedIn()
+        && (
+          userId == request.auth.uid
+          || isTeacherOrAdmin()
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
   }
 }`;
   const m=document.createElement('div');
   m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';
-  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">Firestore Rules theo mô hình Admin - Giáo viên - Học sinh</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><p class="my-3 text-sm" style="color:var(--muted)">Dán đoạn này vào Firebase Console → Firestore Database → Rules. Admin có quyền toàn hệ thống; giáo viên chỉ tạo/sửa dữ liệu có createdBy/teacherId của mình; học sinh chỉ tạo phiên làm bài và đọc điểm của mình.</p><textarea class="w-full h-[520px] border rounded-2xl p-4 font-mono text-sm">${rules}</textarea></div>`;
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">Firestore Rules chuẩn Admin - Giáo viên - Học sinh - Đấu trường</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><p class="my-3 text-sm" style="color:var(--muted)">Dán đoạn này vào Firebase Console → Firestore Database → Rules. Bản này đã sửa Đấu trường dùng <b>userId</b> đúng với code, không còn dùng nhầm <b>studentId</b> trong arenaSessions.</p><textarea class="w-full h-[620px] border rounded-2xl p-4 font-mono text-sm">${rules}</textarea></div>`;
   document.body.appendChild(m);
 }
-
 
 
 // ===== ADMIN FULL HỆ THỐNG - BẢN MỞ RỘNG 2026-04-26 =====
