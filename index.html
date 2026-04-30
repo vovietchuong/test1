@@ -6529,7 +6529,7 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   function arenaRoleCanManage(){return typeof isTeacherUser==='function' ? isTeacherUser(currentUser) : !!currentUser && ['teacher','admin'].includes(currentUser.role)}
   function arenaUserCanPlay(){return !!currentUser && ['student','teacher','admin'].includes(currentUser.role)}
   function arenaExamList(){return (exams||[]).filter(e=>!isPdfExam(e) && (e.questions||[]).length)}
-  function arenaRoomStatus(room){const now=Date.now();const start=room.startTime?new Date(room.startTime).getTime():0;const end=room.endTime?new Date(room.endTime).getTime():0;if(room.status==='finished'||(end&&now>end))return 'finished';if(room.status==='live'||(start&&now>=start&&(!end||now<=end)))return 'live';return 'waiting'}
+  function arenaRoomStatus(room){const now=Date.now();const raw=String(room?.status||'waiting');const start=room?.startTime?new Date(room.startTime).getTime():0;const end=room?.endTime?new Date(room.endTime).getTime():0;if(raw==='finished'||(end&&now>end))return 'finished';if(['live','playing','in_progress'].includes(raw))return 'live';if(start&&now>=start&&(!end||now<=end))return 'live';return 'waiting'}
   function arenaStatusLabel(room){const s=arenaRoomStatus(room);return s==='live'?'Đang đấu':s==='finished'?'Đã kết thúc':'Chờ mở'}
   function arenaModeLabel(mode){return mode==='solo'?'1vs1':mode==='class'?'Đấu lớp':mode==='global'?'Toàn hệ thống':'Phòng đấu'}
   function arenaScopeRooms(){const role=currentUser?.role||'guest';let list=[...(arenaRooms||[])]; if(role==='student'){list=list.filter(r=>!r.classIds?.length||r.classIds.includes(currentUser.className||''));} return list.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));}
@@ -6540,7 +6540,8 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   function arenaCalcElo(score,total,finishMs,warnings){const pct=total?score*100/total:0;let speed=finishMs?Math.max(0,Math.round(30-(finishMs/60000))):0;return Math.max(0,Math.round(pct*10+speed*6-Number(warnings||0)*20))}
   function arenaRankName(elo){elo=Number(elo)||0;return elo>=2000?'💎 Kim cương':elo>=1500?'🥇 Vàng':elo>=1000?'🥈 Bạc':'🥉 Đồng'}
   async function arenaLoadFromFirestore(){arenaLocalLoad(); if(!firebaseReady)return false; try{const snap=await db.collection('arenaRooms').orderBy('createdAt','desc').limit(100).get(); arenaRooms=snap.docs.map(d=>({id:d.id,...d.data()})); const ss=await db.collection('arenaSessions').orderBy('updatedAt','desc').limit(300).get(); arenaSessions=ss.docs.map(d=>({id:d.id,...d.data()})); arenaLocalSave(); return true;}catch(err){console.warn('Arena Firestore load fail',err);return false;}}
-  function arenaListen(){ if(!firebaseReady)return; try{ if(arenaRoomUnsub)arenaRoomUnsub(); arenaRoomUnsub=db.collection('arenaRooms').orderBy('createdAt','desc').limit(100).onSnapshot(snap=>{arenaRooms=snap.docs.map(d=>({id:d.id,...d.data()}));arenaLocalSave(); if(document.getElementById('arenaRoot')) arenaRenderCurrent();}); if(arenaSessionUnsub)arenaSessionUnsub(); arenaSessionUnsub=db.collection('arenaSessions').orderBy('updatedAt','desc').limit(300).onSnapshot(snap=>{arenaSessions=snap.docs.map(d=>({id:d.id,...d.data()}));arenaLocalSave(); if(document.getElementById('arenaRoot')) arenaRenderCurrent();}); }catch(err){console.warn('Arena listen fail',err);} }
+  function arenaListen(){ if(!firebaseReady)return; try{ if(arenaRoomUnsub)arenaRoomUnsub(); arenaRoomUnsub=db.collection('arenaRooms').orderBy('createdAt','desc').limit(100).onSnapshot(snap=>{arenaRooms=snap.docs.map(d=>({id:d.id,...d.data()}));arenaLocalSave(); arenaAutoRefreshView();}); if(arenaSessionUnsub)arenaSessionUnsub(); arenaSessionUnsub=db.collection('arenaSessions').orderBy('updatedAt','desc').limit(300).onSnapshot(snap=>{arenaSessions=snap.docs.map(d=>({id:d.id,...d.data()}));arenaLocalSave(); arenaAutoRefreshView();}); }catch(err){console.warn('Arena listen fail',err);} }
+  function arenaAutoRefreshView(){try{ if(document.getElementById('arenaRoot')){arenaRenderCurrent();return;} const roomId=arenaState?.roomId; if(!roomId)return; if(document.getElementById('arenaTimer'))return; const room=arenaFindRoom(roomId); if(!room)return; const mine=arenaMySession(roomId); const rows=arenaRoomSessions(roomId); if(mine&&mine.status!=='submitted'&&String(room.mode)==='solo'&&rows.length>=2&&arenaRoomStatus(room)!=='finished'){arenaStartBattle(room,mine);return;} if(document.getElementById('mainView')&&document.getElementById('mainView').innerHTML.includes('BXH phòng đấu')) arenaOpenRoom(roomId);}catch(e){console.warn('Arena auto refresh skipped',e);}}
   function arenaEnsureSeed(){arenaLocalLoad(); if(arenaRooms.length || !arenaExamList().length)return; const e=arenaExamList()[0]; arenaRooms.unshift({id:'arena_demo_'+Date.now(),title:'Đấu trường luyện nhanh',mode:'room',examId:String(e.id),examTitle:e.title,duration:e.duration||20,maxPlayers:30,classIds:[],status:'waiting',createdAt:new Date().toISOString(),createdBy:'system',createdByName:'Hệ thống',questionCount:(e.questions||[]).length}); arenaLocalSave();}
   async function arenaSaveRoom(room){const idx=arenaRooms.findIndex(r=>String(r.id)===String(room.id)); if(idx>=0)arenaRooms[idx]=room; else arenaRooms.unshift(room); arenaLocalSave(); if(firebaseReady){try{await db.collection('arenaRooms').doc(String(room.id)).set({...room,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){toast('Đã lưu local, chưa ghi Firestore đấu trường: '+fbError(err),'bad');}}}
   async function arenaSaveSession(sess){const idx=arenaSessions.findIndex(s=>String(s.id)===String(sess.id)); if(idx>=0)arenaSessions[idx]=sess; else arenaSessions.unshift(sess); arenaLocalSave(); if(firebaseReady){try{await db.collection('arenaSessions').doc(String(sess.id)).set({...sess,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){console.warn('save arena session fail',err);}}}
@@ -6804,7 +6805,9 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     const check=arenaL2CanJoin(room);const mine=arenaMySession(roomId);if(!check.ok&&!mine)return toast(check.msg,'bad');
     let sess=mine;
     if(!sess){sess={id:arenaId(),roomId,userId:currentUser.id,userName:currentUser.fullname||currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',roomTitle:room.title,examId:room.examId,examTitle:room.examTitle,status:'in_progress',score:0,total:arenaQuestionCount(room),percent:0,currentQuestionIndex:0,answers:{},warnings:0,createdAt:arenaL2Now(),startedAt:arenaL2Now(),lastUpdate:arenaL2Now(),mode:room.mode,level2:true};await arenaSaveSession(sess);}
-    if(arenaL2IsSolo(room)&&arenaRoomSessions(roomId).length<2&&!arenaRoleCanManage())return arenaOpenRoom(roomId);
+    const joinedRows=arenaRoomSessions(roomId);
+    if(arenaL2IsSolo(room)&&joinedRows.length>=2&&arenaRoomStatus(room)!=='finished'){room.status='live';room.startedAt=room.startedAt||arenaL2Now();room.startTime=room.startTime||room.startedAt;room.endTime=room.endTime||new Date(new Date(room.startedAt).getTime()+Number(room.duration||20)*60000).toISOString();await arenaSaveRoom(room);}
+    if(arenaL2IsSolo(room)&&joinedRows.length<2)return arenaOpenRoom(roomId);
     arenaStartBattle(room,sess);
   };
 
@@ -6848,5 +6851,10 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 })();
 </script>
 
+
+<script>
+// PATCH 2026-05-01: Arena stability marker. Core fixes are applied inside the Arena module above.
+window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
+</script>
 </body>
 </html>
