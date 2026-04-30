@@ -254,6 +254,28 @@
     @media(max-width:1100px){.admin-pro-shell{grid-template-columns:1fr}.admin-pro-sidebar{position:relative;top:auto;max-height:none}.admin-pro-filter{grid-template-columns:1fr 1fr}.admin-pro-filter button{grid-column:1/-1}.admin-pro-split{grid-template-columns:1fr}}@media(max-width:640px){.admin-pro-filter{grid-template-columns:1fr}.admin-pro-hero{padding:1rem}.admin-pro-command-grid{grid-template-columns:1fr}}
 
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
+
+    /* ===== GIÁM SÁT THI TRỰC TIẾP CHO ADMIN/GIÁO VIÊN ===== */
+    .live-monitor-hero{position:relative;overflow:hidden;border-radius:1.45rem;padding:1rem;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(29,78,216,.92),rgba(6,182,212,.82));color:white;border:1px solid rgba(255,255,255,.16);box-shadow:0 24px 72px -40px rgba(2,6,23,.75)}
+    .live-monitor-dot{width:.68rem;height:.68rem;border-radius:999px;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.55);animation:livePulse 1.25s infinite}
+    @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 9px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+    .live-monitor-filter{display:grid;grid-template-columns:1fr 1fr .8fr .8fr auto;gap:.65rem;align-items:end;margin-top:1rem}
+    .live-monitor-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-top:1rem}
+    .live-monitor-kpi{border:1px solid var(--line);border-radius:1.1rem;padding:.9rem;background:rgba(255,255,255,.58)}
+    html[data-theme="dark"] .live-monitor-kpi{background:rgba(15,23,42,.52)}
+    .live-monitor-kpi b{display:block;font-size:1.65rem;line-height:1.05;color:var(--brand)}
+    .live-student-card{border:1px solid var(--line);border-radius:1.15rem;padding:1rem;background:rgba(255,255,255,.62);display:grid;grid-template-columns:1.25fr 1.1fr .8fr .75fr auto;gap:.8rem;align-items:center;transition:.16s ease}
+    html[data-theme="dark"] .live-student-card{background:rgba(15,23,42,.52)}
+    .live-student-card:hover{transform:translateY(-1px);box-shadow:0 18px 44px -34px rgba(2,6,23,.58)}
+    .live-status-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .6rem;border-radius:999px;font-size:.72rem;font-weight:950;border:1px solid var(--line);background:rgba(148,163,184,.12)}
+    .live-status-pill.live{background:rgba(22,163,74,.12);color:#15803d;border-color:rgba(22,163,74,.28)}
+    .live-status-pill.stale{background:rgba(217,119,6,.12);color:#d97706;border-color:rgba(217,119,6,.28)}
+    .live-status-pill.bad{background:rgba(220,38,38,.10);color:#dc2626;border-color:rgba(220,38,38,.25)}
+    .live-answer-mini{display:flex;align-items:center;gap:.45rem;min-width:120px}
+    .live-monitor-empty{border:1px dashed var(--line);border-radius:1.2rem;padding:1.25rem;text-align:center;color:var(--muted);background:rgba(37,99,235,.045)}
+    @media(max-width:1100px){.live-monitor-filter{grid-template-columns:1fr 1fr}.live-monitor-filter button{grid-column:1/-1}.live-student-card{grid-template-columns:1fr 1fr}.live-student-card>div:last-child{grid-column:1/-1}}
+    @media(max-width:640px){.live-monitor-filter{grid-template-columns:1fr}.live-student-card{grid-template-columns:1fr}}
+
   </style>
 </head>
 <body>
@@ -4952,10 +4974,10 @@ const __oldSyncExamStructureToFirestore=syncExamStructureToFirestore;
 syncExamStructureToFirestore=async function(examData){ normalizeTeacherOwnership(examData); return await __oldSyncExamStructureToFirestore(examData); }
 
 function adminDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows){
-  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-crown"></i> Admin</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm quản trị toàn hệ thống</h2><p style="color:var(--muted)">Quản lý người dùng, phân quyền, dữ liệu, bảo mật, câu hỏi, đề thi và kết quả toàn trường.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderDataTools()" class="bg-slate-800 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> Công cụ dữ liệu</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Rules</button></div></div>${analyticsFiltersHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Toàn hệ thống')}${analyticsCard('Giáo viên',users.filter(u=>u.role==='teacher').length,'fa-chalkboard-user','Đang hoạt động')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Toàn hệ thống')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề trong kho câu hỏi','fa-file-circle-plus','openQuestionBankExamWorkspace()','btn-primary text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh & lớp','fa-users-gear','renderClassManager()','btn-primary text-white')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi toàn hệ thống</h3><p class="text-sm" style="color:var(--muted)">Admin thấy tất cả đề, có quyền kiểm tra và điều phối.</p></div><button onclick="openQuestionBankExamWorkspace()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button></div>${examManagerHTML()}</section></div>`;
+  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-crown"></i> Admin</span><h2 class="text-3xl md:text-4xl font-black mt-2">Trung tâm quản trị toàn hệ thống</h2><p style="color:var(--muted)">Quản lý người dùng, phân quyền, dữ liệu, bảo mật, câu hỏi, đề thi và kết quả toàn trường.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderUserManager()" class="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-user-shield"></i> Phân quyền</button><button onclick="exportBackupJSON()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-download"></i> Backup</button><button onclick="renderDataTools()" class="bg-slate-800 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> Công cụ dữ liệu</button><button onclick="showSecurityRules()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Rules</button></div></div>${analyticsFiltersHTML()}${liveMonitorHTML()}${dataHealthHTML()}<section class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">${analyticsCard('Học sinh',totalStudents,'fa-user-graduate','Toàn hệ thống')}${analyticsCard('Giáo viên',users.filter(u=>u.role==='teacher').length,'fa-chalkboard-user','Đang hoạt động')}${analyticsCard('Đề thi',exams.length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Kho câu hỏi',totalQuestions,'fa-database','Toàn hệ thống')}${analyticsCard('Chờ duyệt GV',teacherPendingUsers().length,'fa-user-clock','Yêu cầu phân quyền',teacherPendingUsers().length?'amber':'green')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác nhanh</h3><div class="grid gap-2">${actionBtn('Tạo đề trong kho câu hỏi','fa-file-circle-plus','openQuestionBankExamWorkspace()','btn-primary text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh & lớp','fa-users-gear','renderClassManager()','btn-primary text-white')}${actionBtn('Duyệt giáo viên & người dùng','fa-user-shield','renderUserManager()','bg-indigo-600 text-white')}${actionBtn('Rules bảo mật','fa-shield-halved','showSecurityRules()')}${actionBtn('Công cụ dữ liệu','fa-screwdriver-wrench','renderDataTools()','bg-slate-800 text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi toàn hệ thống</h3><p class="text-sm" style="color:var(--muted)">Admin thấy tất cả đề, có quyền kiểm tra và điều phối.</p></div><button onclick="openQuestionBankExamWorkspace()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button></div>${examManagerHTML()}</section></div>`;
 }
 function teacherScopedDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows){
-  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</span><h2 class="text-3xl md:text-4xl font-black mt-2">Bảng quản lý lớp của giáo viên</h2><p style="color:var(--muted)">Theo dõi học sinh lớp mình, thêm câu hỏi, tạo đề và xem kết quả trong phạm vi được phân công.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh lớp mình</button><button onclick="openQuestionBankExamWorkspace()" class="bg-blue-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-box-archive"></i> Kho câu hỏi</button></div></div><section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh lớp mình',totalStudents,'fa-user-graduate','Theo lớp được gán')}${analyticsCard('Đề liên quan',scopedExams().length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Câu hỏi của mình',totalQuestions,'fa-database','Có thể thêm/sửa')}${analyticsCard('Lớp được gán',teacherClassNames().length,'fa-school',teacherClassNames().join(', ')||'Chưa gán')}</section>${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác giáo viên được phép</h3><div class="grid gap-2">${actionBtn('Tạo đề trong kho câu hỏi','fa-file-circle-plus','openQuestionBankExamWorkspace()','btn-primary text-white')}${actionBtn('AI tự ra đề mới','fa-brain','openAIAutoExamBuilder()','bg-emerald-600 text-white')}${actionBtn('Tạo đề từ kho','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('PDF → đề thi thật','fa-person-chalkboard',"openSmartImportModal('exam')",'bg-indigo-700 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh lớp mình','fa-users-gear','renderClassManager()','btn-primary text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây của lớp mình</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi của giáo viên</h3><p class="text-sm" style="color:var(--muted)">Chỉ hiển thị đề do giáo viên tạo hoặc giao cho lớp mình.</p></div><button onclick="openQuestionBankExamWorkspace()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button></div>${examManagerHTML()}</section></div>`;
+  return `<div class="fade-in">${scopeWarningHTML()}<div class="flex flex-wrap justify-between items-start gap-3 mb-5"><div><span class="mini-badge"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</span><h2 class="text-3xl md:text-4xl font-black mt-2">Bảng quản lý lớp của giáo viên</h2><p style="color:var(--muted)">Theo dõi học sinh lớp mình, thêm câu hỏi, tạo đề và xem kết quả trong phạm vi được phân công.</p></div><div class="flex flex-wrap gap-2"><button onclick="renderClassManager()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-users-gear"></i> Học sinh lớp mình</button><button onclick="openQuestionBankExamWorkspace()" class="bg-blue-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button><button onclick="renderQuestionBank()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-box-archive"></i> Kho câu hỏi</button></div></div><section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">${analyticsCard('Học sinh lớp mình',totalStudents,'fa-user-graduate','Theo lớp được gán')}${analyticsCard('Đề liên quan',scopedExams().length,'fa-file-lines',`${publishedCount} xuất bản • ${draftCount} nháp`)}${analyticsCard('Câu hỏi của mình',totalQuestions,'fa-database','Có thể thêm/sửa')}${analyticsCard('Lớp được gán',teacherClassNames().length,'fa-school',teacherClassNames().join(', ')||'Chưa gán')}</section>${liveMonitorHTML()}${teacherAnalyticsHTML()}${interventionCenterHTML()}<section class="grid xl:grid-cols-[.85fr_1.15fr] gap-5 mb-5"><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Thao tác giáo viên được phép</h3><div class="grid gap-2">${actionBtn('Tạo đề trong kho câu hỏi','fa-file-circle-plus','openQuestionBankExamWorkspace()','btn-primary text-white')}${actionBtn('AI tự ra đề mới','fa-brain','openAIAutoExamBuilder()','bg-emerald-600 text-white')}${actionBtn('Tạo đề từ kho','fa-wand-magic-sparkles','openAutoExamBuilder()','bg-indigo-600 text-white')}${actionBtn('Import đề AI Vision','fa-robot',"openSmartImportModal('bank')",'bg-emerald-600 text-white')}${actionBtn('PDF → đề thi thật','fa-person-chalkboard',"openSmartImportModal('exam')",'bg-indigo-700 text-white')}${actionBtn('Nhập CSV/Excel','fa-file-import',"openQuestionImportModal('bank')")}${actionBtn('Nhập từ LaTeX','fa-square-root-variable',"openLatexImportModal('bank')",'bg-cyan-600 text-white')}${actionBtn('Nhập đề từ Word','fa-file-word','openWordImportModal()','bg-blue-600 text-white')}${actionBtn('Kho câu hỏi','fa-box-archive','renderQuestionBank()')}${actionBtn('Học sinh lớp mình','fa-users-gear','renderClassManager()','btn-primary text-white')}</div></div><div class="glass-card p-5"><h3 class="font-black text-xl mb-3">Lượt làm gần đây của lớp mình</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b"><th class="p-3">Học sinh</th><th class="p-3">Đề thi</th><th class="p-3">Điểm</th><th class="p-3">Cảnh báo</th></tr></thead><tbody>${recentRows}</tbody></table></div></div></section><section id="teacherExamManager" class="glass-card p-5"><div class="flex flex-wrap justify-between items-center gap-3 mb-3"><div><h3 class="font-black text-xl">Quản lý đề thi của giáo viên</h3><p class="text-sm" style="color:var(--muted)">Chỉ hiển thị đề do giáo viên tạo hoặc giao cho lớp mình.</p></div><button onclick="openQuestionBankExamWorkspace()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-file-circle-plus"></i> Tạo đề trong kho</button></div>${examManagerHTML()}</section></div>`;
 }
 renderTeacherDashboard=function(){
   if(!requireRole('teacher'))return;
@@ -4969,6 +4991,7 @@ renderTeacherDashboard=function(){
   const recentRows=scopedSubmissions().slice(0,8).map(s=>`<tr class="border-b"><td class="p-3"><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td class="p-3">${safe(s.examTitle||'')}</td><td class="p-3"><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="p-3 ${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td></tr>`).join('')||'<tr><td colspan="4" class="p-5 text-center text-slate-500">Chưa có bài làm.</td></tr>';
   $('mainView').innerHTML=isAdminUser(currentUser)?adminDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows):teacherScopedDashboardHTML(actionBtn,totalStudents,totalQuestions,publishedCount,draftCount,recentRows);
   exams=originalExams; submissions=originalSubmissions; questionBank=originalQuestionBank;
+  startLiveExamMonitor();
   typeset();
 }
 
@@ -5307,6 +5330,151 @@ function adminRecentRowsHTML(){
   const rows=adminRecentSubmissions(10);
   return `<div class="overflow-x-auto"><table class="admin-pro-table"><thead><tr><th>Học sinh</th><th>Đề thi</th><th>Điểm</th><th>Cảnh báo</th><th>Ngày</th></tr></thead><tbody>${rows.map(s=>`<tr><td><b>${safe(s.studentName||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.className||'Chưa phân lớp')}</p></td><td>${safe(s.examTitle||'')}</td><td><b>${s.score||0}/${s.total||0}</b><div class="bar-track mt-1 max-w-32"><div class="bar-fill" style="width:${pct(s.percent)}%"></div></div></td><td class="${s.warnings?'text-red-600 font-bold':''}">${s.warnings||0}</td><td class="text-xs" style="color:var(--muted)">${safe(s.date||s.submittedAt||'')}</td></tr>`).join('')||'<tr><td colspan="5" class="text-center text-slate-500">Chưa có lượt làm.</td></tr>'}</tbody></table></div>`;
 }
+
+
+/* ===== GIÁM SÁT THI TRỰC TIẾP CHO ADMIN/GIÁO VIÊN - 2026-04-30 ===== */
+let realtimeExamSessions=[], realtimeExamSessionsUnsub=null, liveMonitorTickTimer=null;
+let liveMonitorState={className:'all',examId:'all',status:'in_progress',fresh:'all'};
+function liveDateValue(v){
+  if(!v) return null;
+  if(v.toDate) return v.toDate();
+  if(v.seconds) return new Date(v.seconds*1000);
+  const d=new Date(v);
+  return isNaN(d.getTime())?null:d;
+}
+function liveTimeAgo(v){
+  const d=liveDateValue(v); if(!d) return 'chưa rõ';
+  const sec=Math.max(0,Math.round((Date.now()-d.getTime())/1000));
+  if(sec<60) return sec+' giây trước';
+  const min=Math.round(sec/60); if(min<60) return min+' phút trước';
+  const h=Math.round(min/60); return h+' giờ trước';
+}
+function liveRemainText(sec){
+  sec=Number(sec||0); if(sec<=0) return '00:00';
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+  return (h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function liveSessionFreshness(s){
+  const d=liveDateValue(s.updatedAt||s.savedAt||s.startedAt);
+  const diff=d?Date.now()-d.getTime():999999999;
+  if(String(s.status)==='submitted') return {key:'submitted',label:'Đã nộp',cls:'bad',icon:'fa-circle-check'};
+  if(diff<=45000) return {key:'live',label:'Đang online',cls:'live',icon:'fa-signal'};
+  if(diff<=180000) return {key:'recent',label:'Vừa hoạt động',cls:'stale',icon:'fa-clock'};
+  return {key:'stale',label:'Mất tín hiệu',cls:'bad',icon:'fa-wifi'};
+}
+function liveAnsweredCount(s){
+  const answers=s.answers||{};
+  return Object.values(answers).filter(v=>{
+    if(Array.isArray(v)) return v.some(x=>x===true||x===false);
+    return String(v??'').trim()!=='';
+  }).length;
+}
+function liveCanSeeSession(s){
+  if(isAdminUser(currentUser)) return true;
+  if(!isTeacherUser(currentUser)) return false;
+  const teacherId=String(currentUser?.id||'');
+  const clsRaw=(typeof teacherClassNames==='function'?teacherClassNames():[]).map(String);
+  const roomNames=(typeof classRooms==='function'?classRooms().filter(r=>String(r.teacherId)===teacherId).map(r=>String(r.name)):[]);
+  const classCode=(typeof userClassCode==='function'?String(s.classCode||'').toUpperCase():String(s.classCode||''));
+  const teacherCodes=(typeof teacherClassCodes==='function'?teacherClassCodes().map(String):[]);
+  const sessionClass=String(s.className||'');
+  return String(s.teacherId||'')===teacherId || teacherCodes.includes(classCode) || clsRaw.includes(sessionClass) || roomNames.includes(sessionClass) || scopedStudents().some(u=>String(u.id)===String(s.studentId));
+}
+function liveScopedSessions(){
+  let arr=(realtimeExamSessions||[]).filter(liveCanSeeSession);
+  if(liveMonitorState.className!=='all') arr=arr.filter(s=>String(s.className||'Chưa phân lớp')===String(liveMonitorState.className));
+  if(liveMonitorState.examId!=='all') arr=arr.filter(s=>String(s.examId)===String(liveMonitorState.examId));
+  if(liveMonitorState.status!=='all') arr=arr.filter(s=>String(s.status||'in_progress')===String(liveMonitorState.status));
+  if(liveMonitorState.fresh!=='all') arr=arr.filter(s=>liveSessionFreshness(s).key===liveMonitorState.fresh);
+  return arr.sort((a,b)=>(liveDateValue(b.updatedAt||b.savedAt||b.startedAt)?.getTime()||0)-(liveDateValue(a.updatedAt||a.savedAt||a.startedAt)?.getTime()||0));
+}
+function liveMonitorKPIsHTML(arr=liveScopedSessions()){
+  const all=(realtimeExamSessions||[]).filter(liveCanSeeSession);
+  const inProgress=all.filter(s=>String(s.status||'in_progress')==='in_progress');
+  const online=inProgress.filter(s=>liveSessionFreshness(s).key==='live');
+  const warnings=inProgress.reduce((t,s)=>t+(Number(s.warnings)||0),0);
+  const stale=inProgress.filter(s=>liveSessionFreshness(s).key==='stale').length;
+  return `<div class="live-monitor-kpis">
+    <div class="live-monitor-kpi"><b>${online.length}</b><span class="text-sm" style="color:var(--muted)">Đang online</span></div>
+    <div class="live-monitor-kpi"><b>${inProgress.length}</b><span class="text-sm" style="color:var(--muted)">Đang làm bài</span></div>
+    <div class="live-monitor-kpi"><b class="${warnings?'text-red-600':''}">${warnings}</b><span class="text-sm" style="color:var(--muted)">Tổng cảnh báo</span></div>
+    <div class="live-monitor-kpi"><b class="${stale?'text-amber-600':''}">${stale}</b><span class="text-sm" style="color:var(--muted)">Mất tín hiệu</span></div>
+  </div>`;
+}
+function liveMonitorRowsHTML(arr=liveScopedSessions()){
+  if(!firebaseReady) return `<div class="live-monitor-empty"><i class="fa-solid fa-plug-circle-xmark text-2xl mb-2"></i><p class="font-bold">Firebase chưa sẵn sàng nên chưa thể giám sát realtime.</p></div>`;
+  if(!arr.length) return `<div class="live-monitor-empty"><i class="fa-solid fa-user-clock text-2xl mb-2"></i><p class="font-bold">Chưa có học sinh phù hợp bộ lọc đang thi.</p><p class="text-sm mt-1">Khi học sinh bấm làm bài, phiên thi sẽ xuất hiện tại đây.</p></div>`;
+  return `<div class="space-y-3">${arr.map(s=>{
+    const st=liveSessionFreshness(s), done=liveAnsweredCount(s), total=Number(s.questionCount||0), pctDone=total?Math.round(done*100/total):0;
+    const warn=Number(s.warnings||0);
+    return `<article class="live-student-card">
+      <div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><span class="live-status-pill ${st.cls}"><i class="fa-solid ${st.icon}"></i> ${safe(st.label)}</span>${warn?`<span class="live-status-pill bad"><i class="fa-solid fa-triangle-exclamation"></i> ${warn} cảnh báo</span>`:''}</div><b class="block mt-2 truncate">${safe(s.studentName||s.studentEmail||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.studentEmail||'')} • ${safe(s.className||'Chưa phân lớp')}${s.classCode?' • '+safe(s.classCode):''}</p></div>
+      <div class="min-w-0"><b class="block truncate">${safe(s.examTitle||'Đề thi')}</b><p class="text-xs" style="color:var(--muted)">Mã đề: ${safe(s.examId||'')} • Phiên: ${safe(String(s.id||'').slice(-8))}</p></div>
+      <div><div class="live-answer-mini"><b>${done}/${total||'?'}</b><div class="bar-track flex-1"><div class="bar-fill" style="width:${pctDone}%"></div></div></div><p class="text-xs mt-1" style="color:var(--muted)">${pctDone}% câu đã nhập</p></div>
+      <div><b class="font-mono text-lg">${liveRemainText(s.remain)}</b><p class="text-xs" style="color:var(--muted)">Cập nhật ${safe(liveTimeAgo(s.updatedAt||s.savedAt||s.startedAt))}</p></div>
+      <div class="flex flex-wrap gap-2 justify-end"><button onclick="openLiveSessionDetail('${safe(s.id)}')" class="exam-action-btn"><i class="fa-solid fa-eye"></i> Chi tiết</button></div>
+    </article>`;
+  }).join('')}</div>`;
+}
+function renderLiveMonitorContent(){
+  const body=$('liveMonitorBody'), kpi=$('liveMonitorKpis'), stamp=$('liveMonitorStamp');
+  if(kpi) kpi.innerHTML=liveMonitorKPIsHTML();
+  if(body) body.innerHTML=liveMonitorRowsHTML();
+  if(stamp) stamp.textContent='Cập nhật '+new Date().toLocaleTimeString('vi-VN');
+}
+function liveMonitorHTML(){
+  const classList=classes||[];
+  return `<section id="liveExamMonitor" class="glass-card p-5 mb-5">
+    <div class="live-monitor-hero">
+      <div class="flex flex-wrap justify-between gap-3 items-start"><div><div class="flex items-center gap-2"><span class="live-monitor-dot"></span><span class="admin-pro-pill"><i class="fa-solid fa-tower-broadcast"></i> Realtime examSessions</span></div><h3 class="text-2xl md:text-3xl font-black mt-3">Giám sát thi theo thời gian thực</h3><p class="text-sm text-blue-100 mt-1">Admin biết học sinh nào đang thi, làm đề nào, còn bao nhiêu thời gian, tiến độ trả lời và số cảnh báo.</p></div><div class="flex flex-wrap gap-2"><button onclick="startLiveExamMonitor(true)" class="bg-white/15 border border-white/20 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Làm mới</button><span id="liveMonitorStamp" class="admin-pro-pill">Đang kết nối...</span></div></div>
+    </div>
+    <div class="live-monitor-filter">
+      <label><span class="text-xs font-black" style="color:var(--muted)">Lớp</span><select id="liveClass" onchange="applyLiveMonitorFilters()" class="exam-admin-input mt-1"><option value="all">Tất cả lớp</option>${classList.map(c=>`<option value="${safe(c)}" ${liveMonitorState.className===c?'selected':''}>${safe(c)}</option>`).join('')}</select></label>
+      <label><span class="text-xs font-black" style="color:var(--muted)">Đề thi</span><select id="liveExam" onchange="applyLiveMonitorFilters()" class="exam-admin-input mt-1"><option value="all">Tất cả đề</option>${exams.map(e=>`<option value="${safe(e.id)}" ${String(liveMonitorState.examId)===String(e.id)?'selected':''}>${safe(e.title)}</option>`).join('')}</select></label>
+      <label><span class="text-xs font-black" style="color:var(--muted)">Trạng thái</span><select id="liveStatus" onchange="applyLiveMonitorFilters()" class="exam-admin-input mt-1"><option value="in_progress" ${liveMonitorState.status==='in_progress'?'selected':''}>Đang thi</option><option value="submitted" ${liveMonitorState.status==='submitted'?'selected':''}>Đã nộp</option><option value="all" ${liveMonitorState.status==='all'?'selected':''}>Tất cả</option></select></label>
+      <label><span class="text-xs font-black" style="color:var(--muted)">Tín hiệu</span><select id="liveFresh" onchange="applyLiveMonitorFilters()" class="exam-admin-input mt-1"><option value="all">Tất cả</option><option value="live" ${liveMonitorState.fresh==='live'?'selected':''}>Đang online</option><option value="recent" ${liveMonitorState.fresh==='recent'?'selected':''}>Vừa hoạt động</option><option value="stale" ${liveMonitorState.fresh==='stale'?'selected':''}>Mất tín hiệu</option></select></label>
+      <button onclick="applyLiveMonitorFilters()" class="btn-primary text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-filter"></i> Lọc realtime</button>
+    </div>
+    <div id="liveMonitorKpis">${liveMonitorKPIsHTML([])}</div>
+    <div id="liveMonitorBody" class="mt-4">${liveMonitorRowsHTML([])}</div>
+  </section>`;
+}
+function applyLiveMonitorFilters(){
+  liveMonitorState.className=$('liveClass')?.value||'all';
+  liveMonitorState.examId=$('liveExam')?.value||'all';
+  liveMonitorState.status=$('liveStatus')?.value||'in_progress';
+  liveMonitorState.fresh=$('liveFresh')?.value||'all';
+  renderLiveMonitorContent();
+}
+function startLiveExamMonitor(force=false){
+  if(!isTeacherUser(currentUser)) return;
+  if(!firebaseReady){renderLiveMonitorContent();return;}
+  if(realtimeExamSessionsUnsub && !force){renderLiveMonitorContent();return;}
+  if(realtimeExamSessionsUnsub){try{realtimeExamSessionsUnsub();}catch(e){} realtimeExamSessionsUnsub=null;}
+  try{
+    realtimeExamSessionsUnsub=db.collection('examSessions').orderBy('updatedAt','desc').limit(160).onSnapshot(snap=>{
+      realtimeExamSessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderLiveMonitorContent();
+    },err=>{
+      const body=$('liveMonitorBody'); if(body) body.innerHTML=`<div class="live-monitor-empty text-red-600"><b>Chưa đọc được examSessions.</b><p class="text-sm mt-1">${safe(fbError(err))}</p><p class="text-sm mt-1">Thầy cần kiểm tra Firestore Rules cho quyền admin/giáo viên đọc collection <b>examSessions</b>.</p></div>`;
+    });
+    clearInterval(liveMonitorTickTimer);
+    liveMonitorTickTimer=setInterval(renderLiveMonitorContent,15000);
+    const stamp=$('liveMonitorStamp'); if(stamp) stamp.textContent='Đang nghe realtime...';
+  }catch(err){toast('Chưa bật được giám sát realtime: '+fbError(err),'bad');}
+}
+function stopLiveExamMonitor(){
+  if(realtimeExamSessionsUnsub){try{realtimeExamSessionsUnsub();}catch(e){} realtimeExamSessionsUnsub=null;}
+  clearInterval(liveMonitorTickTimer); liveMonitorTickTimer=null;
+}
+function openLiveSessionDetail(id){
+  const s=(realtimeExamSessions||[]).find(x=>String(x.id)===String(id)); if(!s)return;
+  const st=liveSessionFreshness(s), answers=s.answers||{}, answerRows=Object.entries(answers).slice(0,80).map(([k,v],i)=>`<tr><td class="p-2 font-bold">${i+1}</td><td class="p-2">${safe(k)}</td><td class="p-2">${safe(Array.isArray(v)?v.map(x=>x===true?'Đúng':x===false?'Sai':'-').join(', '):String(v??''))}</td></tr>`).join('');
+  const m=document.createElement('div'); m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] p-4 overflow-auto fade-in';
+  m.innerHTML=`<div class="glass-card max-w-4xl mx-auto p-6 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-3xl">&times;</button><div class="flex flex-wrap items-start justify-between gap-3"><div><span class="live-status-pill ${st.cls}"><i class="fa-solid ${st.icon}"></i> ${safe(st.label)}</span><h2 class="text-2xl font-black mt-3">${safe(s.studentName||'Học sinh')}</h2><p class="text-sm" style="color:var(--muted)">${safe(s.studentEmail||'')} • ${safe(s.className||'Chưa phân lớp')} • Phiên ${safe(s.id)}</p></div><div class="text-right"><b class="font-mono text-2xl">${liveRemainText(s.remain)}</b><p class="text-xs" style="color:var(--muted)">Còn lại</p></div></div><div class="grid md:grid-cols-4 gap-3 mt-4">${analyticsCard('Đề thi',safe(s.examTitle||''),'fa-file-lines','Mã '+safe(s.examId||''))}${analyticsCard('Đã trả lời',liveAnsweredCount(s)+'/'+(s.questionCount||'?'),'fa-pen','Tiến độ hiện tại')}${analyticsCard('Cảnh báo',Number(s.warnings||0),'fa-triangle-exclamation','Rời tab/toàn màn hình',Number(s.warnings||0)?'red':'green')}${analyticsCard('Cập nhật',liveTimeAgo(s.updatedAt||s.savedAt||s.startedAt),'fa-clock','Tín hiệu gần nhất')}</div><div class="mt-5"><h3 class="font-black text-xl mb-2"><i class="fa-solid fa-list-check text-blue-600"></i> Bài làm đang lưu</h3><div class="overflow-x-auto"><table class="admin-pro-table"><thead><tr><th>#</th><th>Mã câu</th><th>Đáp án học sinh</th></tr></thead><tbody>${answerRows||'<tr><td colspan="3" class="text-center text-slate-500">Chưa có đáp án nào được đồng bộ.</td></tr>'}</tbody></table></div></div></div>`;
+  document.body.appendChild(m); typeset();
+}
+
 function adminAnalyticsBoardHTML(){
   return `<section class="admin-pro-split mb-5"><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-chart-line text-blue-600"></i> Xu hướng điểm</h3><button onclick="renderAchievements()" class="btn-soft px-3 py-2 rounded-xl font-bold">Xem thành tích</button></div>${weeklyTrendHTML(adminScopeSubmissions())}</div><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-layer-group text-amber-600"></i> Chủ đề yếu</h3><button onclick="openAutoExamBuilder()" class="btn-soft px-3 py-2 rounded-xl font-bold">Tạo đề bù</button></div>${adminWeakTopicHTML()}</div></section><section class="admin-pro-split mb-5"><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-user-doctor text-red-600"></i> Học sinh cần hỗ trợ</h3><button onclick="renderClassManager()" class="btn-soft px-3 py-2 rounded-xl font-bold">Quản lý lớp</button></div>${adminSupportTableHTML()}</div><div class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Lượt làm gần đây</h3><button onclick="exportAnalyticsCSV()" class="btn-soft px-3 py-2 rounded-xl font-bold">Xuất CSV</button></div>${adminRecentRowsHTML()}</div></section>`;
 }
@@ -5317,8 +5485,9 @@ function renderTeacherDashboard(){
   if(!requireRole('teacher'))return;
   setExamFocusMode(false);
   const admin=isAdminUser(currentUser);
-  const html=`<div class="admin-pro-shell fade-in">${adminSidebarHTML()}<div class="min-w-0">${adminHeroHTML()}${adminFilterProHTML()}${adminKPIHTML()}${adminCommandCenterHTML()}${adminAlertCenterHTML()}${adminAnalyticsBoardHTML()}${admin?adminSystemHealthPanel():dataHealthHTML()}${admin?adminSettingsHTML():''}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}${admin?adminAuditPanel():''}${adminExamManagerProHTML()}</div></div>`;
+  const html=`<div class="admin-pro-shell fade-in">${adminSidebarHTML()}<div class="min-w-0">${adminHeroHTML()}${adminFilterProHTML()}${adminKPIHTML()}${adminCommandCenterHTML()}${liveMonitorHTML()}${adminAlertCenterHTML()}${adminAnalyticsBoardHTML()}${admin?adminSystemHealthPanel():dataHealthHTML()}${admin?adminSettingsHTML():''}${interventionCenterHTML()}${topicWeaknessMatrixHTML()}${smartExamPanelHTML()}${weaknessTrainingPanelHTML()}${admin?adminAuditPanel():''}${adminExamManagerProHTML()}</div></div>`;
   $('mainView').innerHTML=html;
+  startLiveExamMonitor();
   typeset();
 }
 
