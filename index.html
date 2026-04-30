@@ -6704,6 +6704,14 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   window.arenaRenderCurrent=arenaRenderCurrent;
   window.renderArena=window.renderArena;
 
+  // FIX ĐẤU TRƯỜNG 2026-05-01: export biến lõi cho các patch Level 2/3 phía sau.
+  window.arenaId=arenaId;
+  window.arenaLocalLoad=arenaLocalLoad;
+  window.arenaLocalSave=arenaLocalSave;
+  Object.defineProperty(window,'arenaRooms',{configurable:true,get:()=>arenaRooms,set:v=>{arenaRooms=Array.isArray(v)?v:[];}});
+  Object.defineProperty(window,'arenaSessions',{configurable:true,get:()=>arenaSessions,set:v=>{arenaSessions=Array.isArray(v)?v:[];}});
+  Object.defineProperty(window,'arenaState',{configurable:true,get:()=>arenaState,set:v=>{arenaState=v||arenaState;}});
+
   arenaLocalLoad();
   try{renderHeader();}catch(e){}
 })();
