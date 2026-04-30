@@ -6856,5 +6856,99 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 // PATCH 2026-05-01: Arena stability marker. Core fixes are applied inside the Arena module above.
 window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
 </script>
+
+<script>
+/* ===== PATCH 2026-05-01: ĐẤU TRƯỜNG LƯU FIRESTORE CHUẨN - LOCAL CHỈ DỰ PHÒNG ===== */
+(function(){
+  const PATCH_ID='arena-firestore-primary-2026-05-01';
+  window.ARENA_FIRESTORE_PRIMARY_PATCH=PATCH_ID;
+  function nowISO(){return new Date().toISOString();}
+  function hasFirebase(){return !!(window.firebaseReady && window.db && window.firebase && firebase.firestore);}
+  function ts(){return firebase.firestore.FieldValue.serverTimestamp();}
+  function safeToast(msg,type='ok'){try{ if(typeof toast==='function') toast(msg,type); }catch(e){} }
+  function asArray(v){return Array.isArray(v)?v:[];}
+  function localSaveArena(){
+    try{localStorage.setItem('mathpro12_arenaRooms',JSON.stringify(asArray(window.arenaRooms)));}catch(e){}
+    try{localStorage.setItem('mathpro12_arenaSessions',JSON.stringify(asArray(window.arenaSessions)));}catch(e){}
+  }
+  function mergeById(oldArr,newArr){
+    const map={};
+    asArray(oldArr).forEach(x=>{if(x&&x.id)map[String(x.id)]=x;});
+    asArray(newArr).forEach(x=>{if(x&&x.id)map[String(x.id)]={...(map[String(x.id)]||{}),...x};});
+    return Object.values(map);
+  }
+  function normalizeRoom(room){
+    const r={...(room||{})};
+    if(!r.id) r.id='arena_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    r.id=String(r.id); r.mode=r.mode||'room'; r.status=r.status||'live';
+    r.classIds=Array.isArray(r.classIds)?r.classIds:[];
+    r.maxPlayers=Number(r.maxPlayers||30); r.duration=Number(r.duration||20); r.questionCount=Number(r.questionCount||0);
+    r.createdAt=r.createdAt||nowISO(); r.createdBy=r.createdBy||window.currentUser?.id||''; r.createdByName=r.createdByName||window.currentUser?.fullname||window.currentUser?.email||'';
+    r.syncSource='web'; r.syncVersion=PATCH_ID; r.updatedAtClient=nowISO();
+    return r;
+  }
+  function normalizeSession(sess){
+    const s={...(sess||{})};
+    if(!s.id) s.id='arena_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    s.id=String(s.id); s.roomId=String(s.roomId||''); s.userId=String(s.userId||window.currentUser?.id||'');
+    s.userName=s.userName||window.currentUser?.fullname||window.currentUser?.email||'Người chơi'; s.className=s.className||window.currentUser?.className||'Chưa phân lớp';
+    s.status=s.status||'in_progress'; s.answers=s.answers||{}; s.createdAt=s.createdAt||nowISO(); s.lastUpdate=nowISO();
+    s.syncSource='web'; s.syncVersion=PATCH_ID; s.updatedAtClient=nowISO();
+    return s;
+  }
+  async function saveDoc(collection,id,data){
+    if(!hasFirebase()) throw new Error('Firebase chưa sẵn sàng hoặc chưa đăng nhập');
+    await db.collection(collection).doc(String(id)).set({...data,updatedAt:ts()},{merge:true});
+  }
+  window.arenaSaveRoom=async function(room){
+    const r=normalizeRoom(room);
+    window.arenaRooms=mergeById(window.arenaRooms,[r]).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    localSaveArena();
+    try{ await saveDoc('arenaRooms',r.id,r); return {ok:true,id:r.id}; }
+    catch(err){ console.error('Không ghi được arenaRooms lên Firestore:',err); safeToast('Phòng đấu đã lưu tạm trên máy, nhưng chưa ghi Firestore: '+(err?.message||err),'bad'); return {ok:false,id:r.id,error:err}; }
+  };
+  window.arenaSaveSession=async function(sess){
+    const s=normalizeSession(sess);
+    window.arenaSessions=mergeById(window.arenaSessions,[s]).sort((a,b)=>new Date(b.lastUpdate||b.createdAt||0)-new Date(a.lastUpdate||a.createdAt||0));
+    localSaveArena();
+    try{ await saveDoc('arenaSessions',s.id,s); return {ok:true,id:s.id}; }
+    catch(err){ console.error('Không ghi được arenaSessions lên Firestore:',err); safeToast('Lượt tham gia đã lưu tạm trên máy, nhưng chưa ghi Firestore: '+(err?.message||err),'bad'); return {ok:false,id:s.id,error:err}; }
+  };
+  window.arenaLoadFromFirestore=async function(){
+    try{
+      let localRooms=[], localSessions=[];
+      try{localRooms=JSON.parse(localStorage.getItem('mathpro12_arenaRooms')||'[]')||[]}catch(e){}
+      try{localSessions=JSON.parse(localStorage.getItem('mathpro12_arenaSessions')||'[]')||[]}catch(e){}
+      if(!hasFirebase()){ window.arenaRooms=localRooms; window.arenaSessions=localSessions; return false; }
+      const [roomSnap,sessionSnap]=await Promise.all([
+        db.collection('arenaRooms').orderBy('createdAt','desc').limit(200).get(),
+        db.collection('arenaSessions').orderBy('updatedAt','desc').limit(500).get()
+      ]);
+      const fsRooms=roomSnap.docs.map(d=>({id:d.id,...d.data()}));
+      const fsSessions=sessionSnap.docs.map(d=>({id:d.id,...d.data()}));
+      window.arenaRooms=mergeById(localRooms,fsRooms).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+      window.arenaSessions=mergeById(localSessions,fsSessions).sort((a,b)=>new Date(b.lastUpdate||b.createdAt||0)-new Date(a.lastUpdate||a.createdAt||0));
+      localSaveArena(); return true;
+    }catch(err){ console.error('Arena Firestore load fail:',err); safeToast('Chưa tải được phòng đấu từ Firestore: '+(err?.message||err),'bad'); return false; }
+  };
+  window.arenaSyncLocalToFirestore=async function(){
+    if(!hasFirebase()) return safeToast('Firebase chưa sẵn sàng, chưa thể đồng bộ phòng đấu','bad');
+    if(!(typeof isTeacherUser==='function'?isTeacherUser(window.currentUser):['teacher','admin'].includes(window.currentUser?.role))) return safeToast('Chỉ giáo viên/admin được đồng bộ phòng đấu','bad');
+    let ok=0, fail=0;
+    for(const r of asArray(window.arenaRooms)){try{await saveDoc('arenaRooms',String(r.id),normalizeRoom(r));ok++;}catch(e){fail++;console.error(e);}}
+    for(const s of asArray(window.arenaSessions)){try{await saveDoc('arenaSessions',String(s.id),normalizeSession(s));ok++;}catch(e){fail++;console.error(e);}}
+    safeToast(fail?`Đồng bộ xong ${ok} bản ghi, lỗi ${fail} bản ghi. Kiểm tra Firestore Rules.`:`Đã đồng bộ ${ok} bản ghi đấu trường lên Firestore`, fail?'bad':'ok');
+    try{await window.arenaLoadFromFirestore(); if(typeof arenaRenderCurrent==='function') arenaRenderCurrent();}catch(e){}
+  };
+  window.arenaFirestoreStatusHTML=function(){
+    const ready=hasFirebase();
+    return '<section class="glass-card p-4 border-blue-200"><div class="flex flex-wrap justify-between gap-3 items-center"><div><b><i class="fa-solid fa-cloud"></i> Firestore đấu trường</b><p class="text-sm mt-1" style="color:var(--muted)">'+(ready?'Đang ưu tiên lưu phòng đấu và lượt chơi lên Firestore. LocalStorage chỉ là bản đệm dự phòng.':'Firebase chưa sẵn sàng, hệ thống đang tạm dùng localStorage.')+'</p></div><button onclick="arenaSyncLocalToFirestore()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ local lên Firestore</button></div></section>';
+  };
+  const oldManage=window.arenaManageHTML;
+  if(typeof oldManage==='function') window.arenaManageHTML=function(){return window.arenaFirestoreStatusHTML()+'<div class="mt-4">'+oldManage()+'</div>';};
+  const oldRenderArena=window.renderArena;
+  if(typeof oldRenderArena==='function') window.renderArena=function(){try{window.arenaLoadFromFirestore().then(()=>{try{if(typeof arenaRenderCurrent==='function'&&document.getElementById('arenaRoot'))arenaRenderCurrent();}catch(e){}});}catch(e){} return oldRenderArena();};
+})();
+</script>
 </body>
 </html>
