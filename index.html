@@ -6029,5 +6029,53 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   renderStats=function(){ if(isGuestUser(currentUser)){ $('mainView').innerHTML=roleHomeHTML(); return; } return __oldRenderStatsRolePatch(); }
 })();
 </script>
+
+<!-- ===== PATCH 2026-04-30: LÀM GỌN MODAL ĐĂNG NHẬP / ĐĂNG KÝ, BỎ TÀI KHOẢN MẪU ===== -->
+<script>
+(function(){
+  window.showLoginModal=function(){
+    document.querySelector('.fixed')?.remove();
+    const m=document.createElement('div');
+    m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';
+    m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative">
+      <button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button>
+      <h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2>
+      <div class="space-y-3 mt-5">
+        <input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập" autocomplete="email">
+        <input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu" autocomplete="current-password">
+        <button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button>
+        <button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  };
+
+  window.quickLogin=function(){
+    toast('Tính năng đăng nhập mẫu đã được tắt. Vui lòng đăng nhập bằng tài khoản thật.','info');
+  };
+
+  window.showRegister=function(){
+    document.querySelector('.fixed')?.remove();
+    const m=document.createElement('div');
+    m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';
+    m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative">
+      <button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button>
+      <h2 class="text-2xl font-black text-center">Tạo tài khoản</h2>
+      <div class="space-y-3 mt-5">
+        <input id="regName" class="w-full px-4 py-3 rounded-2xl border" placeholder="Họ tên" autocomplete="name">
+        <input id="regU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập" autocomplete="email">
+        <input id="regP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu" autocomplete="new-password">
+        <select id="regRole" class="w-full px-4 py-3 rounded-2xl border bg-white">
+          <option value="student">Học sinh</option>
+          <option value="teacher">Giáo viên</option>
+        </select>
+        <button onclick="doRegister()" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">Tạo tài khoản</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  };
+})();
+</script>
+
 </body>
 </html>
