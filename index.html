@@ -440,103 +440,13 @@ async function loadExamsFromFirestore(){
   return false;
 }
 
-async function loadQuestionBankFromFirestore(loadLimit=500){
+async function loadQuestionBankFromFirestore(){
   if(!firebaseReady) return false;
-  // Chỉ tải lô mới nhất để giao diện nhẹ. Số lượng thật được đếm riêng bằng Firestore count().
-  const snap=await db.collection('questionBanks').orderBy('updatedAt','desc').limit(loadLimit).get().catch(()=>null);
+  const snap=await db.collection('questionBanks').orderBy('updatedAt','desc').limit(500).get().catch(()=>null);
   if(!snap) return false;
   questionBank=snap.docs.map(d=>({id:d.id,...d.data()}));
   localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));
-  window.qBankLoadedLimit=loadLimit;
-  window.qBankLastLoadedDoc=snap.docs[snap.docs.length-1]||null;
   return true;
-}
-let qBankRealStats={loading:false,updatedAt:null,total:null,byType:{},byStatus:{},byLevel:{},byTopic:{},error:''};
-async function firestoreCountQuery(query){
-  if(!firebaseReady) return null;
-  try{
-    if(typeof query.count==='function'){
-      const snap=await query.count().get();
-      return Number(snap.data().count||0);
-    }
-  }catch(err){console.warn('Firestore count() chưa dùng được, chuyển sang get().size',err);}
-  const snap=await query.get();
-  return snap.size;
-}
-async function getQuestionBankRealStats(force=false){
-  if(!firebaseReady) return {total:questionBank.length,byType:{},byStatus:{},byLevel:{},byTopic:{},error:'Chưa kết nối Firebase'};
-  if(qBankRealStats.loading) return qBankRealStats;
-  if(!force && qBankRealStats.updatedAt && Date.now()-new Date(qBankRealStats.updatedAt).getTime()<60000) return qBankRealStats;
-  qBankRealStats={...qBankRealStats,loading:true,error:''};
-  try{
-    const base=db.collection('questionBanks');
-    const types=['mc','tf','short'];
-    const statuses=['published','draft','archived'];
-    const levels=['Nhận biết','Thông hiểu','Vận dụng','Vận dụng cao','Cơ bản','Tổng hợp'];
-    const [total,typeCounts,statusCounts,levelCounts,topicCounts]=await Promise.all([
-      firestoreCountQuery(base),
-      Promise.all(types.map(x=>firestoreCountQuery(base.where('type','==',x)).then(c=>[x,c]))),
-      Promise.all(statuses.map(x=>firestoreCountQuery(base.where('status','==',x)).then(c=>[x,c]))),
-      Promise.all(levels.map(x=>firestoreCountQuery(base.where('level','==',x)).then(c=>[x,c]))),
-      Promise.all(TOPICS.map(t=>firestoreCountQuery(base.where('topicId','==',t.id)).then(c=>[t.id,c])))
-    ]);
-    qBankRealStats={loading:false,updatedAt:new Date().toISOString(),total,byType:Object.fromEntries(typeCounts),byStatus:Object.fromEntries(statusCounts),byLevel:Object.fromEntries(levelCounts),byTopic:Object.fromEntries(topicCounts),error:''};
-  }catch(err){
-    qBankRealStats={...qBankRealStats,loading:false,error:fbError(err),updatedAt:new Date().toISOString()};
-  }
-  return qBankRealStats;
-}
-function qBankRealCountCardHTML(){
-  const st=qBankRealStats||{};
-  const totalText=st.total===null||st.total===undefined?'Đang đếm...':st.total;
-  const loaded=questionBank.length||0;
-  const note=st.error?('Lỗi: '+safe(st.error)):(firebaseReady?`Đang tải trên giao diện: ${loaded} câu${st.total>loaded?' / còn '+(st.total-loaded)+' câu chưa hiển thị do phân trang':''}`:'Dữ liệu local, chưa có Firebase');
-  return `<section class="glass-card p-5 mb-5 border-blue-200">
-    <div class="flex flex-wrap justify-between items-start gap-3">
-      <div>
-        <span class="mini-badge"><i class="fa-solid fa-cloud"></i> Số liệu thật Firestore</span>
-        <h3 class="text-2xl font-black mt-2">Ngân hàng đang có <span id="qBankRealTotal" class="text-blue-600">${totalText}</span> câu hỏi thật sự</h3>
-        <p id="qBankRealNote" class="text-sm mt-1" style="color:var(--muted)">${note}</p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button onclick="refreshQuestionBankRealStats(true)" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Đếm lại</button>
-        <button onclick="loadAllQuestionBankPages()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-layer-group"></i> Tải thêm câu</button>
-      </div>
-    </div>
-    <div id="qBankRealStatsGrid" class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">${qBankRealStatsGridHTML(st)}</div>
-  </section>`;
-}
-function qBankRealStatsGridHTML(st=qBankRealStats){
-  const byType=st.byType||{}, byStatus=st.byStatus||{}, byLevel=st.byLevel||{}, byTopic=st.byTopic||{};
-  const topTopics=TOPICS.map(t=>({name:t.name,count:byTopic[t.id]||0})).sort((a,b)=>b.count-a.count).slice(0,3);
-  return analyticsCard('Tổng thật',st.total??'...','fa-database','Không phụ thuộc limit 500')+
-    analyticsCard('Theo dạng',`${byType.mc||0}/${byType.tf||0}/${byType.short||0}`,'fa-list-check','MC / Đúng-Sai / Ngắn')+
-    analyticsCard('Xuất bản / Nháp',`${byStatus.published||0}/${byStatus.draft||0}`,'fa-toggle-on','Published / Draft',(byStatus.draft||0)?'amber':'green')+
-    analyticsCard('Chủ đề nhiều nhất',topTopics.map(x=>x.name+': '+x.count).join('<br>')||'Chưa có','fa-chart-pie','Top 3 chủ đề');
-}
-async function refreshQuestionBankRealStats(force=false){
-  const totalEl=$('qBankRealTotal'), noteEl=$('qBankRealNote'), gridEl=$('qBankRealStatsGrid');
-  if(totalEl) totalEl.textContent='Đang đếm...';
-  const st=await getQuestionBankRealStats(force);
-  if(totalEl) totalEl.textContent=st.total??'--';
-  if(noteEl) noteEl.innerHTML=st.error?('Lỗi: '+safe(st.error)):`Đang tải trên giao diện: ${questionBank.length} câu${st.total>questionBank.length?' / còn '+(st.total-questionBank.length)+' câu chưa hiển thị do phân trang':''}`;
-  if(gridEl) gridEl.innerHTML=qBankRealStatsGridHTML(st);
-}
-async function loadAllQuestionBankPages(){
-  if(!firebaseReady) return toast('Chưa kết nối Firebase','bad');
-  try{
-    const current=window.qBankLastLoadedDoc;
-    if(!current) return toast('Không còn mốc phân trang. Bấm Đếm lại hoặc tải lại trang trước.','bad');
-    const snap=await db.collection('questionBanks').orderBy('updatedAt','desc').startAfter(current).limit(500).get();
-    if(snap.empty) return toast('Đã tải hết câu hỏi có thể lấy tiếp','ok');
-    const more=snap.docs.map(d=>({id:d.id,...d.data()}));
-    const byId={}; questionBank.forEach(q=>byId[String(q.id)]=q); more.forEach(q=>byId[String(q.id)]=q);
-    questionBank=Object.values(byId);
-    window.qBankLastLoadedDoc=snap.docs[snap.docs.length-1]||window.qBankLastLoadedDoc;
-    localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));
-    renderQuestionBank();
-    toast('Đã tải thêm '+more.length+' câu hỏi','ok');
-  }catch(err){toast('Chưa tải thêm được: '+fbError(err),'bad');}
 }
 function questionBankFromLocalExams(){
   const map={};
@@ -2090,7 +2000,6 @@ function renderQuestionBank(){
         <button onclick="openClearQuestionBankModal()" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-trash-can"></i> Xóa toàn bộ kho</button>`:'';
   $('mainView').innerHTML=`<div class="fade-in">
     ${teacherQuestionBankNotice()}
-    ${qBankRealCountCardHTML()}
     <div class="flex flex-wrap justify-between items-start gap-3 mb-5">
       <div>
         <span class="mini-badge"><i class="fa-solid fa-database"></i> Quản lý câu hỏi</span>
@@ -2173,7 +2082,6 @@ function renderQuestionBank(){
     <section class="grid xl:grid-cols-2 gap-4">${items.map(qBankCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Không có câu hỏi phù hợp bộ lọc.</div>'}</section>
   </div>`;
   typeset();
-  refreshQuestionBankRealStats(false);
 }
 
 
