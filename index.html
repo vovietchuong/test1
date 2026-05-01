@@ -6863,7 +6863,26 @@ window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
   const PATCH_ID='arena-firestore-primary-2026-05-01';
   window.ARENA_FIRESTORE_PRIMARY_PATCH=PATCH_ID;
   function nowISO(){return new Date().toISOString();}
-  function hasFirebase(){return !!(window.firebaseReady && window.db && window.firebase && firebase.firestore);}
+  function getCurrentUserSafe(){
+    try{
+      if(typeof currentUser!=='undefined' && currentUser) return currentUser;
+    }catch(e){}
+    return window.currentUser || null;
+  }
+  function getAuthUserSafe(){
+    try{return window.auth && window.auth.currentUser ? window.auth.currentUser : null;}catch(e){return null;}
+  }
+  function hasFirebase(){
+    const ok=!!(
+      window.firebase &&
+      window.db &&
+      window.auth &&
+      typeof firebase.firestore==='function' &&
+      getAuthUserSafe()
+    );
+    window.firebaseReady=ok;
+    return ok;
+  }
   function ts(){return firebase.firestore.FieldValue.serverTimestamp();}
   function safeToast(msg,type='ok'){try{ if(typeof toast==='function') toast(msg,type); }catch(e){} }
   function asArray(v){return Array.isArray(v)?v:[];}
@@ -6883,21 +6902,28 @@ window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
     r.id=String(r.id); r.mode=r.mode||'room'; r.status=r.status||'live';
     r.classIds=Array.isArray(r.classIds)?r.classIds:[];
     r.maxPlayers=Number(r.maxPlayers||30); r.duration=Number(r.duration||20); r.questionCount=Number(r.questionCount||0);
-    r.createdAt=r.createdAt||nowISO(); r.createdBy=r.createdBy||window.currentUser?.id||''; r.createdByName=r.createdByName||window.currentUser?.fullname||window.currentUser?.email||'';
+    const cu=getCurrentUserSafe(), au=getAuthUserSafe();
+    r.createdAt=r.createdAt||nowISO();
+    r.createdBy=r.createdBy||cu?.id||au?.uid||'';
+    r.hostId=r.hostId||r.createdBy;
+    r.createdByName=r.createdByName||cu?.fullname||cu?.email||au?.displayName||au?.email||'';
     r.syncSource='web'; r.syncVersion=PATCH_ID; r.updatedAtClient=nowISO();
     return r;
   }
   function normalizeSession(sess){
     const s={...(sess||{})};
     if(!s.id) s.id='arena_'+Date.now()+'_'+Math.floor(Math.random()*9999);
-    s.id=String(s.id); s.roomId=String(s.roomId||''); s.userId=String(s.userId||window.currentUser?.id||'');
-    s.userName=s.userName||window.currentUser?.fullname||window.currentUser?.email||'Người chơi'; s.className=s.className||window.currentUser?.className||'Chưa phân lớp';
+    const cu=getCurrentUserSafe(), au=getAuthUserSafe();
+    s.id=String(s.id); s.roomId=String(s.roomId||''); s.userId=String(s.userId||cu?.id||au?.uid||'');
+    s.studentId=s.studentId||s.userId;
+    s.userName=s.userName||cu?.fullname||cu?.email||au?.displayName||au?.email||'Người chơi'; s.className=s.className||cu?.className||'Chưa phân lớp';
     s.status=s.status||'in_progress'; s.answers=s.answers||{}; s.createdAt=s.createdAt||nowISO(); s.lastUpdate=nowISO();
     s.syncSource='web'; s.syncVersion=PATCH_ID; s.updatedAtClient=nowISO();
     return s;
   }
   async function saveDoc(collection,id,data){
-    if(!hasFirebase()) throw new Error('Firebase chưa sẵn sàng hoặc chưa đăng nhập');
+    if(!window.firebase || !window.db || !window.auth) throw new Error('Firebase SDK/Firestore chưa khởi tạo');
+    if(!getAuthUserSafe()) throw new Error('Chưa đăng nhập Firebase Auth');
     await db.collection(collection).doc(String(id)).set({...data,updatedAt:ts()},{merge:true});
   }
   window.arenaSaveRoom=async function(room){
@@ -6933,7 +6959,8 @@ window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
   };
   window.arenaSyncLocalToFirestore=async function(){
     if(!hasFirebase()) return safeToast('Firebase chưa sẵn sàng, chưa thể đồng bộ phòng đấu','bad');
-    if(!(typeof isTeacherUser==='function'?isTeacherUser(window.currentUser):['teacher','admin'].includes(window.currentUser?.role))) return safeToast('Chỉ giáo viên/admin được đồng bộ phòng đấu','bad');
+    const cu=getCurrentUserSafe();
+    if(!(typeof isTeacherUser==='function'?isTeacherUser(cu):['teacher','admin'].includes(cu?.role))) return safeToast('Chỉ giáo viên/admin được đồng bộ phòng đấu','bad');
     let ok=0, fail=0;
     for(const r of asArray(window.arenaRooms)){try{await saveDoc('arenaRooms',String(r.id),normalizeRoom(r));ok++;}catch(e){fail++;console.error(e);}}
     for(const s of asArray(window.arenaSessions)){try{await saveDoc('arenaSessions',String(s.id),normalizeSession(s));ok++;}catch(e){fail++;console.error(e);}}
@@ -6944,6 +6971,21 @@ window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
     const ready=hasFirebase();
     return '<section class="glass-card p-4 border-blue-200"><div class="flex flex-wrap justify-between gap-3 items-center"><div><b><i class="fa-solid fa-cloud"></i> Firestore đấu trường</b><p class="text-sm mt-1" style="color:var(--muted)">'+(ready?'Đang ưu tiên lưu phòng đấu và lượt chơi lên Firestore. LocalStorage chỉ là bản đệm dự phòng.':'Firebase chưa sẵn sàng, hệ thống đang tạm dùng localStorage.')+'</p></div><button onclick="arenaSyncLocalToFirestore()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ local lên Firestore</button></div></section>';
   };
+  try{
+    if(window.auth && typeof window.auth.onAuthStateChanged==='function'){
+      window.auth.onAuthStateChanged(function(u){
+        window.firebaseReady=!!(u && window.db && window.firebase);
+        if(u){
+          setTimeout(function(){
+            try{
+              if(typeof window.arenaSyncLocalToFirestore==='function') window.arenaSyncLocalToFirestore();
+            }catch(e){console.warn('Arena auto sync skipped',e);}
+          }, 700);
+        }
+      });
+    }
+  }catch(e){console.warn('Arena auth watcher skipped',e);}
+
   const oldManage=window.arenaManageHTML;
   if(typeof oldManage==='function') window.arenaManageHTML=function(){return window.arenaFirestoreStatusHTML()+'<div class="mt-4">'+oldManage()+'</div>';};
   const oldRenderArena=window.renderArena;
