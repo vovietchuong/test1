@@ -299,13 +299,6 @@
     @media(max-width:640px){.live-monitor-filter{grid-template-columns:1fr}.live-student-card{grid-template-columns:1fr}}
 
   </style>
-
-<style>
-/* ===== ARENA FULL PRO LEVEL 3 CSS ===== */
-.arena-opponent-box{border:1px solid var(--line);border-radius:1.15rem;padding:.9rem;background:rgba(37,99,235,.06)}
-body.exam-focus .arena-opponent-box{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);color:#e5eefc}
-.arena-live-chip{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.3rem .65rem;font-size:.75rem;font-weight:950;border:1px solid var(--line);background:rgba(148,163,184,.12)}
-</style>
 </head>
 <body>
 <div id="app" class="min-h-screen flex flex-col">
@@ -5151,160 +5144,66 @@ updateStudentClass=async function(userId,className){
 
 
 
-// Ghi đè nội dung Firestore Rules theo mô hình admin/teacher/student mới + Đấu trường PRO
+// Ghi đè nội dung Firestore Rules theo mô hình admin/teacher/student mới
 showSecurityRules=function(){
   if(!adminOnlyGuard())return;
   const rules=`rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function userExists() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function role() {
-      return userExists() ? userDoc().data.role : "";
-    }
-
-    function isAdmin() {
-      return signedIn() && role() == "admin";
-    }
-
-    function isTeacher() {
-      return signedIn() && role() == "teacher";
-    }
-
-    function isTeacherOrAdmin() {
-      return isTeacher() || isAdmin();
-    }
-
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
-    }
+    function signedIn(){ return request.auth != null; }
+    function myUser(){ return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function myRole(){ return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? myUser().data.role : 'guest'; }
+    function isAdmin(){ return myRole() == 'admin'; }
+    function isTeacher(){ return myRole() == 'teacher' || isAdmin(); }
+    function isOwner(userId){ return signedIn() && request.auth.uid == userId; }
+    function sameTeacher(){ return isTeacher() && (resource.data.createdBy == request.auth.uid || resource.data.teacherId == request.auth.uid || isAdmin()); }
+    function sameTeacherNew(){ return isTeacher() && (request.resource.data.createdBy == request.auth.uid || request.resource.data.teacherId == request.auth.uid || isAdmin()); }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isTeacherOrAdmin();
-
-      allow create: if isOwner(userId)
-        && request.resource.data.id == request.auth.uid
-        && request.resource.data.role in ["student", "teacher"];
-
+      allow read: if isOwner(userId) || isTeacher();
+      allow create: if isOwner(userId) && request.resource.data.role in ['student','teacher'];
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
     match /questionBanks/{questionId} {
       allow read: if signedIn();
-      allow create, update: if isTeacherOrAdmin();
-      allow delete: if isAdmin();
+      allow create: if isTeacher() && sameTeacherNew();
+      allow update, delete: if isAdmin() || sameTeacher();
     }
 
     match /exams/{examId} {
-      allow read: if signedIn();
-      allow create, update: if isTeacherOrAdmin();
-      allow delete: if isAdmin();
+      allow read: if true;
+      allow create: if isTeacher() && sameTeacherNew();
+      allow update, delete: if isAdmin() || sameTeacher();
     }
 
     match /examQuestions/{id} {
       allow read: if signedIn();
-      allow create, update: if isTeacherOrAdmin();
-      allow delete: if isAdmin();
+      allow create: if isTeacher();
+      allow update, delete: if isAdmin() || isTeacher();
     }
 
     match /examSessions/{sessionId} {
-      allow create: if signedIn()
-        && request.resource.data.studentId == request.auth.uid;
-
-      allow read, update: if signedIn()
-        && (
-          resource.data.studentId == request.auth.uid
-          || isTeacherOrAdmin()
-        );
-
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
+      allow update: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
       allow delete: if isAdmin();
     }
 
     match /examResults/{resultId} {
-      allow create: if signedIn()
-        && request.resource.data.studentId == request.auth.uid;
-
-      allow read: if signedIn()
-        && (
-          resource.data.studentId == request.auth.uid
-          || isTeacherOrAdmin()
-        );
-
-      allow update: if isTeacherOrAdmin();
-      allow delete: if isAdmin();
-    }
-
-    match /classes/{classId} {
-      allow read: if signedIn();
-      allow create, update: if isTeacherOrAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /* ===== ĐẤU TRƯỜNG - ĐÃ KHỚP CODE userId ===== */
-
-    match /arenaRooms/{roomId} {
-      allow read: if signedIn();
-
-      allow create: if isTeacherOrAdmin()
-        && request.resource.data.createdBy == request.auth.uid;
-
-      allow update: if isTeacherOrAdmin();
-      allow delete: if isAdmin();
-    }
-
-    match /arenaSessions/{sessionId} {
-      // Code Đấu trường dùng userId, không dùng studentId.
-      allow read: if signedIn();
-
-      allow create: if signedIn()
-        && request.resource.data.userId == request.auth.uid;
-
-      allow update: if signedIn()
-        && (
-          resource.data.userId == request.auth.uid
-          || isTeacherOrAdmin()
-        );
-
-      allow delete: if isTeacherOrAdmin();
-    }
-
-    match /arenaRanks/{userId} {
-      allow read: if signedIn();
-
-      allow create, update: if signedIn()
-        && (
-          userId == request.auth.uid
-          || isTeacherOrAdmin()
-        );
-
-      allow delete: if isAdmin();
-    }
-
-    match /settings/{settingId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isTeacher());
+      allow update, delete: if isAdmin();
     }
   }
 }`;
   const m=document.createElement('div');
   m.className='fixed inset-0 bg-black/55 z-50 p-4 overflow-auto fade-in';
-  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">Firestore Rules chuẩn Admin - Giáo viên - Học sinh - Đấu trường</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><p class="my-3 text-sm" style="color:var(--muted)">Dán đoạn này vào Firebase Console → Firestore Database → Rules. Bản này đã sửa Đấu trường dùng <b>userId</b> đúng với code, không còn dùng nhầm <b>studentId</b> trong arenaSessions.</p><textarea class="w-full h-[620px] border rounded-2xl p-4 font-mono text-sm">${rules}</textarea></div>`;
+  m.innerHTML=`<div class="glass-card max-w-5xl mx-auto p-6"><div class="flex justify-between"><h2 class="text-2xl font-black">Firestore Rules theo mô hình Admin - Giáo viên - Học sinh</h2><button onclick="this.closest('.fixed').remove()" class="text-2xl">&times;</button></div><p class="my-3 text-sm" style="color:var(--muted)">Dán đoạn này vào Firebase Console → Firestore Database → Rules. Admin có quyền toàn hệ thống; giáo viên chỉ tạo/sửa dữ liệu có createdBy/teacherId của mình; học sinh chỉ tạo phiên làm bài và đọc điểm của mình.</p><textarea class="w-full h-[520px] border rounded-2xl p-4 font-mono text-sm">${rules}</textarea></div>`;
   document.body.appendChild(m);
 }
+
 
 
 // ===== ADMIN FULL HỆ THỐNG - BẢN MỞ RỘNG 2026-04-26 =====
@@ -6501,503 +6400,5 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 })();
 </script>
 
-<!-- ===== PATCH 2026-04-30: FULL TAB ĐẤU TRƯỜNG PRO ===== -->
-<style>
-  .arena-hero{position:relative;overflow:hidden;border-radius:1.9rem;padding:1.5rem;background:radial-gradient(circle at 88% -15%,rgba(250,204,21,.28),transparent 28%),linear-gradient(135deg,#0f172a,#1d4ed8 48%,#06b6d4);color:white;border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 88px -40px rgba(2,6,23,.72)}
-  .arena-hero>*{position:relative;z-index:1}.arena-hero:before{content:"";position:absolute;right:-5rem;top:-7rem;width:25rem;height:25rem;border-radius:999px;background:rgba(255,255,255,.13)}
-  .arena-pill{display:inline-flex;align-items:center;gap:.38rem;padding:.36rem .72rem;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);font-size:.78rem;font-weight:950;color:white}
-  .arena-tabs{display:flex;flex-wrap:wrap;gap:.55rem}.arena-tab{border:1px solid var(--line);border-radius:999px;padding:.62rem 1rem;font-weight:950;background:rgba(255,255,255,.58);transition:.16s ease}.arena-tab:hover{transform:translateY(-1px);border-color:#60a5fa}html[data-theme="dark"] .arena-tab{background:rgba(15,23,42,.52)}.arena-tab.active{background:linear-gradient(100deg,#2563eb,#06b6d4);color:white;border-color:transparent;box-shadow:0 12px 26px rgba(37,99,235,.25)}
-  .arena-room-card{border:1px solid var(--line);border-radius:1.35rem;padding:1rem;background:rgba(255,255,255,.60);transition:.18s ease}html[data-theme="dark"] .arena-room-card{background:rgba(15,23,42,.52)}.arena-room-card:hover{transform:translateY(-2px);box-shadow:0 22px 52px -34px rgba(2,6,23,.58);border-color:#60a5fa}
-  .arena-mode-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.32rem .65rem;border-radius:999px;font-size:.72rem;font-weight:950;border:1px solid var(--line);background:rgba(37,99,235,.10);color:var(--brand)}
-  .arena-mode-badge.live{background:rgba(22,163,74,.12);color:#15803d;border-color:rgba(22,163,74,.28)}.arena-mode-badge.waiting{background:rgba(217,119,6,.12);color:#d97706;border-color:rgba(217,119,6,.28)}.arena-mode-badge.finished{background:rgba(100,116,139,.12);color:#64748b}
-  .arena-kpi{border:1px solid var(--line);border-radius:1.2rem;padding:1rem;background:var(--card);box-shadow:0 18px 44px -32px rgba(2,6,23,.45)}.arena-kpi b{display:block;font-size:1.75rem;line-height:1.05;color:var(--brand)}
-  .arena-form-grid{display:grid;grid-template-columns:1fr 1fr .8fr .8fr auto;gap:.75rem;align-items:end}.arena-input{width:100%;border:1px solid var(--line);border-radius:1rem;padding:.78rem 1rem;background:rgba(255,255,255,.72);outline:none}html[data-theme="dark"] .arena-input{background:rgba(15,23,42,.58);color:var(--text)}
-  .arena-leader-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:.75rem;align-items:center;border:1px solid var(--line);border-radius:1.1rem;padding:.82rem;background:rgba(255,255,255,.58)}html[data-theme="dark"] .arena-leader-row{background:rgba(15,23,42,.50)}.arena-leader-row.top1{background:linear-gradient(100deg,rgba(250,204,21,.22),rgba(255,255,255,.58));border-color:rgba(250,204,21,.45)}
-  .arena-rank{width:2.55rem;height:2.55rem;border-radius:1rem;display:grid;place-items:center;font-weight:950;background:rgba(37,99,235,.10);color:var(--brand);border:1px solid var(--line)}.arena-rank.gold{background:linear-gradient(135deg,#facc15,#f97316);color:white;border-color:transparent}.arena-rank.silver{background:linear-gradient(135deg,#e2e8f0,#94a3b8);color:#0f172a;border-color:transparent}.arena-rank.bronze{background:linear-gradient(135deg,#fdba74,#c2410c);color:white;border-color:transparent}
-  .arena-progress{height:.65rem;background:rgba(148,163,184,.22);border-radius:999px;overflow:hidden}.arena-progress>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#06b6d4,#22c55e)}
-  .arena-battle-shell{display:grid;grid-template-columns:320px minmax(0,1fr);gap:1rem;align-items:start}.arena-side{position:sticky;top:5.75rem;max-height:calc(100vh - 6.5rem);overflow:auto}.arena-qgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem}.arena-qbtn{height:2.4rem;border-radius:.8rem;border:1px solid var(--line);font-weight:900;background:rgba(255,255,255,.66)}.arena-qbtn.done{background:rgba(22,163,74,.14);border-color:rgba(22,163,74,.35);color:#15803d}.arena-qbtn.current{background:linear-gradient(100deg,#2563eb,#06b6d4);color:white;border-color:transparent}
-  .arena-countdown{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:1.55rem;font-weight:950;letter-spacing:.04em;background:#0f172a;color:white;border-radius:1.2rem;padding:.85rem;text-align:center}.arena-vs{display:grid;grid-template-columns:1fr auto 1fr;gap:.8rem;align-items:center}.arena-fighter{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);border-radius:1.25rem;padding:.9rem}.arena-vs-icon{width:3.2rem;height:3.2rem;border-radius:1rem;display:grid;place-items:center;background:linear-gradient(135deg,#f97316,#facc15);font-weight:950;color:white;box-shadow:0 18px 36px rgba(249,115,22,.25)}
-  @media(max-width:1100px){.arena-form-grid{grid-template-columns:1fr 1fr}.arena-form-grid button{grid-column:1/-1}.arena-battle-shell{grid-template-columns:1fr}.arena-side{position:relative;top:auto;max-height:none}}@media(max-width:640px){.arena-form-grid{grid-template-columns:1fr}.arena-leader-row{grid-template-columns:auto 1fr}.arena-leader-row>div:last-child{grid-column:1/-1}.arena-vs{grid-template-columns:1fr}.arena-vs-icon{margin:auto}}
-</style>
-<script>
-(function(){
-  const ARENA_VERSION='arena-pro-2026-04-30';
-  let arenaRooms=[], arenaSessions=[], arenaRoomUnsub=null, arenaSessionUnsub=null, arenaState={tab:'rooms',roomId:null,currentQuestionIndex:0,answers:{},remain:0,timer:null,startedAt:null,warnings:0,submitted:false};
-  function arenaId(){return 'arena_'+Date.now()+'_'+Math.floor(Math.random()*9999)}
-  function arenaLocalLoad(){try{arenaRooms=JSON.parse(localStorage.getItem('mathpro12_arenaRooms')||'[]')||[]}catch(e){arenaRooms=[]}try{arenaSessions=JSON.parse(localStorage.getItem('mathpro12_arenaSessions')||'[]')||[]}catch(e){arenaSessions=[]}}
-  function arenaLocalSave(){localStorage.setItem('mathpro12_arenaRooms',JSON.stringify(arenaRooms));localStorage.setItem('mathpro12_arenaSessions',JSON.stringify(arenaSessions));}
-  function arenaRoleCanManage(){return typeof isTeacherUser==='function' ? isTeacherUser(currentUser) : !!currentUser && ['teacher','admin'].includes(currentUser.role)}
-  function arenaUserCanPlay(){return !!currentUser && ['student','teacher','admin'].includes(currentUser.role)}
-  function arenaExamList(){return (exams||[]).filter(e=>!isPdfExam(e) && (e.questions||[]).length)}
-  function arenaRoomStatus(room){const now=Date.now();const raw=String(room?.status||'waiting');const start=room?.startTime?new Date(room.startTime).getTime():0;const end=room?.endTime?new Date(room.endTime).getTime():0;if(raw==='finished'||(end&&now>end))return 'finished';if(['live','playing','in_progress'].includes(raw))return 'live';if(start&&now>=start&&(!end||now<=end))return 'live';return 'waiting'}
-  function arenaStatusLabel(room){const s=arenaRoomStatus(room);return s==='live'?'Đang đấu':s==='finished'?'Đã kết thúc':'Chờ mở'}
-  function arenaModeLabel(mode){return mode==='solo'?'1vs1':mode==='class'?'Đấu lớp':mode==='global'?'Toàn hệ thống':'Phòng đấu'}
-  function arenaScopeRooms(){const role=currentUser?.role||'guest';let list=[...(arenaRooms||[])]; if(role==='student'){list=list.filter(r=>!r.classIds?.length||r.classIds.includes(currentUser.className||''));} return list.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));}
-  function arenaFindRoom(id){return arenaRooms.find(r=>String(r.id)===String(id))}
-  function arenaRoomSessions(roomId){return arenaSessions.filter(s=>String(s.roomId)===String(roomId)).sort((a,b)=>(Number(b.score)||0)-(Number(a.score)||0)||(Number(a.finishMs)||999999999)-(Number(b.finishMs)||999999999))}
-  function arenaMySession(roomId){return arenaSessions.find(s=>String(s.roomId)===String(roomId)&&String(s.userId)===String(currentUser?.id))}
-  function arenaQuestionCount(room){const e=exams.find(x=>String(x.id)===String(room?.examId));return (e?.questions||[]).length||room?.questionCount||0}
-  function arenaCalcElo(score,total,finishMs,warnings){const pct=total?score*100/total:0;let speed=finishMs?Math.max(0,Math.round(30-(finishMs/60000))):0;return Math.max(0,Math.round(pct*10+speed*6-Number(warnings||0)*20))}
-  function arenaRankName(elo){elo=Number(elo)||0;return elo>=2000?'💎 Kim cương':elo>=1500?'🥇 Vàng':elo>=1000?'🥈 Bạc':'🥉 Đồng'}
-  function arenaSyncWindowState(){window.arenaRooms=arenaRooms;window.arenaSessions=arenaSessions;window.arenaState=arenaState;}
-  function arenaMergeById(a,b){const m={};[...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])].forEach(x=>{if(x&&x.id)m[String(x.id)]={...(m[String(x.id)]||{}),...x};});return Object.values(m)}
-  function arenaNormalizeRoom(room){const r={...(room||{})};const uid=currentUser?.id||(window.auth?.currentUser?.uid)||'';r.id=String(r.id||arenaId());r.createdAt=r.createdAt||new Date().toISOString();r.createdBy=r.createdBy||uid;r.hostId=r.hostId||r.createdBy;r.createdByName=r.createdByName||currentUser?.fullname||currentUser?.email||'';r.classIds=Array.isArray(r.classIds)?r.classIds:[];r.players=Array.isArray(r.players)?r.players.filter(Boolean):[];[r.createdBy,r.hostId].forEach(x=>{if(x&&!r.players.includes(x))r.players.push(x)});r.maxPlayers=Number(r.maxPlayers||30);r.duration=Number(r.duration||20);r.questionCount=Number(r.questionCount||arenaQuestionCount(r)||0);r.updatedAtClient=new Date().toISOString();r.version=r.version||ARENA_VERSION;return r;}
-  function arenaNormalizeSession(sess){const s={...(sess||{})};const uid=currentUser?.id||(window.auth?.currentUser?.uid)||'';s.id=String(s.id||arenaId());s.userId=String(s.userId||uid);s.studentId=s.studentId||s.userId;s.roomId=String(s.roomId||'');s.userName=s.userName||currentUser?.fullname||currentUser?.email||'Người chơi';s.className=s.className||currentUser?.className||'Chưa phân lớp';s.answers=s.answers||{};s.createdAt=s.createdAt||new Date().toISOString();s.lastUpdate=new Date().toISOString();s.updatedAtClient=new Date().toISOString();s.version=s.version||ARENA_VERSION;return s;}
-  async function arenaLoadFromFirestore(){arenaLocalLoad(); arenaSyncWindowState(); if(!firebaseReady||!window.db)return false; try{let sessionQuery=db.collection('arenaSessions').orderBy('lastUpdate','desc').limit(500);const [snap,ss]=await Promise.all([db.collection('arenaRooms').orderBy('createdAt','desc').limit(200).get(),sessionQuery.get().catch(()=>db.collection('arenaSessions').orderBy('updatedAt','desc').limit(500).get())]); const fsRooms=snap.docs.map(d=>arenaNormalizeRoom({id:d.id,...d.data()})); const fsSessions=ss.docs.map(d=>arenaNormalizeSession({id:d.id,...d.data()})); arenaRooms=arenaMergeById(arenaRooms,fsRooms).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); arenaSessions=arenaMergeById(arenaSessions,fsSessions).sort((a,b)=>new Date(b.lastUpdate||b.createdAt||0)-new Date(a.lastUpdate||a.createdAt||0)); arenaLocalSave(); arenaSyncWindowState(); return true;}catch(err){console.warn('Arena Firestore load fail',err);try{toast('Chưa tải được đấu trường từ Firestore: '+fbError(err),'bad')}catch(e){}return false;}}
-  function arenaListen(){ if(!firebaseReady||!window.db)return; try{ if(arenaRoomUnsub)arenaRoomUnsub(); arenaRoomUnsub=db.collection('arenaRooms').orderBy('createdAt','desc').limit(200).onSnapshot(snap=>{arenaRooms=snap.docs.map(d=>arenaNormalizeRoom({id:d.id,...d.data()}));arenaLocalSave();arenaSyncWindowState(); arenaAutoRefreshView();},err=>console.warn('Arena rooms listen fail',err)); if(arenaSessionUnsub)arenaSessionUnsub(); arenaSessionUnsub=db.collection('arenaSessions').orderBy('lastUpdate','desc').limit(500).onSnapshot(snap=>{arenaSessions=snap.docs.map(d=>arenaNormalizeSession({id:d.id,...d.data()}));arenaLocalSave();arenaSyncWindowState(); arenaAutoRefreshView();},err=>console.warn('Arena sessions listen fail',err)); }catch(err){console.warn('Arena listen fail',err);} }
-  function arenaAutoRefreshView(){try{ if(document.getElementById('arenaRoot')){arenaRenderCurrent();return;} const roomId=arenaState?.roomId; if(!roomId)return; if(document.getElementById('arenaTimer'))return; const room=arenaFindRoom(roomId); if(!room)return; const mine=arenaMySession(roomId); const rows=arenaRoomSessions(roomId); if(mine&&mine.status!=='submitted'&&String(room.mode)==='solo'&&rows.length>=2&&arenaRoomStatus(room)!=='finished'){arenaStartBattle(room,mine);return;} if(document.getElementById('mainView')&&document.getElementById('mainView').innerHTML.includes('BXH phòng đấu')) arenaOpenRoom(roomId);}catch(e){console.warn('Arena auto refresh skipped',e);}}
-  function arenaEnsureSeed(){arenaLocalLoad(); if(arenaRooms.length || !arenaExamList().length)return; const e=arenaExamList()[0]; arenaRooms.unshift({id:'arena_demo_'+Date.now(),title:'Đấu trường luyện nhanh',mode:'room',examId:String(e.id),examTitle:e.title,duration:e.duration||20,maxPlayers:30,classIds:[],status:'waiting',createdAt:new Date().toISOString(),createdBy:'system',createdByName:'Hệ thống',questionCount:(e.questions||[]).length}); arenaLocalSave();}
-  async function arenaSaveRoom(room){const r=arenaNormalizeRoom(room);const idx=arenaRooms.findIndex(x=>String(x.id)===String(r.id)); if(idx>=0)arenaRooms[idx]={...arenaRooms[idx],...r}; else arenaRooms.unshift(r); arenaLocalSave(); arenaSyncWindowState(); if(firebaseReady&&window.db&&window.auth?.currentUser){try{await db.collection('arenaRooms').doc(String(r.id)).set({...r,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});return {ok:true,id:r.id};}catch(err){console.error('save arena room fail',err);toast('Đã lưu local, chưa ghi Firestore đấu trường: '+fbError(err),'bad');return {ok:false,id:r.id,error:err};}}return {ok:false,id:r.id,localOnly:true};}
-  async function arenaSaveSession(sess){const s=arenaNormalizeSession(sess);const idx=arenaSessions.findIndex(x=>String(x.id)===String(s.id)); if(idx>=0)arenaSessions[idx]={...arenaSessions[idx],...s}; else arenaSessions.unshift(s); arenaLocalSave(); arenaSyncWindowState(); if(firebaseReady&&window.db&&window.auth?.currentUser){try{await db.collection('arenaSessions').doc(String(s.id)).set({...s,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});return {ok:true,id:s.id};}catch(err){console.error('save arena session fail',err);toast('Đã lưu lượt chơi trên máy, chưa ghi Firestore: '+fbError(err),'bad');return {ok:false,id:s.id,error:err};}}return {ok:false,id:s.id,localOnly:true};}
-  function arenaKpiHTML(){const rooms=arenaScopeRooms(), live=rooms.filter(r=>arenaRoomStatus(r)==='live').length, players=arenaSessions.filter(s=>s.status!=='left').length, done=arenaSessions.filter(s=>s.status==='submitted').length;return '<section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">'+analyticsCard('Phòng đấu',rooms.length,'fa-gamepad','Tổng phòng theo quyền')+analyticsCard('Đang diễn ra',live,'fa-bolt','Realtime',live?'green':'blue')+analyticsCard('Người tham gia',players,'fa-users','Tổng lượt vào')+analyticsCard('Lượt hoàn thành',done,'fa-flag-checkered','Đã nộp')+'</section>'}
-  function arenaNavHTML(){return '<div class="arena-tabs no-print"><button onclick="arenaSetTab(\'rooms\')" class="arena-tab '+(arenaState.tab==='rooms'?'active':'')+'"><i class="fa-solid fa-door-open"></i> Phòng đấu</button><button onclick="arenaSetTab(\'leaderboard\')" class="arena-tab '+(arenaState.tab==='leaderboard'?'active':'')+'"><i class="fa-solid fa-ranking-star"></i> BXH</button><button onclick="arenaSetTab(\'my\')" class="arena-tab '+(arenaState.tab==='my'?'active':'')+'"><i class="fa-solid fa-user-ninja"></i> Hồ sơ đấu</button>'+(arenaRoleCanManage()?'<button onclick="arenaSetTab(\'manage\')" class="arena-tab '+(arenaState.tab==='manage'?'active':'')+'"><i class="fa-solid fa-sliders"></i> Quản lý</button>':'')+'</div>'}
-  function arenaHeroHTML(){return '<section class="arena-hero"><div class="flex flex-wrap justify-between items-start gap-5"><div><span class="arena-pill"><i class="fa-solid fa-fire"></i> Arena Pro</span><h2 class="text-3xl md:text-5xl font-black mt-3">Đấu trường Toán học</h2><p class="mt-2 text-blue-100 max-w-3xl">Thi đối kháng, phòng đấu realtime, bảng xếp hạng, ELO và cảnh báo gian lận. Kết nối với kho đề và phiên thi hiện có.</p><div class="flex flex-wrap gap-2 mt-4"><span class="arena-pill"><i class="fa-solid fa-shield-halved"></i> Chống rời tab</span><span class="arena-pill"><i class="fa-solid fa-bolt"></i> Realtime Firestore</span><span class="arena-pill"><i class="fa-solid fa-medal"></i> Rank ELO</span></div></div><div class="text-right"><p class="text-sm text-cyan-100 font-bold">Rank hiện tại</p><p class="text-3xl md:text-4xl font-black">'+safe(arenaRankName(arenaMyElo()))+'</p><p class="text-blue-100 text-sm">ELO: '+arenaMyElo()+'</p></div></div></section>'}
-  function arenaMyElo(){const rows=arenaSessions.filter(s=>String(s.userId)===String(currentUser?.id)&&s.status==='submitted');return rows.reduce((sum,s)=>sum+Number(s.eloGain||0),0)}
-  function arenaRoomCard(room){const s=arenaRoomStatus(room), count=arenaRoomSessions(room.id).length, mine=arenaMySession(room.id);return '<article class="arena-room-card"><div class="flex flex-wrap justify-between gap-2"><span class="arena-mode-badge '+s+'"><i class="fa-solid '+(s==='live'?'fa-circle-play':s==='finished'?'fa-circle-check':'fa-hourglass-half')+'"></i> '+arenaStatusLabel(room)+'</span><span class="arena-mode-badge"><i class="fa-solid fa-chess-knight"></i> '+arenaModeLabel(room.mode)+'</span></div><h3 class="text-xl font-black mt-3 math-content">'+safe(room.title||'Phòng đấu')+'</h3><p class="text-sm mt-1" style="color:var(--muted)">'+safe(room.examTitle||'Chưa chọn đề')+' • '+arenaQuestionCount(room)+' câu • '+(room.duration||20)+' phút</p><p class="text-xs mt-2" style="color:var(--muted)">Lớp: '+(room.classIds?.length?room.classIds.map(safe).join(', '):'Tất cả')+' • Tối đa '+(room.maxPlayers||30)+' người</p><div class="grid grid-cols-3 gap-2 mt-3"><div class="arena-kpi"><b>'+count+'</b><span class="text-xs">Người chơi</span></div><div class="arena-kpi"><b>'+arenaRoomSessions(room.id).filter(x=>x.status==='submitted').length+'</b><span class="text-xs">Đã nộp</span></div><div class="arena-kpi"><b>'+arenaRoomSessions(room.id).filter(x=>x.status==='in_progress').length+'</b><span class="text-xs">Đang làm</span></div></div><div class="flex flex-wrap gap-2 mt-4"><button onclick="arenaOpenRoom(\''+safe(room.id)+'\')" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem phòng</button>'+(s!=='finished'?'<button onclick="arenaJoinRoom(\''+safe(room.id)+'\')" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid '+(mine?'fa-right-to-bracket':'fa-gamepad')+'"></i> '+(mine?'Vào lại':'Tham gia')+'</button>':'')+(arenaRoleCanManage()?'<button onclick="arenaFinishRoom(\''+safe(room.id)+'\')" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-flag-checkered"></i> Kết thúc</button>':'')+'</div></article>'}
-  function arenaRoomsHTML(){const rooms=arenaScopeRooms();return '<section class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">'+(rooms.map(arenaRoomCard).join('')||'<div class="glass-card p-8 text-center text-slate-500">Chưa có phòng đấu phù hợp. Giáo viên có thể tạo phòng ở tab Quản lý.</div>')+'</section>'}
-  function arenaLeaderboardRows(roomId=''){let rows=roomId?arenaRoomSessions(roomId):arenaSessions.filter(s=>s.status==='submitted');rows=[...rows].sort((a,b)=>(Number(b.eloGain)||0)-(Number(a.eloGain)||0)||(Number(b.score)||0)-(Number(a.score)||0));return rows.slice(0,80).map((s,i)=>'<div class="arena-leader-row '+(i===0?'top1':'')+'"><div class="arena-rank '+(i===0?'gold':i===1?'silver':i===2?'bronze':'')+'">'+(i+1)+'</div><div class="min-w-0"><b class="block truncate">'+safe(s.userName||s.studentName||'Học sinh')+'</b><p class="text-xs" style="color:var(--muted)">'+safe(s.className||'Chưa phân lớp')+' • '+safe(s.roomTitle||'Đấu trường')+'</p><div class="arena-progress mt-2"><span style="width:'+(s.total?Math.round(Number(s.score||0)*100/Number(s.total)):0)+'%"></span></div></div><div class="text-right"><b>'+safe((s.score??0)+'/'+(s.total??0))+'</b><p class="text-xs" style="color:var(--muted)">'+(s.percent||0)+'%</p></div><div class="text-right"><b>'+safe(arenaRankName(s.eloGain||0))+'</b><p class="text-xs" style="color:var(--muted)">+'+(s.eloGain||0)+' ELO • ⚠ '+(s.warnings||0)+'</p></div></div>').join('')||'<div class="glass-card p-8 text-center text-slate-500">Chưa có dữ liệu xếp hạng.</div>'}
-  function arenaLeaderboardHTML(){return '<section class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3 mb-4"><div><h3 class="text-2xl font-black"><i class="fa-solid fa-ranking-star text-blue-600"></i> Bảng xếp hạng đấu trường</h3><p class="text-sm" style="color:var(--muted)">Xếp theo ELO trận, điểm đúng, tốc độ và cảnh báo.</p></div><button onclick="arenaRefresh()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Làm mới</button></div><div class="space-y-3">'+arenaLeaderboardRows()+'</div></section>'}
-  function arenaMyHTML(){const rows=arenaSessions.filter(s=>String(s.userId)===String(currentUser?.id));const wins=rows.filter(s=>s.rank===1).length;const done=rows.filter(s=>s.status==='submitted').length;const avg=done?Math.round(rows.filter(s=>s.status==='submitted').reduce((a,s)=>a+Number(s.percent||0),0)/done):0;return '<section class="grid md:grid-cols-4 gap-4">'+analyticsCard('ELO',arenaMyElo(),'fa-medal',arenaRankName(arenaMyElo()))+analyticsCard('Trận đã đấu',done,'fa-gamepad','Đã nộp')+analyticsCard('Top 1',wins,'fa-crown','Theo phòng')+analyticsCard('Điểm TB',avg+'%','fa-chart-line','Trong đấu trường',avg>=75?'green':avg>=50?'amber':'red')+'</section><section class="glass-card p-5 mt-5"><h3 class="text-xl font-black mb-3">Lịch sử đấu của em</h3><div class="space-y-3">'+rows.map(s=>'<div class="arena-leader-row"><div class="arena-rank">'+(s.rank||'-')+'</div><div><b>'+safe(s.roomTitle||'Phòng đấu')+'</b><p class="text-xs" style="color:var(--muted)">'+safe(s.submittedAt||s.updatedAt||'')+'</p></div><div><b>'+safe((s.score??0)+'/'+(s.total??0))+'</b></div><div class="text-right"><b>+'+(s.eloGain||0)+' ELO</b><p class="text-xs" style="color:var(--muted)">'+arenaRankName(s.eloGain||0)+'</p></div></div>').join('')+'</div></section>'}
-  function arenaManageHTML(){if(!arenaRoleCanManage())return roleHomeHTML();const exs=arenaExamList();return '<section class="glass-card p-5"><h3 class="text-2xl font-black"><i class="fa-solid fa-plus-circle text-blue-600"></i> Tạo phòng đấu mới</h3><p class="text-sm mt-1 mb-4" style="color:var(--muted)">Giáo viên/admin chọn đề từ kho hiện có, đặt chế độ đấu và lớp được tham gia.</p><div class="arena-form-grid"><input id="arenaTitle" class="arena-input" placeholder="Tên phòng, ví dụ: Đấu nhanh 12A1"><select id="arenaExam" class="arena-input">'+exs.map(e=>'<option value="'+safe(e.id)+'">'+safe(e.title)+' • '+(e.questions||[]).length+' câu</option>').join('')+'</select><select id="arenaMode" class="arena-input"><option value="room">Phòng đấu</option><option value="solo">1vs1</option><option value="class">Đấu theo lớp</option><option value="global">Toàn hệ thống</option></select><input id="arenaMaxPlayers" type="number" min="2" max="200" value="30" class="arena-input" placeholder="Số người"><button onclick="arenaCreateRoom()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-rocket"></i> Tạo phòng</button></div><div class="mt-3"><label class="block text-sm font-bold mb-2">Lớp được tham gia</label><div class="flex flex-wrap gap-2">'+(classes||[]).map(c=>'<label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white/60"><input type="checkbox" class="arenaClassCheck" value="'+safe(c)+'"> '+safe(c)+'</label>').join('')+'<span class="text-xs self-center" style="color:var(--muted)">Không chọn lớp = tất cả lớp.</span></div></div></section><section class="glass-card p-5 mt-5"><h3 class="text-xl font-black mb-3">Quản lý phòng hiện có</h3><div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">'+arenaScopeRooms().map(arenaRoomCard).join('')+'</div></section>'}
-  window.arenaSetTab=function(tab){arenaState.tab=tab; arenaRenderCurrent();}
-  function arenaRenderCurrent(){const root=document.getElementById('arenaRoot'); if(!root)return; let body=arenaState.tab==='leaderboard'?arenaLeaderboardHTML():arenaState.tab==='my'?arenaMyHTML():arenaState.tab==='manage'?arenaManageHTML():arenaRoomsHTML(); root.innerHTML=arenaHeroHTML()+arenaNavHTML()+arenaKpiHTML()+body; typeset();}
-  window.renderArena=function(){setExamFocusMode(false);clearInterval(examTimer); if(!arenaUserCanPlay()){ $('mainView').innerHTML=roleHomeHTML(); return;} arenaEnsureSeed(); $('mainView').innerHTML='<div id="arenaRoot" class="fade-in space-y-5"></div>'; arenaRenderCurrent(); arenaLoadFromFirestore().then(()=>arenaRenderCurrent()); arenaListen();}
-  window.arenaRefresh=function(){arenaLoadFromFirestore().then(()=>{toast('Đã làm mới dữ liệu đấu trường','ok');arenaRenderCurrent();});}
-  window.arenaCreateRoom=async function(){if(!arenaRoleCanManage())return toast('Chỉ giáo viên/admin được tạo phòng đấu','bad');const exam=exams.find(e=>String(e.id)===String($('arenaExam')?.value)); if(!exam)return toast('Chưa chọn đề thi','bad');const id=arenaId();const title=($('arenaTitle')?.value||'Đấu trường '+exam.title).trim();const classIds=Array.from(document.querySelectorAll('.arenaClassCheck:checked')).map(x=>x.value);const room={id,title,mode:$('arenaMode')?.value||'room',examId:String(exam.id),examTitle:exam.title,duration:Number(exam.duration||20),maxPlayers:Number($('arenaMaxPlayers')?.value||30),classIds,status:'live',questionCount:(exam.questions||[]).length,createdAt:new Date().toISOString(),createdBy:currentUser?.id||'',createdByName:currentUser?.fullname||currentUser?.email||''};await arenaSaveRoom(room);toast('Đã tạo phòng đấu','ok');arenaState.tab='rooms';arenaRenderCurrent();}
-  window.arenaFinishRoom=async function(roomId){if(!arenaRoleCanManage())return;const room=arenaFindRoom(roomId);if(!room)return;room.status='finished';room.finishedAt=new Date().toISOString();await arenaSaveRoom(room);toast('Đã kết thúc phòng đấu','ok');arenaRenderCurrent();}
-  window.arenaOpenRoom=function(roomId){const room=arenaFindRoom(roomId);if(!room)return;arenaState.roomId=roomId;const rows=arenaRoomSessions(roomId);const body='<div class="fade-in space-y-5"><section class="arena-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-door-open"></i> '+arenaStatusLabel(room)+'</span><h2 class="text-3xl font-black mt-3">'+safe(room.title)+'</h2><p class="text-blue-100 mt-1">'+safe(room.examTitle)+' • '+arenaQuestionCount(room)+' câu • '+(room.duration||20)+' phút</p></div><div class="flex gap-2 items-start"><button onclick="renderArena()" class="btn-soft px-4 py-2 rounded-2xl font-bold bg-white/15 text-white border-white/20">Quay lại</button>'+(arenaRoomStatus(room)!=='finished'?'<button onclick="arenaJoinRoom(\''+safe(room.id)+'\')" class="bg-green-600 text-white px-4 py-2 rounded-2xl font-bold">Tham gia đấu</button>':'')+'</div></div></section><section class="grid md:grid-cols-3 gap-4">'+analyticsCard('Người chơi',rows.length,'fa-users')+analyticsCard('Đã nộp',rows.filter(s=>s.status==='submitted').length,'fa-flag-checkered')+analyticsCard('Đang làm',rows.filter(s=>s.status==='in_progress').length,'fa-circle-play')+'</section><section class="glass-card p-5"><h3 class="text-xl font-black mb-3">BXH phòng đấu</h3><div class="space-y-3">'+arenaLeaderboardRows(roomId)+'</div></section></div>';$('mainView').innerHTML=body;typeset();}
-  window.arenaJoinRoom=async function(roomId){if(!arenaUserCanPlay())return showLoginModal();const room=arenaFindRoom(roomId);if(!room)return toast('Không tìm thấy phòng đấu','bad');if(arenaRoomStatus(room)==='finished')return toast('Phòng đấu đã kết thúc','bad');if(currentUser?.role==='student'&&room.classIds?.length&&!room.classIds.includes(currentUser.className||''))return toast('Em chưa thuộc lớp được tham gia phòng này','bad');let sess=arenaMySession(roomId);if(!sess){sess={id:arenaId(),roomId,userId:currentUser.id,userName:currentUser.fullname||currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',roomTitle:room.title,examId:room.examId,examTitle:room.examTitle,status:'in_progress',score:0,total:arenaQuestionCount(room),percent:0,currentQuestionIndex:0,answers:{},warnings:0,createdAt:new Date().toISOString(),startedAt:new Date().toISOString(),lastUpdate:new Date().toISOString()};await arenaSaveSession(sess);} arenaStartBattle(room,sess);}
-  function arenaStartBattle(room,sess){const exam=exams.find(e=>String(e.id)===String(room.examId));if(!exam)return toast('Đề thi của phòng không còn tồn tại','bad');arenaState.roomId=room.id;arenaState.sessionId=sess.id;arenaState.answers=sess.answers||{};arenaState.currentQuestionIndex=sess.currentQuestionIndex||0;arenaState.warnings=sess.warnings||0;arenaState.submitted=sess.status==='submitted';arenaState.startedAt=sess.startedAt||new Date().toISOString();arenaState.remain=sess.remain||Number(room.duration||exam.duration||20)*60;selectedExam={...JSON.parse(JSON.stringify(exam)),originalId:String(exam.id),questions:sortQuestionsByExamPart(exam.questions||[])};examAnswerKey=buildAnswerKey(selectedExam);renderArenaBattle();clearInterval(arenaState.timer);if(!arenaState.submitted){arenaState.timer=setInterval(()=>{arenaState.remain--;arenaBattleSync(false);arenaUpdateTimer();if(arenaState.remain<=0){clearInterval(arenaState.timer);arenaSubmitBattle(true)}},1000)} }
-  function arenaQuestionAnswered(q){const a=arenaState.answers[q.id];if(q.type==='mc')return a!==undefined&&a!==null&&a!=='';if(q.type==='tf')return Array.isArray(a)&&Array.isArray(q.statements)&&q.statements.every((_,i)=>a[i]===true||a[i]===false);if(q.type==='short')return norm(a).length>0;return false}
-  function arenaStats(){const total=selectedExam?.questions?.length||0;const done=(selectedExam?.questions||[]).filter(arenaQuestionAnswered).length;return {total,done,remain:Math.max(total-done,0),percent:total?Math.round(done*100/total):0}}
-  function arenaBattleSync(force){const sess=arenaSessions.find(s=>String(s.id)===String(arenaState.sessionId));if(!sess)return;const st=arenaStats();Object.assign(sess,{answers:arenaState.answers,currentQuestionIndex:arenaState.currentQuestionIndex,warnings:arenaState.warnings,remain:arenaState.remain,score:arenaScorePreview(),percent:st.percent,lastUpdate:new Date().toISOString(),status:arenaState.submitted?'submitted':'in_progress'});if(force||!sess._lastSync||Date.now()-sess._lastSync>3500){sess._lastSync=Date.now();arenaSaveSession(sess)}}
-  function arenaScorePreview(){let score=0;(selectedExam?.questions||[]).forEach(q=>{const k=examAnswerKey[q.id]||q;const a=arenaState.answers[q.id];let ok=false;if(q.type==='mc')ok=Number(a)===Number(k.answer);if(q.type==='tf')ok=Array.isArray(a)&&Array.isArray(k.answer)&&k.answer.every((v,i)=>a[i]===v);if(q.type==='short')ok=norm(a)===norm(k.answer);if(ok)score++;});return score}
-  function arenaRenderQuestion(q,i){const saved=arenaState.answers[q.id];let body='';if(q.type==='mc')body=(q.options||[]).map((o,idx)=>'<label class="option-card flex gap-3 '+(saved==idx?'selected':'')+'"><input type="radio" name="arena_'+q.id+'" onchange="arenaSetMC(\''+safe(q.id)+'\','+idx+')" '+(saved==idx?'checked':'')+'><span class="math-content"><b>'+('ABCD'[idx])+'.</b> '+richMathHTML(o)+'</span></label>').join('');if(q.type==='tf')body=(q.statements||[]).map((s,idx)=>'<div class="option-card"><div class="math-content mb-3"><b>'+String.fromCharCode(97+idx)+')</b> '+richMathHTML(s)+'</div><div class="tf-toggle"><label><input type="radio" name="arena_'+q.id+'_'+idx+'" onchange="arenaSetTF(\''+safe(q.id)+'\','+idx+',true)" '+(saved?.[idx]===true?'checked':'')+'><span>ĐÚNG</span></label><label><input type="radio" name="arena_'+q.id+'_'+idx+'" onchange="arenaSetTF(\''+safe(q.id)+'\','+idx+',false)" '+(saved?.[idx]===false?'checked':'')+'><span>SAI</span></label></div></div>').join('');if(q.type==='short')body='<input value="'+safe(saved||'')+'" oninput="arenaSetShort(\''+safe(q.id)+'\',this.value)" class="w-full md:w-80 px-4 py-3 rounded-2xl border" placeholder="Nhập đáp án ngắn">';return '<section id="arena-question-'+i+'" class="glass-card p-5 exam-question-card"><div class="flex items-center justify-between gap-3 mb-3"><div class="font-black text-blue-700">Câu '+(i+1)+'</div><span class="arena-mode-badge">'+(arenaQuestionAnswered(q)?'Đã trả lời':'Chưa trả lời')+'</span></div><div class="font-bold mb-3 math-content">'+richMathHTML(q.text)+'</div>'+imagePreviewHTML(q)+'<div class="space-y-3">'+body+'</div></section>'}
-  window.arenaSetMC=function(qid,idx){arenaState.answers[qid]=idx;arenaBattleSync(true);arenaUpdateProgress();}
-  window.arenaSetTF=function(qid,idx,val){if(!arenaState.answers[qid])arenaState.answers[qid]=[];arenaState.answers[qid][idx]=val;arenaBattleSync(true);arenaUpdateProgress();}
-  window.arenaSetShort=function(qid,val){arenaState.answers[qid]=val;arenaBattleSync(false);arenaUpdateProgress();}
-  function arenaNavigator(){const st=arenaStats();return '<aside class="arena-side glass-card p-5"><div class="arena-countdown" id="arenaTimer">--:--</div><div class="grid grid-cols-2 gap-2 mt-3"><div class="arena-kpi"><b id="arenaDone">'+st.done+'</b><span class="text-xs">Đã làm</span></div><div class="arena-kpi"><b id="arenaRemain">'+st.remain+'</b><span class="text-xs">Còn lại</span></div></div><div class="mt-3"><div class="exam-progress-label"><span>Tiến độ</span><span id="arenaPercent">'+st.percent+'%</span></div><div class="exam-progress-track"><div id="arenaFill" class="exam-progress-fill" style="width:'+st.percent+'%"></div></div></div><div class="arena-qgrid mt-4">'+(selectedExam.questions||[]).map((q,i)=>'<button id="arenaQbtn'+i+'" onclick="arenaGoQuestion('+i+')" class="arena-qbtn '+(arenaQuestionAnswered(q)?'done':'')+' '+(i===arenaState.currentQuestionIndex?'current':'')+'">'+(i+1)+'</button>').join('')+'</div><button onclick="arenaSubmitBattle(false)" class="w-full bg-green-600 text-white px-4 py-3 rounded-2xl font-black mt-4"><i class="fa-solid fa-flag-checkered"></i> Nộp trận đấu</button><button onclick="renderArena()" class="w-full btn-soft px-4 py-3 rounded-2xl font-bold mt-2">Thoát đấu trường</button></aside>'}
-  function renderArenaBattle(){const room=arenaFindRoom(arenaState.roomId), rows=arenaRoomSessions(arenaState.roomId).slice(0,2);$('mainView').innerHTML='<div class="fade-in space-y-4"><section class="arena-hero"><div class="arena-vs"><div class="arena-fighter"><b>'+safe(rows[0]?.userName||currentUser?.fullname||'Người chơi')+'</b><p class="text-blue-100 text-sm">'+safe(rows[0]?.score??0)+' điểm</p></div><div class="arena-vs-icon">VS</div><div class="arena-fighter text-right"><b>'+safe(rows[1]?.userName||'Đối thủ / BXH')+'</b><p class="text-blue-100 text-sm">'+safe(rows[1]?.score??0)+' điểm</p></div></div><h2 class="text-2xl font-black mt-4">'+safe(room?.title||'Đấu trường')+'</h2><p class="text-blue-100">'+safe(selectedExam.title)+' • Cảnh báo: <b id="arenaWarnings">'+arenaState.warnings+'</b></p></section><div class="arena-battle-shell">'+arenaNavigator()+'<div class="space-y-5">'+(selectedExam.questions||[]).map(arenaRenderQuestion).join('')+'</div></div></div>';arenaUpdateTimer();setTimeout(()=>arenaGoQuestion(arenaState.currentQuestionIndex||0),50);typeset();}
-  window.arenaGoQuestion=function(i){arenaState.currentQuestionIndex=i;document.querySelectorAll('.arena-qbtn').forEach(x=>x.classList.remove('current'));document.getElementById('arenaQbtn'+i)?.classList.add('current');document.getElementById('arena-question-'+i)?.scrollIntoView({behavior:'smooth',block:'start'});arenaBattleSync(false);}
-  function arenaUpdateTimer(){const t=document.getElementById('arenaTimer');if(t)t.textContent=String(Math.floor(arenaState.remain/60)).padStart(2,'0')+':'+String(arenaState.remain%60).padStart(2,'0')}
-  function arenaUpdateProgress(){const st=arenaStats();['arenaDone','arenaRemain','arenaPercent'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.textContent=id==='arenaDone'?st.done:id==='arenaRemain'?st.remain:st.percent+'%'});const fill=document.getElementById('arenaFill');if(fill)fill.style.width=st.percent+'%';(selectedExam.questions||[]).forEach((q,i)=>{const b=document.getElementById('arenaQbtn'+i);if(b)b.classList.toggle('done',arenaQuestionAnswered(q));});}
-  window.arenaSubmitBattle=async function(auto=false){if(arenaState.submitted)return;arenaState.submitted=true;const sess=arenaSessions.find(s=>String(s.id)===String(arenaState.sessionId));if(!sess)return;let score=0,details=[];(selectedExam.questions||[]).forEach(q=>{const k=examAnswerKey[q.id]||q;const a=arenaState.answers[q.id];let ok=false;if(q.type==='mc')ok=Number(a)===Number(k.answer);if(q.type==='tf')ok=Array.isArray(a)&&Array.isArray(k.answer)&&k.answer.every((v,i)=>a[i]===v);if(q.type==='short')ok=norm(a)===norm(k.answer);if(ok)score++;details.push({qid:q.id,answer:a??null,ok,type:q.type,topicId:q.topicId||selectedExam.topicId,topicName:topicName(q.topicId||selectedExam.topicId)});});const total=(selectedExam.questions||[]).length, percent=total?Math.round(score*100/total):0, finishMs=Date.now()-new Date(arenaState.startedAt||Date.now()).getTime(), eloGain=arenaCalcElo(score,total,finishMs,arenaState.warnings);Object.assign(sess,{status:'submitted',score,total,percent,details,finishMs,eloGain,warnings:arenaState.warnings,autoSubmitted:!!auto,submittedAt:new Date().toISOString(),lastUpdate:new Date().toISOString()});await arenaSaveSession(sess);const rows=arenaRoomSessions(sess.roomId);rows.forEach((r,i)=>{r.rank=i+1;arenaSaveSession(r)});clearInterval(arenaState.timer);toast(auto?'Hết giờ, hệ thống đã nộp trận đấu':'Đã nộp trận đấu','ok');arenaOpenRoom(sess.roomId);}
-  document.addEventListener('visibilitychange',function(){if(document.hidden&&document.getElementById('arenaTimer')&&!arenaState.submitted){arenaState.warnings++;const el=document.getElementById('arenaWarnings');if(el)el.textContent=arenaState.warnings;arenaBattleSync(true);toast('Cảnh báo đấu trường: rời khỏi tab. Lần '+arenaState.warnings,arenaState.warnings>=3?'bad':'info');if(arenaState.warnings>=3)arenaSubmitBattle(true);}});
-  const __arenaOldHeader=renderHeader; renderHeader=function(){__arenaOldHeader(); const nav=document.querySelector('header nav'); if(nav&&!document.getElementById('arenaNavBtn')){const btn=document.createElement('button');btn.id='arenaNavBtn';btn.onclick=renderArena;btn.className='nav-btn px-3 py-2 rounded-xl hover:bg-blue-50';btn.innerHTML='<i class="fa-solid fa-gamepad"></i> Đấu trường'; const stat=[...nav.querySelectorAll('button')].find(b=>String(b.textContent).includes('Thống kê')); nav.insertBefore(btn,stat||null);} }
-  const __arenaOldTeacherDashboard=typeof renderTeacherDashboard==='function'?renderTeacherDashboard:null; if(__arenaOldTeacherDashboard){renderTeacherDashboard=function(){__arenaOldTeacherDashboard();setTimeout(()=>{const box=document.querySelector('.flex.flex-wrap.gap-2');if(box&&!document.getElementById('arenaTeacherBtn')){const b=document.createElement('button');b.id='arenaTeacherBtn';b.onclick=renderArena;b.className='bg-orange-600 text-white px-4 py-2 rounded-2xl font-bold';b.innerHTML='<i class="fa-solid fa-gamepad"></i> Đấu trường';box.prepend(b);}},30)}}
-  
-/* ===== ARENA FULL PRO LEVEL 3: 1VS1 REALTIME + MATCHMAKING + ADMIN LIVE ===== */
-  const ARENA_FULL_PRO_VERSION='arena-full-pro-1vs1-realtime-admin-2026-04-30';
-  window.arenaFullProVersion=ARENA_FULL_PRO_VERSION;
-
-  function arenaServerNow(){
-    return (window.firebaseReady&&window.firebase&&firebase.firestore&&firebase.firestore.FieldValue)?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString();
-  }
-  function arenaClientNow(){return new Date().toISOString();}
-  function arenaQuestionSetHash(room){
-    const exam=exams.find(e=>String(e.id)===String(room?.examId));
-    return btoa(unescape(encodeURIComponent(JSON.stringify((exam?.questions||[]).map(q=>q.id||q.question||q.text||''))))).slice(0,28);
-  }
-  function arenaOnlineState(sess){
-    const last=new Date(sess?.lastUpdate||sess?.updatedAt||0).getTime();
-    const diff=Date.now()-last;
-    return diff<45000?'online':diff<90000?'idle':'offline';
-  }
-  function arenaCanJoinFull(room){
-    if(!room||!currentUser)return {ok:false,msg:'Cần đăng nhập'};
-    if(arenaRoomStatus(room)==='finished')return {ok:false,msg:'Phòng đã kết thúc'};
-    if(currentUser.role==='student'&&room.classIds?.length&&!room.classIds.includes(currentUser.className||''))return {ok:false,msg:'Em chưa thuộc lớp được tham gia'};
-    const rows=arenaRoomSessions(room.id), mine=arenaMySession(room.id);
-    if(String(room.mode)==='solo'&&!mine&&rows.length>=2)return {ok:false,msg:'Trận 1vs1 đã đủ 2 người'};
-    if(!mine&&rows.length>=Number(room.maxPlayers||30))return {ok:false,msg:'Phòng đã đủ người'};
-    return {ok:true,msg:''};
-  }
-  function arenaRecomputeRoomRanks(roomId){
-    const rows=[...arenaRoomSessions(roomId)].sort((a,b)=>(Number(b.score)||0)-(Number(a.score)||0)||(Number(a.finishMs)||999999999)-(Number(b.finishMs)||999999999)||(Number(a.warnings)||0)-(Number(b.warnings)||0));
-    rows.forEach((r,i)=>{r.rank=i+1;r.isWinner=i===0&&r.status==='submitted';});
-    return rows;
-  }
-  async function arenaUpdateRoomStatus(room){
-    if(!room)return;
-    const rows=arenaRoomSessions(room.id);
-    const submitted=rows.filter(x=>x.status==='submitted').length;
-    const max=Number(room.maxPlayers||30);
-    if(String(room.mode)==='solo'&&rows.length>=2&&room.status==='waiting'){
-      room.status='playing';
-      room.startedAt=room.startedAt||arenaClientNow();
-      room.startTime=room.startTime||room.startedAt;
-      room.endTime=room.endTime||new Date(new Date(room.startedAt).getTime()+Number(room.duration||20)*60000).toISOString();
-    }
-    if(rows.length>=max&&room.status==='waiting') room.status='playing';
-    if(rows.length>0&&submitted===rows.length){
-      room.status='finished';
-      room.finishedAt=room.finishedAt||arenaClientNow();
-    }
-    await arenaSaveRoom(room);
-  }
-  async function arenaFindOrCreateSoloRoom(){
-    if(!arenaUserCanPlay())return showLoginModal();
-    const exs=arenaExamList();
-    if(!exs.length)return toast('Chưa có đề thường để tạo đấu trường 1vs1','bad');
-    let room=arenaScopeRooms().find(r=>String(r.mode)==='solo'&&arenaRoomStatus(r)!=='finished'&&arenaRoomSessions(r.id).length<2&&(!r.classIds?.length||r.classIds.includes(currentUser.className||'')));
-    if(!room){
-      const exam=exs[0];
-      room={id:arenaId(),title:'Ghép cặp 1vs1 tự động',examId:String(exam.id),examTitle:exam.title,questionCount:(exam.questions||[]).length,questionSetHash:'',mode:'solo',maxPlayers:2,duration:Number(exam.duration||20),classIds:[],status:'waiting',createdBy:currentUser?.id||null,createdAt:arenaClientNow(),updatedAt:arenaClientNow()};
-      room.questionSetHash=arenaQuestionSetHash(room);
-      await arenaSaveRoom(room);
-    }
-    await window.arenaJoinRoom(room.id);
-  }
-  function arenaOpponentHTML(roomId){
-    const rows=arenaRoomSessions(roomId);
-    const mine=rows.find(s=>String(s.userId)===String(currentUser?.id));
-    const opp=rows.find(s=>String(s.userId)!==String(currentUser?.id));
-    if(!opp)return '<div class="arena-opponent-box"><div class="flex items-center gap-3"><div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 grid place-items-center"><i class="fa-solid fa-user-clock"></i></div><div><b>Đang chờ đối thủ...</b><p class="text-xs" style="color:var(--muted)">Trận 1vs1 sẽ tự bắt đầu khi đủ 2 người.</p></div></div></div>';
-    const st=arenaOnlineState(opp), lead=(Number(mine?.score)||0)-(Number(opp.score)||0);
-    return '<div class="arena-opponent-box"><div class="flex items-center justify-between gap-3"><div><p class="text-xs font-black uppercase" style="color:var(--muted)">Đối thủ realtime</p><h4 class="font-black">'+safe(opp.userName||'Đối thủ')+'</h4><p class="text-xs" style="color:var(--muted)">'+safe(opp.className||'')+' • '+(st==='online'?'Online':st==='idle'?'Không hoạt động':'Offline')+'</p></div><span class="arena-mode-badge '+(st==='online'?'live':st==='idle'?'waiting':'finished')+'">'+(st==='online'?'● Online':st==='idle'?'⚠ Idle':'○ Offline')+'</span></div><div class="grid grid-cols-3 gap-2 mt-3"><div class="arena-kpi"><b>'+(opp.currentQuestionIndex+1||1)+'</b><span class="text-xs">Câu đang làm</span></div><div class="arena-kpi"><b>'+(opp.percent||0)+'%</b><span class="text-xs">Tiến độ</span></div><div class="arena-kpi"><b>'+((opp.score??0)+'/'+(opp.total??0))+'</b><span class="text-xs">Điểm tạm</span></div></div><div class="arena-progress mt-3"><span style="width:'+(opp.percent||0)+'%"></span></div><p class="text-xs mt-2" style="color:var(--muted)">Chênh lệch hiện tại: '+(lead>0?'Bạn đang dẫn +'+lead:lead<0?'Đối thủ đang dẫn +'+Math.abs(lead):'Đang hòa')+'</p></div>';
-  }
-  function arenaLiveAdminHTML(){
-    if(!arenaRoleCanManage())return roleHomeHTML();
-    const rows=[...arenaSessions].sort((a,b)=>new Date(b.lastUpdate||0)-new Date(a.lastUpdate||0)).slice(0,200);
-    const rooms=arenaScopeRooms();
-    const online=rows.filter(s=>arenaOnlineState(s)==='online').length;
-    const stale=rows.filter(s=>arenaOnlineState(s)!=='online'&&s.status!=='submitted').length;
-    const warn=rows.reduce((n,s)=>n+Number(s.warnings||0),0);
-    return '<section class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3"><div><span class="arena-pill" style="background:rgba(37,99,235,.10);color:var(--brand);border-color:var(--line)"><i class="fa-solid fa-tower-broadcast"></i> Giám sát đấu trường realtime</span><h3 class="text-2xl font-black mt-2">Admin / Giáo viên theo dõi từng trận</h3><p class="text-sm" style="color:var(--muted)">Online-offline, cảnh báo đổi tab, tiến độ, điểm tạm và trạng thái nộp bài.</p></div><button onclick="arenaRefresh()" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Làm mới</button></div><div class="grid md:grid-cols-4 gap-3 mt-4">'+analyticsCard('Phòng đấu',rooms.length,'fa-door-open','Tổng phòng')+analyticsCard('Đang online',online,'fa-signal','lastUpdate < 45s','green')+analyticsCard('Không hoạt động',stale,'fa-triangle-exclamation','Idle/offline','amber')+analyticsCard('Cảnh báo',warn,'fa-shield-halved','Đổi tab / rời màn hình',warn?'red':'green')+'</div><div class="admin-live-table-wrap mt-5"><table class="admin-live-table"><thead><tr><th>Học sinh</th><th>Lớp</th><th>Phòng/Đề</th><th>Trạng thái</th><th>Tiến độ</th><th>Điểm</th><th>Cảnh báo</th><th>Cập nhật</th></tr></thead><tbody>'+rows.map(s=>{const os=arenaOnlineState(s);return '<tr><td><b>'+safe(s.userName||'')+'</b><p class="text-xs" style="color:var(--muted)">'+safe(s.userId||'')+'</p></td><td>'+safe(s.className||'')+'</td><td><b>'+safe(s.roomTitle||'')+'</b><p class="text-xs" style="color:var(--muted)">'+safe(s.examTitle||'')+'</p></td><td><span class="live-status-pill '+(s.status==='submitted'?'live':os==='online'?'live':os==='idle'?'stale':'bad')+'">'+(s.status==='submitted'?'Đã nộp':os==='online'?'Online':os==='idle'?'Idle':'Offline')+'</span></td><td><div class="arena-progress"><span style="width:'+(s.percent||0)+'%"></span></div><p class="text-xs mt-1">'+(s.percent||0)+'% • Câu '+((s.currentQuestionIndex||0)+1)+'</p></td><td><b>'+(s.score??0)+'/'+(s.total??0)+'</b></td><td>'+(Number(s.warnings||0)?'<span class="live-status-pill bad">'+s.warnings+'</span>':'<span class="live-status-pill live">0</span>')+'</td><td><span class="text-xs">'+safe(s.lastUpdate||s.updatedAt||'')+'</span></td></tr>'}).join('')+'</tbody></table></div></section>';
-  }
-
-  const __arenaOldNavHTML=arenaNavHTML;
-  arenaNavHTML=function(){let html=__arenaOldNavHTML(); if(arenaRoleCanManage()&&!html.includes("arenaSetTab('live')")){const liveBtn=`<button onclick="arenaSetTab('live')" class="arena-tab ${arenaState.tab==='live'?'active':''}"><i class="fa-solid fa-tower-broadcast"></i> Giám sát live</button></div>`; html=html.replace('</div>',liveBtn);} return html;}
-  const __arenaOldRenderCurrent=arenaRenderCurrent;
-  arenaRenderCurrent=function(){const root=document.getElementById('arenaRoot'); if(!root)return; if(arenaState.tab==='live'){root.innerHTML=arenaHeroHTML()+arenaNavHTML()+arenaKpiHTML()+arenaLiveAdminHTML();typeset();return;} __arenaOldRenderCurrent();}
-  const __arenaOldRoomsHTML=arenaRoomsHTML;
-  arenaRoomsHTML=function(){return '<section class="glass-card p-5 mb-5"><div class="flex flex-wrap justify-between items-center gap-3"><div><h3 class="text-2xl font-black"><i class="fa-solid fa-bolt text-amber-500"></i> Ghép cặp 1vs1 nhanh</h3><p class="text-sm" style="color:var(--muted)">Hệ thống tự tìm phòng đang chờ, nếu chưa có sẽ tạo trận mới với cùng bộ câu hỏi.</p></div><button onclick="arenaFindOrCreateSoloRoom()" class="bg-orange-600 text-white px-5 py-3 rounded-2xl font-black"><i class="fa-solid fa-magnifying-glass"></i> Tìm đối thủ 1vs1</button></div></section>'+__arenaOldRoomsHTML();}
-  const __arenaOldRoomCard=arenaRoomCard;
-  arenaRoomCard=function(room){let html=__arenaOldRoomCard(room); const rows=arenaRoomSessions(room.id); if(String(room.mode)==='solo'){const can=rows.length<2?'Chờ đối thủ':'Đủ cặp'; html=html.replace('<p class="text-xs mt-2"', '<div class="mt-3 arena-progress"><span style="width:'+Math.min(100,rows.length*50)+'%"></span></div><p class="text-xs mt-2"'); html=html.replace('</article>','<div class="mt-3 text-xs font-bold" style="color:var(--muted)"><i class="fa-solid fa-users"></i> 1vs1: '+rows.length+'/2 • '+can+' • Mã bộ câu: '+safe(room.questionSetHash||arenaQuestionSetHash(room))+'</div></article>'); } return html;}
-  const __arenaOldCreateRoom=window.arenaCreateRoom;
-  window.arenaCreateRoom=async function(){await __arenaOldCreateRoom(); const room=arenaRooms[0]; if(room&&!room.questionSetHash){room.questionSetHash=arenaQuestionSetHash(room); if(String(room.mode)==='solo')room.maxPlayers=2; await arenaSaveRoom(room);}}
-  const __arenaOldJoinRoom=window.arenaJoinRoom;
-  window.arenaJoinRoom=async function(roomId){
-    const room=arenaFindRoom(roomId), can=arenaCanJoinFull(room);
-    if(!can.ok)return toast(can.msg,'bad');
-    await __arenaOldJoinRoom(roomId);
-    await arenaUpdateRoomStatus(room);
-  }
-  const __arenaOldBattleSync=arenaBattleSync;
-  arenaBattleSync=function(force){__arenaOldBattleSync(force); const room=arenaFindRoom(arenaState.roomId); const sess=arenaSessions.find(s=>String(s.id)===String(arenaState.sessionId)); if(sess){sess.onlineState='online';sess.lastUpdate=arenaClientNow();} if(room&&force)arenaUpdateRoomStatus(room);}
-  const __arenaOldNavigator=arenaNavigator;
-  arenaNavigator=function(){return __arenaOldNavigator().replace('</aside>','<div class="mt-4">'+arenaOpponentHTML(arenaState.roomId)+'</div></aside>');}
-  const __arenaOldSubmitBattle=window.arenaSubmitBattle;
-  window.arenaSubmitBattle=async function(auto=false){await __arenaOldSubmitBattle(auto); const room=arenaFindRoom(arenaState.roomId); arenaRecomputeRoomRanks(arenaState.roomId).forEach(r=>arenaSaveSession(r)); await arenaUpdateRoomStatus(room);}
-  window.arenaFindOrCreateSoloRoom=arenaFindOrCreateSoloRoom;
-  window.arenaLiveAdminHTML=arenaLiveAdminHTML;
-
-  // Export các hàm lõi để các patch level 2/3 gọi được an toàn.
-  window.arenaRoomSessions=arenaRoomSessions;
-  window.arenaMySession=arenaMySession;
-  window.arenaFindRoom=arenaFindRoom;
-  window.arenaScopeRooms=arenaScopeRooms;
-  window.arenaRoomStatus=arenaRoomStatus;
-  window.arenaStatusLabel=arenaStatusLabel;
-  window.arenaModeLabel=arenaModeLabel;
-  window.arenaRoleCanManage=arenaRoleCanManage;
-  window.arenaUserCanPlay=arenaUserCanPlay;
-  window.arenaQuestionCount=arenaQuestionCount;
-  window.arenaCalcElo=arenaCalcElo;
-  window.arenaSaveRoom=arenaSaveRoom;
-  window.arenaSaveSession=arenaSaveSession;
-  window.arenaRenderCurrent=arenaRenderCurrent;
-  window.renderArena=window.renderArena;
-
-  // FIX ĐẤU TRƯỜNG 2026-05-01: export biến lõi cho các patch Level 2/3 phía sau.
-  window.arenaId=arenaId;
-  window.arenaLocalLoad=arenaLocalLoad;
-  window.arenaLocalSave=arenaLocalSave;
-  Object.defineProperty(window,'arenaRooms',{configurable:true,get:()=>arenaRooms,set:v=>{arenaRooms=Array.isArray(v)?v:[];}});
-  Object.defineProperty(window,'arenaSessions',{configurable:true,get:()=>arenaSessions,set:v=>{arenaSessions=Array.isArray(v)?v:[];}});
-  Object.defineProperty(window,'arenaState',{configurable:true,get:()=>arenaState,set:v=>{arenaState=v||arenaState;}});
-
-  arenaLocalLoad();
-  try{renderHeader();}catch(e){}
-})();
-</script>
-
-
-<!-- ===== ĐẤU TRƯỜNG LEVEL 2: 1VS1 + HUY HIỆU + LỊCH SỬ + RANK PRO ===== -->
-<script>
-(function(){
-  const ARENA_LEVEL2_VERSION='arena-level-2-1vs1-rank-badges-2026-04-30';
-  window.arenaLevel2Version=ARENA_LEVEL2_VERSION;
-
-  function arenaL2Safe(v){return typeof safe==='function'?safe(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-  function arenaL2Now(){return new Date().toISOString();}
-  function arenaL2AllSubmitted(roomId){const rows=arenaRoomSessions(roomId);return rows.length>0&&rows.every(s=>s.status==='submitted');}
-  function arenaL2IsSolo(room){return String(room?.mode||'')==='solo';}
-  function arenaL2CanJoin(room){
-    if(!room||!currentUser) return {ok:false,msg:'Cần đăng nhập để tham gia đấu trường'};
-    if(arenaRoomStatus(room)==='finished') return {ok:false,msg:'Phòng đấu đã kết thúc'};
-    if(currentUser.role==='student'&&room.classIds?.length&&!room.classIds.includes(currentUser.className||'')) return {ok:false,msg:'Em chưa thuộc lớp được tham gia phòng này'};
-    const rows=arenaRoomSessions(room.id);
-    const mine=arenaMySession(room.id);
-    if(arenaL2IsSolo(room)&&!mine&&rows.length>=2) return {ok:false,msg:'Phòng 1vs1 đã đủ 2 người'};
-    if(!mine&&rows.length>=Number(room.maxPlayers||30)) return {ok:false,msg:'Phòng đã đủ số người'};
-    return {ok:true,msg:''};
-  }
-  function arenaL2SortRows(rows){return [...rows].sort((a,b)=>(Number(b.score)||0)-(Number(a.score)||0)||(Number(a.finishMs)||999999999)-(Number(b.finishMs)||999999999)||(Number(a.warnings)||0)-(Number(b.warnings)||0));}
-  function arenaL2RecomputeRanks(roomId){const rows=arenaL2SortRows(arenaRoomSessions(roomId));rows.forEach((r,i)=>{r.rank=i+1;r.isWinner=i===0&&r.status==='submitted';});return rows;}
-  function arenaL2RankLevel(totalElo){totalElo=Number(totalElo)||0;return totalElo>=3500?{name:'Huyền thoại',icon:'👑',color:'#a855f7'}:totalElo>=2500?{name:'Kim cương',icon:'💎',color:'#06b6d4'}:totalElo>=1600?{name:'Vàng',icon:'🥇',color:'#f59e0b'}:totalElo>=900?{name:'Bạc',icon:'🥈',color:'#64748b'}:{name:'Đồng',icon:'🥉',color:'#b45309'};}
-  function arenaL2UserRows(userId=currentUser?.id){return (arenaSessions||[]).filter(s=>String(s.userId)===String(userId)&&s.status==='submitted');}
-  function arenaL2TotalElo(userId=currentUser?.id){return arenaL2UserRows(userId).reduce((s,x)=>s+Number(x.eloGain||0),0);}
-  function arenaL2WinStreak(userId=currentUser?.id){const rows=arenaL2UserRows(userId).sort((a,b)=>new Date(b.submittedAt||b.updatedAt||0)-new Date(a.submittedAt||a.updatedAt||0));let st=0;for(const r of rows){if(Number(r.rank)===1)st++;else break;}return st;}
-  function arenaL2Badges(userId=currentUser?.id){const rows=arenaL2UserRows(userId);const wins=rows.filter(x=>Number(x.rank)===1).length;const done=rows.length;const avg=done?Math.round(rows.reduce((s,x)=>s+Number(x.percent||0),0)/done):0;const streak=arenaL2WinStreak(userId);const badges=[];
-    if(done>=1)badges.push(['Người nhập cuộc','Hoàn thành trận đầu tiên','fa-flag-checkered',true]);
-    if(wins>=1)badges.push(['Chiến thắng đầu tiên','Đạt top 1 trong một trận','fa-crown',true]);
-    if(streak>=3)badges.push(['Chuỗi 3 thắng','Thắng liên tiếp 3 trận','fa-fire',true]);
-    if(avg>=80&&done>=3)badges.push(['Phong độ cao','Điểm trung bình từ 80%','fa-chart-line',true]);
-    if(arenaL2TotalElo(userId)>=1600)badges.push(['Cao thủ vàng','Đạt mốc rank Vàng','fa-medal',true]);
-    const locked=[['Chuỗi 5 thắng','Thắng liên tiếp 5 trận','fa-fire-flame-curved',streak>=5],['Kim cương','Đạt 2500 ELO','fa-gem',arenaL2TotalElo(userId)>=2500],['Bất bại','Top 1 và không cảnh báo','fa-shield-halved',rows.some(x=>Number(x.rank)===1&&!Number(x.warnings||0))]];
-    locked.forEach(b=>{if(!badges.some(x=>x[0]===b[0]))badges.push(b);});
-    return badges;
-  }
-  function arenaL2BadgeWallHTML(userId=currentUser?.id){return '<div class="badge-wall">'+arenaL2Badges(userId).map(b=>'<div class="achievement-badge '+(b[3]?'':'locked')+'"><div class="badge-icon"><i class="fa-solid '+b[2]+'"></i></div><div><b>'+arenaL2Safe(b[0])+'</b><p class="text-xs" style="color:var(--muted)">'+arenaL2Safe(b[1])+'</p></div></div>').join('')+'</div>';}
-
-  const style=document.createElement('style');
-  style.textContent=`
-    .arena-l2-panel{border:1px solid var(--line);border-radius:1.35rem;padding:1rem;background:rgba(255,255,255,.58);box-shadow:0 18px 44px -34px rgba(2,6,23,.5)}
-    html[data-theme="dark"] .arena-l2-panel{background:rgba(15,23,42,.52)}
-    .arena-waiting-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center}.arena-player-slot{min-height:8rem;border:1px solid var(--line);border-radius:1.35rem;padding:1rem;background:rgba(37,99,235,.06);display:grid;place-items:center;text-align:center}.arena-player-slot.empty{border-style:dashed;opacity:.72}.arena-countdown-big{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:2rem;font-weight:950;background:#0f172a;color:white;border-radius:1.2rem;padding:1rem 1.25rem;text-align:center}.arena-headtohead{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:stretch}.arena-head-card{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.11);border-radius:1.35rem;padding:1rem}.arena-head-score{font-size:2rem;font-weight:950;line-height:1}.arena-versus{width:4rem;border-radius:1.25rem;display:grid;place-items:center;background:linear-gradient(135deg,#f97316,#facc15);color:white;font-weight:950;font-size:1.1rem;box-shadow:0 18px 36px rgba(249,115,22,.25)}.arena-result-tag{display:inline-flex;align-items:center;gap:.35rem;padding:.32rem .65rem;border-radius:999px;font-size:.75rem;font-weight:950;background:rgba(22,163,74,.12);color:#15803d;border:1px solid rgba(22,163,74,.28)}
-    @media(max-width:760px){.arena-waiting-grid,.arena-headtohead{grid-template-columns:1fr}.arena-versus{width:100%;min-height:3rem}.arena-countdown-big{font-size:1.45rem}}
-  `;
-  document.head.appendChild(style);
-
-  window.arenaModeLabel=function(mode){return mode==='solo'?'1vs1 đối kháng':mode==='class'?'Đấu theo lớp':mode==='global'?'Toàn hệ thống':'Phòng đấu'};
-  window.arenaCalcElo=function(score,total,finishMs,warnings){const pct=total?score*100/total:0;const speed=finishMs?Math.max(0,Math.round(45-(finishMs/60000))):0;const clean=Number(warnings||0)===0?40:0;return Math.max(0,Math.round(pct*10+speed*7+clean-Number(warnings||0)*35));};
-  window.arenaRankName=function(elo){const r=arenaL2RankLevel(elo);return r.icon+' '+r.name;};
-  window.arenaMyElo=function(){return arenaL2TotalElo();};
-
-  window.arenaRoomCard=function(room){
-    const s=arenaRoomStatus(room), rows=arenaRoomSessions(room.id), count=rows.length, mine=arenaMySession(room.id), join=arenaL2CanJoin(room), solo=arenaL2IsSolo(room);
-    const slots=solo?'<div class="flex gap-2 mt-3">'+[0,1].map(i=>'<span class="arena-mode-badge '+(rows[i]?'live':'waiting')+'"><i class="fa-solid '+(rows[i]?'fa-user-check':'fa-user-plus')+'"></i> '+arenaL2Safe(rows[i]?.userName||'Chờ đối thủ')+'</span>').join('')+'</div>':'';
-    return '<article class="arena-room-card"><div class="flex flex-wrap justify-between gap-2"><span class="arena-mode-badge '+s+'"><i class="fa-solid '+(s==='live'?'fa-circle-play':s==='finished'?'fa-circle-check':'fa-hourglass-half')+'"></i> '+arenaStatusLabel(room)+'</span><span class="arena-mode-badge"><i class="fa-solid '+(solo?'fa-user-group':'fa-chess-knight')+'"></i> '+arenaModeLabel(room.mode)+'</span></div><h3 class="text-xl font-black mt-3 math-content">'+arenaL2Safe(room.title||'Phòng đấu')+'</h3><p class="text-sm mt-1" style="color:var(--muted)">'+arenaL2Safe(room.examTitle||'Chưa chọn đề')+' • '+arenaQuestionCount(room)+' câu • '+(room.duration||20)+' phút</p><p class="text-xs mt-2" style="color:var(--muted)">Mã phòng: <b>'+arenaL2Safe(String(room.id).slice(-6).toUpperCase())+'</b> • Lớp: '+(room.classIds?.length?room.classIds.map(arenaL2Safe).join(', '):'Tất cả')+' • Tối đa '+(room.maxPlayers||30)+' người</p>'+slots+'<div class="grid grid-cols-3 gap-2 mt-3"><div class="arena-kpi"><b>'+count+'</b><span class="text-xs">Người chơi</span></div><div class="arena-kpi"><b>'+rows.filter(x=>x.status==='submitted').length+'</b><span class="text-xs">Đã nộp</span></div><div class="arena-kpi"><b>'+rows.filter(x=>x.status==='in_progress').length+'</b><span class="text-xs">Đang làm</span></div></div><div class="flex flex-wrap gap-2 mt-4"><button onclick="arenaOpenRoom(\''+arenaL2Safe(room.id)+'\')" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-eye"></i> Xem phòng</button>'+(s!=='finished'?'<button '+(!join.ok&&!mine?'disabled':'')+' onclick="arenaJoinRoom(\''+arenaL2Safe(room.id)+'\')" class="'+(!join.ok&&!mine?'bg-slate-300 text-slate-600':'bg-green-600 text-white')+' px-4 py-2 rounded-2xl font-bold"><i class="fa-solid '+(mine?'fa-right-to-bracket':'fa-gamepad')+'"></i> '+(mine?'Vào lại':solo?'Tham gia 1vs1':'Tham gia')+'</button>':'')+(arenaRoleCanManage()?'<button onclick="arenaFinishRoom(\''+arenaL2Safe(room.id)+'\')" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-flag-checkered"></i> Kết thúc</button>':'')+'</div>'+(!join.ok&&!mine?'<p class="text-xs text-red-600 mt-2">'+arenaL2Safe(join.msg)+'</p>':'')+'</article>';
-  };
-
-  window.arenaManageHTML=function(){
-    if(!arenaRoleCanManage())return typeof roleHomeHTML==='function'?roleHomeHTML():'<div class="glass-card p-6">Không có quyền quản lý.</div>';
-    const exs=arenaExamList();
-    return '<section class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3"><div><h3 class="text-2xl font-black"><i class="fa-solid fa-plus-circle text-blue-600"></i> Tạo phòng đấu Level 2</h3><p class="text-sm mt-1 mb-4" style="color:var(--muted)">Có thể tạo phòng 1vs1, phòng lớp, toàn hệ thống. Riêng 1vs1 tự giới hạn 2 người và có phòng chờ.</p></div><span class="arena-mode-badge live"><i class="fa-solid fa-wand-magic-sparkles"></i> Level 2</span></div><div class="arena-form-grid"><input id="arenaTitle" class="arena-input" placeholder="Tên phòng, ví dụ: 1vs1 Hàm số 12A1"><select id="arenaExam" class="arena-input">'+exs.map(e=>'<option value="'+arenaL2Safe(e.id)+'">'+arenaL2Safe(e.title)+' • '+(e.questions||[]).length+' câu</option>').join('')+'</select><select id="arenaMode" onchange="arenaL2ModeChanged()" class="arena-input"><option value="room">Phòng đấu</option><option value="solo">1vs1 đối kháng</option><option value="class">Đấu theo lớp</option><option value="global">Toàn hệ thống</option></select><input id="arenaMaxPlayers" type="number" min="2" max="200" value="30" class="arena-input" placeholder="Số người"><button onclick="arenaCreateRoom()" class="btn-primary text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-rocket"></i> Tạo phòng</button></div><div class="grid md:grid-cols-3 gap-3 mt-3"><input id="arenaDuration" type="number" min="1" max="180" class="arena-input" placeholder="Thời gian phút, để trống lấy theo đề"><input id="arenaStartIn" type="number" min="0" max="120" value="0" class="arena-input" placeholder="Mở sau x phút"><input id="arenaRoomCode" class="arena-input" placeholder="Mã phòng tùy chọn"></div><div class="mt-3"><label class="block text-sm font-bold mb-2">Lớp được tham gia</label><div class="flex flex-wrap gap-2">'+(classes||[]).map(c=>'<label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white/60"><input type="checkbox" class="arenaClassCheck" value="'+arenaL2Safe(c)+'"> '+arenaL2Safe(c)+'</label>').join('')+'<span class="text-xs self-center" style="color:var(--muted)">Không chọn lớp = tất cả lớp.</span></div></div></section><section class="glass-card p-5 mt-5"><h3 class="text-xl font-black mb-3">Quản lý phòng hiện có</h3><div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">'+arenaScopeRooms().map(arenaRoomCard).join('')+'</div></section>';
-  };
-  window.arenaL2ModeChanged=function(){const mode=document.getElementById('arenaMode')?.value;const max=document.getElementById('arenaMaxPlayers');if(max&&mode==='solo')max.value=2;};
-
-  window.arenaCreateRoom=async function(){
-    if(!arenaRoleCanManage())return toast('Chỉ giáo viên/admin được tạo phòng đấu','bad');
-    const exam=exams.find(e=>String(e.id)===String(document.getElementById('arenaExam')?.value)); if(!exam)return toast('Chưa chọn đề thi','bad');
-    const mode=document.getElementById('arenaMode')?.value||'room';
-    const customCode=String(document.getElementById('arenaRoomCode')?.value||'').trim().replace(/[^a-zA-Z0-9_-]/g,'');
-    const id=customCode||arenaId();
-    const startIn=Number(document.getElementById('arenaStartIn')?.value||0);
-    const duration=Number(document.getElementById('arenaDuration')?.value||exam.duration||20);
-    const title=(document.getElementById('arenaTitle')?.value||(mode==='solo'?'1vs1 - ':'Đấu trường ')+exam.title).trim();
-    const classIds=Array.from(document.querySelectorAll('.arenaClassCheck:checked')).map(x=>x.value);
-    const startTime=startIn>0?new Date(Date.now()+startIn*60000).toISOString():arenaL2Now();
-    const room={id,title,mode,examId:String(exam.id),examTitle:exam.title,duration,maxPlayers:mode==='solo'?2:Number(document.getElementById('arenaMaxPlayers')?.value||30),classIds,status:startIn>0?'waiting':'live',startTime,questionCount:(exam.questions||[]).length,createdAt:arenaL2Now(),createdBy:currentUser?.id||'',hostId:currentUser?.id||'',createdByName:currentUser?.fullname||currentUser?.email||'',players:currentUser?.id?[currentUser.id]:[],level2:true,version:ARENA_LEVEL2_VERSION,syncSource:'web'};
-    await arenaSaveRoom(room);toast(mode==='solo'?'Đã tạo phòng 1vs1. Gửi mã phòng cho học sinh.':'Đã tạo phòng đấu Level 2','ok');arenaState.tab='rooms';arenaRenderCurrent();
-  };
-
-  window.arenaJoinRoom=async function(roomId){
-    if(!arenaUserCanPlay())return showLoginModal();
-    const room=arenaFindRoom(roomId);if(!room)return toast('Không tìm thấy phòng đấu','bad');
-    const check=arenaL2CanJoin(room);const mine=arenaMySession(roomId);if(!check.ok&&!mine)return toast(check.msg,'bad');
-    let sess=mine;
-    room.players=Array.isArray(room.players)?room.players:[];
-    if(currentUser?.id&&!room.players.includes(currentUser.id)) room.players.push(currentUser.id);
-    if(!sess){sess={id:arenaId(),roomId,userId:currentUser.id,studentId:currentUser.id,userName:currentUser.fullname||currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',roomTitle:room.title,examId:room.examId,examTitle:room.examTitle,status:'in_progress',score:0,total:arenaQuestionCount(room),percent:0,currentQuestionIndex:0,answers:{},warnings:0,createdAt:arenaL2Now(),startedAt:arenaL2Now(),lastUpdate:arenaL2Now(),mode:room.mode,level2:true};await arenaSaveSession(sess);}
-    await arenaSaveRoom(room);
-    const joinedRows=arenaRoomSessions(roomId);
-    if(arenaL2IsSolo(room)&&joinedRows.length>=2&&arenaRoomStatus(room)!=='finished'){room.status='live';room.startedAt=room.startedAt||arenaL2Now();room.startTime=room.startTime||room.startedAt;room.endTime=room.endTime||new Date(new Date(room.startedAt).getTime()+Number(room.duration||20)*60000).toISOString();await arenaSaveRoom(room);}
-    if(arenaL2IsSolo(room)&&joinedRows.length<2)return arenaOpenRoom(roomId);
-    arenaStartBattle(room,sess);
-  };
-
-  window.arenaOpenRoom=function(roomId){
-    const room=arenaFindRoom(roomId);if(!room)return;arenaState.roomId=roomId;const rows=arenaL2RecomputeRanks(roomId);const solo=arenaL2IsSolo(room);const status=arenaRoomStatus(room);const canJoin=arenaL2CanJoin(room);const waitingSolo=solo&&rows.length<2&&status!=='finished';
-    const waitingHTML=waitingSolo?'<section class="arena-l2-panel"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-hourglass-half text-amber-600"></i> Phòng chờ 1vs1</h3><div class="arena-waiting-grid"><div class="arena-player-slot '+(rows[0]?'':'empty')+'"><div><i class="fa-solid fa-user text-3xl text-blue-600"></i><b class="block mt-2">'+arenaL2Safe(rows[0]?.userName||'Đang chờ người chơi 1')+'</b><p class="text-xs" style="color:var(--muted)">'+arenaL2Safe(rows[0]?.className||'')+'</p></div></div><div class="arena-countdown-big">VS</div><div class="arena-player-slot empty"><div><i class="fa-solid fa-user-plus text-3xl text-amber-600"></i><b class="block mt-2">Chờ đối thủ</b><p class="text-xs" style="color:var(--muted)">Gửi mã phòng: '+arenaL2Safe(String(room.id).slice(-6).toUpperCase())+'</p></div></div></div><p class="text-sm mt-3" style="color:var(--muted)">Khi đủ 2 học sinh, mỗi em bấm “Tham gia 1vs1” để vào trận.</p></section>':'';
-    const body='<div class="fade-in space-y-5"><section class="arena-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid '+(solo?'fa-user-group':'fa-door-open')+'"></i> '+arenaStatusLabel(room)+'</span><span class="arena-pill ml-2"><i class="fa-solid fa-layer-group"></i> '+arenaModeLabel(room.mode)+'</span><h2 class="text-3xl font-black mt-3">'+arenaL2Safe(room.title)+'</h2><p class="text-blue-100 mt-1">'+arenaL2Safe(room.examTitle)+' • '+arenaQuestionCount(room)+' câu • '+(room.duration||20)+' phút • Mã: <b>'+arenaL2Safe(String(room.id).slice(-6).toUpperCase())+'</b></p></div><div class="flex gap-2 items-start"><button onclick="renderArena()" class="btn-soft px-4 py-2 rounded-2xl font-bold bg-white/15 text-white border-white/20">Quay lại</button>'+(status!=='finished'?'<button '+(!canJoin.ok&&!arenaMySession(room.id)?'disabled':'')+' onclick="arenaJoinRoom(\''+arenaL2Safe(room.id)+'\')" class="'+(!canJoin.ok&&!arenaMySession(room.id)?'bg-slate-300 text-slate-600':'bg-green-600 text-white')+' px-4 py-2 rounded-2xl font-bold">'+(solo?'Tham gia 1vs1':'Tham gia đấu')+'</button>':'')+'</div></div></section><section class="grid md:grid-cols-4 gap-4">'+analyticsCard('Người chơi',rows.length,'fa-users')+analyticsCard('Đã nộp',rows.filter(s=>s.status==='submitted').length,'fa-flag-checkered')+analyticsCard('Đang làm',rows.filter(s=>s.status==='in_progress').length,'fa-circle-play')+analyticsCard('Chế độ',arenaModeLabel(room.mode),'fa-gamepad','Level 2')+'</section>'+waitingHTML+'<section class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3 mb-3"><h3 class="text-xl font-black">BXH phòng đấu</h3>'+(arenaRoleCanManage()?'<button onclick="arenaFinishRoom(\''+arenaL2Safe(room.id)+'\')" class="bg-red-600 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-flag-checkered"></i> Kết thúc phòng</button>':'')+'</div><div class="space-y-3">'+arenaLeaderboardRows(roomId)+'</div></section></div>';
-    document.getElementById('mainView').innerHTML=body;typeset();
-  };
-
-  window.renderArenaBattle=function(){
-    const room=arenaFindRoom(arenaState.roomId), rows=arenaL2SortRows(arenaRoomSessions(arenaState.roomId));const mine=arenaSessions.find(s=>String(s.id)===String(arenaState.sessionId));const opponent=rows.find(s=>String(s.userId)!==String(currentUser?.id));
-    document.getElementById('mainView').innerHTML='<div class="fade-in space-y-4"><section class="arena-hero"><div class="arena-headtohead"><div class="arena-head-card"><p class="text-xs text-cyan-100 font-bold uppercase">Bạn</p><b class="block text-xl truncate">'+arenaL2Safe(mine?.userName||currentUser?.fullname||'Người chơi')+'</b><div class="arena-head-score">'+arenaL2Safe(mine?.score??0)+'</div><p class="text-blue-100 text-sm">Tiến độ '+(mine?.percent||0)+'% • ⚠ '+(arenaState.warnings||0)+'</p></div><div class="arena-versus">VS</div><div class="arena-head-card text-right"><p class="text-xs text-cyan-100 font-bold uppercase">Đối thủ / Top phòng</p><b class="block text-xl truncate">'+arenaL2Safe(opponent?.userName||rows[0]?.userName||'Đang chờ')+'</b><div class="arena-head-score">'+arenaL2Safe(opponent?.score??rows[0]?.score??0)+'</div><p class="text-blue-100 text-sm">Tiến độ '+(opponent?.percent||rows[0]?.percent||0)+'% • ⚠ '+(opponent?.warnings||rows[0]?.warnings||0)+'</p></div></div><h2 class="text-2xl font-black mt-4">'+arenaL2Safe(room?.title||'Đấu trường')+'</h2><p class="text-blue-100">'+arenaL2Safe(selectedExam.title)+' • Cảnh báo: <b id="arenaWarnings">'+arenaState.warnings+'</b></p></section><div class="arena-battle-shell">'+arenaNavigator()+'<div class="space-y-5">'+(selectedExam.questions||[]).map(arenaRenderQuestion).join('')+'</div></div></div>';arenaUpdateTimer();setTimeout(()=>arenaGoQuestion(arenaState.currentQuestionIndex||0),50);typeset();
-  };
-
-  window.arenaSubmitBattle=async function(auto=false){
-    if(arenaState.submitted)return;arenaState.submitted=true;const sess=arenaSessions.find(s=>String(s.id)===String(arenaState.sessionId));if(!sess)return;
-    let score=0,details=[];(selectedExam.questions||[]).forEach(q=>{const k=examAnswerKey[q.id]||q;const a=arenaState.answers[q.id];let ok=false;if(q.type==='mc')ok=Number(a)===Number(k.answer);if(q.type==='tf')ok=Array.isArray(a)&&Array.isArray(k.answer)&&k.answer.every((v,i)=>a[i]===v);if(q.type==='short')ok=norm(a)===norm(k.answer);if(ok)score++;details.push({qid:q.id,answer:a??null,ok,type:q.type,topicId:q.topicId||selectedExam.topicId,topicName:topicName(q.topicId||selectedExam.topicId)});});
-    const total=(selectedExam.questions||[]).length, percent=total?Math.round(score*100/total):0, finishMs=Date.now()-new Date(arenaState.startedAt||Date.now()).getTime(), eloGain=arenaCalcElo(score,total,finishMs,arenaState.warnings);
-    Object.assign(sess,{status:'submitted',score,total,percent,details,finishMs,eloGain,warnings:arenaState.warnings,autoSubmitted:!!auto,submittedAt:arenaL2Now(),lastUpdate:arenaL2Now(),level2:true});await arenaSaveSession(sess);
-    const ranked=arenaL2RecomputeRanks(sess.roomId);for(const r of ranked){await arenaSaveSession(r);} const room=arenaFindRoom(sess.roomId);if(room&&arenaL2AllSubmitted(sess.roomId)){room.status='finished';room.finishedAt=arenaL2Now();await arenaSaveRoom(room);} 
-    clearInterval(arenaState.timer);toast(auto?'Hết giờ, hệ thống đã nộp trận đấu':'Đã nộp trận đấu','ok');arenaOpenRoom(sess.roomId);
-  };
-
-  window.arenaLeaderboardRows=function(roomId=''){
-    let rows=roomId?arenaRoomSessions(roomId):arenaSessions.filter(s=>s.status==='submitted');rows=arenaL2SortRows(rows);return rows.slice(0,80).map((s,i)=>{const totalElo=arenaL2TotalElo(s.userId), rank=arenaL2RankLevel(totalElo);return '<div class="arena-leader-row '+(i===0?'top1':'')+'"><div class="arena-rank '+(i===0?'gold':i===1?'silver':i===2?'bronze':'')+'">'+(s.rank||i+1)+'</div><div class="min-w-0"><b class="block truncate">'+arenaL2Safe(s.userName||s.studentName||'Học sinh')+'</b><p class="text-xs" style="color:var(--muted)">'+arenaL2Safe(s.className||'Chưa phân lớp')+' • '+arenaL2Safe(s.roomTitle||'Đấu trường')+'</p><div class="arena-progress mt-2"><span style="width:'+(s.total?Math.round(Number(s.score||0)*100/Number(s.total)):0)+'%"></span></div></div><div class="text-right"><b>'+arenaL2Safe((s.score??0)+'/'+(s.total??0))+'</b><p class="text-xs" style="color:var(--muted)">'+(s.percent||0)+'%</p></div><div class="text-right"><b>'+rank.icon+' '+rank.name+'</b><p class="text-xs" style="color:var(--muted)">+'+(s.eloGain||0)+' ELO trận • Tổng '+totalElo+' • ⚠ '+(s.warnings||0)+'</p>'+(Number(s.rank)===1?'<span class="arena-result-tag"><i class="fa-solid fa-crown"></i> Thắng</span>':'')+'</div></div>';}).join('')||'<div class="glass-card p-8 text-center text-slate-500">Chưa có dữ liệu xếp hạng.</div>';
-  };
-
-  window.arenaMyHTML=function(){const rows=arenaL2UserRows();const wins=rows.filter(s=>Number(s.rank)===1).length;const done=rows.length;const avg=done?Math.round(rows.reduce((a,s)=>a+Number(s.percent||0),0)/done):0;const elo=arenaL2TotalElo();const rank=arenaL2RankLevel(elo);const streak=arenaL2WinStreak();return '<section class="arena-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-user-ninja"></i> Hồ sơ đấu Level 2</span><h2 class="text-3xl font-black mt-3">'+rank.icon+' '+rank.name+'</h2><p class="text-blue-100">Tổng ELO: '+elo+' • Chuỗi thắng: '+streak+' • Trận đã đấu: '+done+'</p></div><div class="text-right"><p class="text-sm text-cyan-100">Điểm trung bình</p><p class="text-4xl font-black">'+avg+'%</p></div></div></section><section class="grid md:grid-cols-5 gap-4 mt-5">'+analyticsCard('ELO',elo,'fa-medal',rank.icon+' '+rank.name)+analyticsCard('Trận đã đấu',done,'fa-gamepad','Đã nộp')+analyticsCard('Top 1',wins,'fa-crown','Chiến thắng')+analyticsCard('Streak',streak,'fa-fire','Chuỗi thắng')+analyticsCard('Điểm TB',avg+'%','fa-chart-line','Trong đấu trường',avg>=75?'green':avg>=50?'amber':'red')+'</section><section class="glass-card p-5 mt-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-award text-blue-600"></i> Huy hiệu</h3>'+arenaL2BadgeWallHTML()+'</section><section class="glass-card p-5 mt-5"><h3 class="text-xl font-black mb-3">Lịch sử đấu của em</h3><div class="space-y-3">'+rows.sort((a,b)=>new Date(b.submittedAt||0)-new Date(a.submittedAt||0)).map(s=>'<div class="arena-leader-row"><div class="arena-rank '+(Number(s.rank)===1?'gold':'')+'">'+(s.rank||'-')+'</div><div><b>'+arenaL2Safe(s.roomTitle||'Phòng đấu')+'</b><p class="text-xs" style="color:var(--muted)">'+arenaL2Safe(s.submittedAt||s.updatedAt||'')+' • '+arenaModeLabel(s.mode||'room')+'</p></div><div><b>'+arenaL2Safe((s.score??0)+'/'+(s.total??0))+'</b><p class="text-xs" style="color:var(--muted)">'+(s.percent||0)+'%</p></div><div class="text-right"><b>+'+(s.eloGain||0)+' ELO</b><p class="text-xs" style="color:var(--muted)">'+(Number(s.rank)===1?'Thắng':'Hoàn thành')+'</p></div></div>').join('')+'</div></section>';};
-
-  const oldArenaHero=window.arenaHeroHTML;
-  window.arenaHeroHTML=function(){const elo=arenaL2TotalElo(), r=arenaL2RankLevel(elo);return '<section class="arena-hero"><div class="flex flex-wrap justify-between items-start gap-5"><div><span class="arena-pill"><i class="fa-solid fa-fire"></i> Arena Pro Level 2</span><h2 class="text-3xl md:text-5xl font-black mt-3">Đấu trường Toán học</h2><p class="mt-2 text-blue-100 max-w-3xl">Bổ sung 1vs1 đối kháng, phòng chờ, lịch sử trận, huy hiệu, streak, ELO tổng và bảng xếp hạng nâng cao.</p><div class="flex flex-wrap gap-2 mt-4"><span class="arena-pill"><i class="fa-solid fa-user-group"></i> 1vs1</span><span class="arena-pill"><i class="fa-solid fa-shield-halved"></i> Chống rời tab</span><span class="arena-pill"><i class="fa-solid fa-award"></i> Huy hiệu</span><span class="arena-pill"><i class="fa-solid fa-ranking-star"></i> Rank tổng</span></div></div><div class="text-right"><p class="text-sm text-cyan-100 font-bold">Rank hiện tại</p><p class="text-3xl md:text-4xl font-black">'+r.icon+' '+r.name+'</p><p class="text-blue-100 text-sm">Tổng ELO: '+elo+' • Streak: '+arenaL2WinStreak()+'</p></div></div></section>';};
-
-  const oldNav=window.arenaNavHTML;
-  window.arenaNavHTML=function(){return '<div class="arena-tabs no-print"><button onclick="arenaSetTab(\'rooms\')" class="arena-tab '+(arenaState.tab==='rooms'?'active':'')+'"><i class="fa-solid fa-door-open"></i> Phòng đấu</button><button onclick="arenaSetTab(\'leaderboard\')" class="arena-tab '+(arenaState.tab==='leaderboard'?'active':'')+'"><i class="fa-solid fa-ranking-star"></i> BXH</button><button onclick="arenaSetTab(\'my\')" class="arena-tab '+(arenaState.tab==='my'?'active':'')+'"><i class="fa-solid fa-user-ninja"></i> Hồ sơ & huy hiệu</button>'+(arenaRoleCanManage()?'<button onclick="arenaSetTab(\'manage\')" class="arena-tab '+(arenaState.tab==='manage'?'active':'')+'"><i class="fa-solid fa-sliders"></i> Quản lý Level 2</button>':'')+'</div>';};
-
-  window.arenaFinishRoom=async function(roomId){if(!arenaRoleCanManage())return toast('Chỉ giáo viên/admin được kết thúc phòng','bad');const room=arenaFindRoom(roomId);if(!room)return;arenaL2RecomputeRanks(roomId);for(const s of arenaRoomSessions(roomId)){await arenaSaveSession(s);}room.status='finished';room.finishedAt=arenaL2Now();await arenaSaveRoom(room);toast('Đã kết thúc phòng và chốt xếp hạng','ok');arenaOpenRoom(roomId);};
-
-  // Làm mới nếu đang mở đấu trường
-  try{if(document.getElementById('arenaRoot'))arenaRenderCurrent();}catch(e){console.warn('Arena level 2 refresh skipped',e)}
-})();
-</script>
-
-
-<script>
-// PATCH 2026-05-01: Arena stability marker. Core fixes are applied inside the Arena module above.
-window.ARENA_STABLE_PATCH='2026-05-01-room-status-auto-start-join-sync';
-</script>
-
-<script>
-/* ===== PATCH 2026-05-01: ĐẤU TRƯỜNG LƯU FIRESTORE CHUẨN - LOCAL CHỈ DỰ PHÒNG ===== */
-(function(){
-  const PATCH_ID='arena-firestore-primary-2026-05-01';
-  window.ARENA_FIRESTORE_PRIMARY_PATCH=PATCH_ID;
-  function nowISO(){return new Date().toISOString();}
-  function getCurrentUserSafe(){
-    try{
-      if(typeof currentUser!=='undefined' && currentUser) return currentUser;
-    }catch(e){}
-    return window.currentUser || null;
-  }
-  function getAuthUserSafe(){
-    try{return window.auth && window.auth.currentUser ? window.auth.currentUser : null;}catch(e){return null;}
-  }
-  function hasFirebase(){
-    const ok=!!(
-      window.firebase &&
-      window.db &&
-      window.auth &&
-      typeof firebase.firestore==='function' &&
-      getAuthUserSafe()
-    );
-    window.firebaseReady=ok;
-    return ok;
-  }
-  function ts(){return firebase.firestore.FieldValue.serverTimestamp();}
-  function safeToast(msg,type='ok'){try{ if(typeof toast==='function') toast(msg,type); }catch(e){} }
-  function asArray(v){return Array.isArray(v)?v:[];}
-  function localSaveArena(){
-    try{localStorage.setItem('mathpro12_arenaRooms',JSON.stringify(asArray(window.arenaRooms)));}catch(e){}
-    try{localStorage.setItem('mathpro12_arenaSessions',JSON.stringify(asArray(window.arenaSessions)));}catch(e){}
-  }
-  function mergeById(oldArr,newArr){
-    const map={};
-    asArray(oldArr).forEach(x=>{if(x&&x.id)map[String(x.id)]=x;});
-    asArray(newArr).forEach(x=>{if(x&&x.id)map[String(x.id)]={...(map[String(x.id)]||{}),...x};});
-    return Object.values(map);
-  }
-  function normalizeRoom(room){
-    const r={...(room||{})};
-    if(!r.id) r.id='arena_'+Date.now()+'_'+Math.floor(Math.random()*9999);
-    r.id=String(r.id); r.mode=r.mode||'room'; r.status=r.status||'live';
-    r.classIds=Array.isArray(r.classIds)?r.classIds:[];
-    r.maxPlayers=Number(r.maxPlayers||30); r.duration=Number(r.duration||20); r.questionCount=Number(r.questionCount||0);
-    const cu=getCurrentUserSafe(), au=getAuthUserSafe();
-    r.createdAt=r.createdAt||nowISO();
-    r.createdBy=r.createdBy||cu?.id||au?.uid||'';
-    r.hostId=r.hostId||r.createdBy;
-    r.createdByName=r.createdByName||cu?.fullname||cu?.email||au?.displayName||au?.email||'';
-    r.syncSource='web'; r.syncVersion=PATCH_ID; r.updatedAtClient=nowISO();
-    return r;
-  }
-  function normalizeSession(sess){
-    const s={...(sess||{})};
-    if(!s.id) s.id='arena_'+Date.now()+'_'+Math.floor(Math.random()*9999);
-    const cu=getCurrentUserSafe(), au=getAuthUserSafe();
-    s.id=String(s.id); s.roomId=String(s.roomId||''); s.userId=String(s.userId||cu?.id||au?.uid||'');
-    s.studentId=s.studentId||s.userId;
-    s.userName=s.userName||cu?.fullname||cu?.email||au?.displayName||au?.email||'Người chơi'; s.className=s.className||cu?.className||'Chưa phân lớp';
-    s.status=s.status||'in_progress'; s.answers=s.answers||{}; s.createdAt=s.createdAt||nowISO(); s.lastUpdate=nowISO();
-    s.syncSource='web'; s.syncVersion=PATCH_ID; s.updatedAtClient=nowISO();
-    return s;
-  }
-  async function saveDoc(collection,id,data){
-    if(!window.firebase || !window.db || !window.auth) throw new Error('Firebase SDK/Firestore chưa khởi tạo');
-    if(!getAuthUserSafe()) throw new Error('Chưa đăng nhập Firebase Auth');
-    await db.collection(collection).doc(String(id)).set({...data,updatedAt:ts()},{merge:true});
-  }
-  window.arenaSaveRoom=async function(room){
-    const r=normalizeRoom(room);
-    window.arenaRooms=mergeById(window.arenaRooms,[r]).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-    localSaveArena();
-    try{ await saveDoc('arenaRooms',r.id,r); return {ok:true,id:r.id}; }
-    catch(err){ console.error('Không ghi được arenaRooms lên Firestore:',err); safeToast('Phòng đấu đã lưu tạm trên máy, nhưng chưa ghi Firestore: '+(err?.message||err),'bad'); return {ok:false,id:r.id,error:err}; }
-  };
-  window.arenaSaveSession=async function(sess){
-    const s=normalizeSession(sess);
-    window.arenaSessions=mergeById(window.arenaSessions,[s]).sort((a,b)=>new Date(b.lastUpdate||b.createdAt||0)-new Date(a.lastUpdate||a.createdAt||0));
-    localSaveArena();
-    try{ await saveDoc('arenaSessions',s.id,s); return {ok:true,id:s.id}; }
-    catch(err){ console.error('Không ghi được arenaSessions lên Firestore:',err); safeToast('Lượt tham gia đã lưu tạm trên máy, nhưng chưa ghi Firestore: '+(err?.message||err),'bad'); return {ok:false,id:s.id,error:err}; }
-  };
-  window.arenaLoadFromFirestore=async function(){
-    try{
-      let localRooms=[], localSessions=[];
-      try{localRooms=JSON.parse(localStorage.getItem('mathpro12_arenaRooms')||'[]')||[]}catch(e){}
-      try{localSessions=JSON.parse(localStorage.getItem('mathpro12_arenaSessions')||'[]')||[]}catch(e){}
-      if(!hasFirebase()){ window.arenaRooms=localRooms; window.arenaSessions=localSessions; return false; }
-      const [roomSnap,sessionSnap]=await Promise.all([
-        db.collection('arenaRooms').orderBy('createdAt','desc').limit(200).get(),
-        db.collection('arenaSessions').orderBy('updatedAt','desc').limit(500).get()
-      ]);
-      const fsRooms=roomSnap.docs.map(d=>({id:d.id,...d.data()}));
-      const fsSessions=sessionSnap.docs.map(d=>({id:d.id,...d.data()}));
-      window.arenaRooms=mergeById(localRooms,fsRooms).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-      window.arenaSessions=mergeById(localSessions,fsSessions).sort((a,b)=>new Date(b.lastUpdate||b.createdAt||0)-new Date(a.lastUpdate||a.createdAt||0));
-      localSaveArena(); return true;
-    }catch(err){ console.error('Arena Firestore load fail:',err); safeToast('Chưa tải được phòng đấu từ Firestore: '+(err?.message||err),'bad'); return false; }
-  };
-  window.arenaSyncLocalToFirestore=async function(){
-    if(!hasFirebase()) return safeToast('Firebase chưa sẵn sàng, chưa thể đồng bộ phòng đấu','bad');
-    const cu=getCurrentUserSafe();
-    if(!(typeof isTeacherUser==='function'?isTeacherUser(cu):['teacher','admin'].includes(cu?.role))) return safeToast('Chỉ giáo viên/admin được đồng bộ phòng đấu','bad');
-    let ok=0, fail=0;
-    for(const r of asArray(window.arenaRooms)){try{await saveDoc('arenaRooms',String(r.id),normalizeRoom(r));ok++;}catch(e){fail++;console.error(e);}}
-    for(const s of asArray(window.arenaSessions)){try{await saveDoc('arenaSessions',String(s.id),normalizeSession(s));ok++;}catch(e){fail++;console.error(e);}}
-    safeToast(fail?`Đồng bộ xong ${ok} bản ghi, lỗi ${fail} bản ghi. Kiểm tra Firestore Rules.`:`Đã đồng bộ ${ok} bản ghi đấu trường lên Firestore`, fail?'bad':'ok');
-    try{await window.arenaLoadFromFirestore(); if(typeof arenaRenderCurrent==='function') arenaRenderCurrent();}catch(e){}
-  };
-  window.arenaFirestoreStatusHTML=function(){
-    const ready=hasFirebase();
-    const rooms=(window.arenaRooms||[]).length,sessions=(window.arenaSessions||[]).length,auth=!!(window.auth&&window.auth.currentUser);return '<section class="glass-card p-4 border-blue-200"><div class="flex flex-wrap justify-between gap-3 items-center"><div><b><i class="fa-solid fa-cloud"></i> Firestore đấu trường PRO</b><p class="text-sm mt-1" style="color:var(--muted)">'+(ready?'Đang ưu tiên Firestore; LocalStorage chỉ là bản đệm dự phòng.':'Firebase/Auth chưa sẵn sàng, hệ thống tạm dùng localStorage.')+'</p><div class="flex flex-wrap gap-2 mt-2"><span class="mini-badge"><i class="fa-solid fa-door-open"></i> '+rooms+' phòng</span><span class="mini-badge"><i class="fa-solid fa-users"></i> '+sessions+' lượt chơi</span><span class="mini-badge"><i class="fa-solid '+(auth?'fa-user-check':'fa-user-xmark')+'"></i> '+(auth?'Đã đăng nhập Auth':'Chưa đăng nhập Auth')+'</span></div></div><div class="flex flex-wrap gap-2"><button onclick="arenaLoadFromFirestore().then(()=>{try{arenaRenderCurrent()}catch(e){}})" class="btn-soft px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Tải Firestore</button><button onclick="arenaSyncLocalToFirestore()" class="btn-primary text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ local</button></div></div></section>';
-  };
-  try{
-    if(window.auth && typeof window.auth.onAuthStateChanged==='function'){
-      window.auth.onAuthStateChanged(function(u){
-        window.firebaseReady=!!(u && window.db && window.firebase);
-        if(u){
-          setTimeout(function(){
-            try{
-              if(typeof window.arenaLoadFromFirestore==='function') window.arenaLoadFromFirestore();
-            }catch(e){console.warn('Arena auto load skipped',e);}
-          }, 700);
-        }
-      });
-    }
-  }catch(e){console.warn('Arena auth watcher skipped',e);}
-
-  const oldManage=window.arenaManageHTML;
-  if(typeof oldManage==='function') window.arenaManageHTML=function(){return window.arenaFirestoreStatusHTML()+'<div class="mt-4">'+oldManage()+'</div>';};
-  const oldRenderArena=window.renderArena;
-  if(typeof oldRenderArena==='function') window.renderArena=function(){try{window.arenaLoadFromFirestore().then(()=>{try{if(typeof arenaRenderCurrent==='function'&&document.getElementById('arenaRoot'))arenaRenderCurrent();}catch(e){}});}catch(e){} return oldRenderArena();};
-})();
-</script>
 </body>
 </html>
