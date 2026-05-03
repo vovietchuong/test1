@@ -321,7 +321,7 @@
         <button onclick="renderHome()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Tổng quan</button>
         <button onclick="renderLessons()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Bài giảng</button>
         <button onclick="renderExamsPublic()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Kho đề</button>
-        <button type="button" data-open-arena="1" onclick="event.preventDefault(); window.renderArena && window.renderArena(); return false;" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Đấu trường</button>
+        <button type="button" data-open-arena="1" onclick="return window.renderArenaSafe ? window.renderArenaSafe(event) : (window.renderArena && window.renderArena(), false);" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Đấu trường</button>
         <button onclick="renderAchievements()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Thành tích</button>
         <button onclick="renderStats()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Thống kê</button>
       </nav>
@@ -6404,7 +6404,7 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 
   window.renderArena=renderArena; window.arenaSwitchTab=arenaSwitchTab; window.startQuickDuel=startQuickDuel; window.arenaChoose=arenaChoose; window.finishQuickDuel=finishQuickDuel; window.arenaState=arenaState;
   const oldRenderHome=window.renderHome||renderHome;
-  window.renderHome=function(){oldRenderHome(); const hero=document.querySelector('#mainView .glass-card .flex.flex-wrap.gap-3.mt-6'); if(hero&&!hero.dataset.arenaAdded){hero.dataset.arenaAdded='1'; hero.insertAdjacentHTML('beforeend','<button type="button" data-open-arena="1" onclick="event.preventDefault(); event.stopPropagation(); window.renderArena && window.renderArena(); return false;" class="relative z-20 bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Vào Đấu Trường</button>');}}
+  window.renderHome=function(){oldRenderHome(); const hero=document.querySelector('#mainView .glass-card .flex.flex-wrap.gap-3.mt-6'); if(hero&&!hero.dataset.arenaAdded){hero.dataset.arenaAdded='1'; hero.insertAdjacentHTML('beforeend','<button type="button" data-open-arena="1" onclick="return window.renderArenaSafe ? window.renderArenaSafe(event) : (window.renderArena && window.renderArena(), false);" class="relative z-20 bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Vào Đấu Trường</button>');}}
 })();
 </script>
 
@@ -6825,14 +6825,54 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 </script>
 
 <script>
-// FIX CLICK ĐẤU TRƯỜNG: bắt sự kiện bằng delegation để nút vẫn hoạt động dù renderHome được bọc nhiều lần.
+// FIX CLICK ĐẤU TRƯỜNG V3: hàm an toàn + fallback, tránh bấm mà không hiện gì khi renderArena bị lỗi runtime.
+window.renderArenaFallback = function(message){
+  const main = document.getElementById('mainView');
+  if(!main) return false;
+  main.innerHTML = `
+    <div class="fade-in space-y-5">
+      <section class="arena-hero">
+        <div class="flex flex-wrap justify-between items-start gap-5">
+          <div>
+            <span class="arena-pill"><i class="fa-solid fa-shield-halved"></i> Math Arena</span>
+            <h2 class="text-3xl md:text-5xl font-black mt-3">Đấu Trường Toán 12</h2>
+            <p class="mt-2 text-orange-100 max-w-3xl">Tab Đấu Trường đã mở. Hệ thống đang dùng chế độ dự phòng để tránh màn hình trắng.</p>
+          </div>
+        </div>
+      </section>
+      <section class="glass-card p-5 border-orange-200">
+        <h3 class="text-xl font-black"><i class="fa-solid fa-triangle-exclamation text-orange-500"></i> Cần kiểm tra lỗi JavaScript</h3>
+        <p class="text-sm mt-2" style="color:var(--muted)">${message || 'Hàm renderArena chính chưa chạy được.'}</p>
+        <div class="flex flex-wrap gap-3 mt-4">
+          <button onclick="showLoginModal&&showLoginModal()" class="btn-primary text-white px-5 py-3 rounded-2xl font-black"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
+          <button onclick="location.reload()" class="btn-soft px-5 py-3 rounded-2xl font-black"><i class="fa-solid fa-rotate"></i> Tải lại trang</button>
+        </div>
+      </section>
+    </div>`;
+  return false;
+};
+window.renderArenaSafe = function(e){
+  if(e){ e.preventDefault(); e.stopPropagation(); }
+  try{
+    if(typeof window.renderArena === 'function'){
+      window.renderArena();
+      const main = document.getElementById('mainView');
+      setTimeout(()=>{
+        const stillHome = main && !main.querySelector('.arena-hero') && !main.textContent.includes('Đấu Trường cần đăng nhập');
+        if(stillHome) window.renderArenaFallback('Đã gọi renderArena nhưng giao diện Đấu Trường chưa được ghi ra mainView.');
+      },80);
+      return false;
+    }
+    return window.renderArenaFallback('renderArena chưa được khởi tạo.');
+  }catch(err){
+    console.error('Lỗi mở Đấu Trường:', err);
+    return window.renderArenaFallback((err && (err.message || err.toString())) || 'Lỗi không xác định khi mở Đấu Trường.');
+  }
+};
 document.addEventListener('click', function(e){
   const btn = e.target.closest && e.target.closest('[data-open-arena]');
   if(!btn) return;
-  e.preventDefault();
-  e.stopPropagation();
-  if(typeof window.renderArena === 'function') window.renderArena();
-  else { console.error('renderArena chưa sẵn sàng'); alert('Chức năng Đấu trường chưa sẵn sàng, thầy tải lại trang giúp em.'); }
+  window.renderArenaSafe(e);
 }, true);
 </script>
 
