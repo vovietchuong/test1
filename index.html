@@ -6718,219 +6718,8 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     }catch(err){toast('Chưa tạo được phòng online: '+(err.message||err),'bad');}
   }
   async function joinRoom(id){
-    if(!fbOK()){toast('Cần đăng nhập để tham gia phòng online.','bad');return;}
-    try{
-      const ref=db.collection('arenaRooms').doc(id); const snap=await ref.get(); if(!snap.exists){toast('Phòng không còn tồn tại.','bad');return;}
-      const r=snap.data(); const players=Array.from(new Set([...(r.players||[]),meId()]));
-      if(players.length>2){toast('Phòng đã đủ người.','bad');return;}
-      await ref.set({players,playerNames:{...(r.playerNames||{}),[meId()]:meName()},readyMap:{...(r.readyMap||{}),[meId()]:false},status:'waiting',countdownUntilMs:0,updatedAt:serverNow()},{merge:true});
-      await ref.collection('players').doc(meId()).set({userId:meId(),name:meName(),className:currentUser?.className||'',ready:false,lastSeenAt:serverNow(),updatedAt:serverNow()},{merge:true}).catch(()=>{});
-      toast('Đã vào phòng, hãy bấm “Tôi đã sẵn sàng”.','ok'); await loadOnlineArenaData(); window.renderArena();
-    }catch(err){toast('Chưa tham gia được phòng: '+(err.message||err),'bad');}
-  }
-  async function saveResultOnline(result, profile){
-    if(!fbOK() || !isOnlineEnabled()) return false;
-    try{
-      const id=String(result.id||('result_'+meId()+'_'+Date.now()));
-      await db.collection('arenaResults').doc(id).set({...result,id,userId:meId(),userName:meName(),className:currentUser?.className||'',createdAt:serverNow(),updatedAt:serverNow()},{merge:true});
-      await ensureOnlineProfile(profile||{});
-      return true;
-    }catch(err){console.warn('Không lưu được result online',err); return false;}
-  }
-  async function afterDuelSync(){
-    const st=localStore(); const me=(st.profiles||{})[meId()]; const last=(st.history||[])[0];
-    if(me) await ensureOnlineProfile(me); if(last) await saveResultOnline(last,me); await loadOnlineArenaData();
-  }
-  window.arenaForceOnlineSync=async function(){toast('Đang đồng bộ Đấu Trường online...','info'); const ok=await loadOnlineArenaData(); listenOnlineArena(); toast(ok?'Đã đồng bộ Firestore.':'Chưa đồng bộ được, đang dùng dữ liệu local. ',ok?'ok':'bad'); if(window.renderArena) window.renderArena();};
-  window.arenaToggleOnline=function(){setOnlineEnabled(!isOnlineEnabled()); if(!isOnlineEnabled()) onlineState.unsubs.forEach(u=>{try{u()}catch(e){}}), onlineState.unsubs=[]; window.arenaForceOnlineSync();};
-  window.arenaCreateOnlineRoom=createRoom; window.arenaJoinOnlineRoom=joinRoom;
-  const oldFinish=window.finishQuickDuel;
-  window.finishQuickDuel=function(auto){
-    const before=JSON.stringify(localStore());
-    const ret=oldFinish?oldFinish(auto):null;
-    setTimeout(()=>{afterDuelSync();},250);
-    return ret;
-  };
-  const oldSwitch=window.arenaSwitchTab;
-  window.arenaSwitchTab=function(tab){if(tab==='online'){if(window.arenaState) window.arenaState.tab='online'; loadOnlineArenaData().then(()=>{listenOnlineArena(); if(window.renderArena) window.renderArena();}); return;} return oldSwitch?oldSwitch(tab):null;};
-  const oldRender=window.renderArena;
-  window.renderArena=function(){
-    if(!onlineState.ready && fbOK() && isOnlineEnabled()) loadOnlineArenaData().then(()=>listenOnlineArena());
-    oldRender&&oldRender();
-    setTimeout(()=>{
-      const bar=document.querySelector('.arena-tabbar');
-      if(bar && !bar.querySelector('[data-online]')) bar.insertAdjacentHTML('beforeend',`<button data-online class="${window.arenaState&&window.arenaState.tab==='online'?'active':''}" onclick="arenaSwitchTab('online')"><i class="fa-solid fa-cloud"></i> Online</button>`);
-      const hero=document.querySelector('.arena-hero .flex.flex-wrap.gap-2.mt-4');
-      if(hero && !hero.querySelector('[data-online-status]')) hero.insertAdjacentHTML('beforeend',`<span data-online-status class="arena-pill"><i class="fa-solid fa-cloud"></i> Firestore online</span>`);
-      if(window.arenaState && window.arenaState.tab==='online'){
-        const panel=document.getElementById('arenaPanel'); if(panel) panel.innerHTML=onlinePanelHTML();
-        const badge=document.querySelector('.arena-hero .arena-pill'); if(badge) badge.innerHTML='<i class="fa-solid fa-cloud-arrow-up"></i> Math Arena Phase 4';
-      }
-      if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise();
-    },0);
-  };
-  window.addEventListener('beforeunload',()=>{if(fbOK()) db.collection('arenaPlayers').doc(meId()).set({online:false,lastSeen:serverNow()},{merge:true}).catch(()=>{});});
-})();
-</script>
-
-<script>
-/* ===== MATH ARENA - BƯỚC 5: REALTIME DUEL CHUẨN FIRESTORE ===== */
-(function(){
-  if(window.__MATH_ARENA_PHASE5__) return; window.__MATH_ARENA_PHASE5__=true;
-  const P5_KEY='mathpro12_arena_phase5_room';
-  const esc=(s)=> (window.safe?window.safe(s):String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
-  const fb=()=>!!(((window.firebaseReady!==false) || (typeof firebaseReady!=='undefined' && firebaseReady)) && window.db && window.auth && auth.currentUser);
-  const nowServer=()=>firebase.firestore.FieldValue.serverTimestamp();
-  const uid=()=>auth.currentUser?.uid || currentUser?.id || 'local_'+Date.now();
-  const uname=()=>currentUser?.fullname||currentUser?.displayName||auth.currentUser?.displayName||auth.currentUser?.email||'Học sinh';
-  const uclass=()=>currentUser?.className || (Array.isArray(currentUser?.classNames)?currentUser.classNames[0]:'') || 'Chưa phân lớp';
-  const toast=(m,t='info')=>window.toast?window.toast(m,t):alert(m);
-  let live={room:null,roomId:null,players:{},unsubs:[],timer:null,countdownTimer:null,remain:0,answers:{},antiBound:false,lastEffectRoom:null,lastCountdownSecond:null};
-  function clearLive(){live.unsubs.forEach(u=>{try{u()}catch(e){}});live.unsubs=[]; if(live.timer) clearInterval(live.timer); if(live.countdownTimer) clearInterval(live.countdownTimer); live.timer=null; live.countdownTimer=null; removeCountdownOverlay();}
-  function normalizeArenaAnswer(raw){
-    if(raw===undefined||raw===null) return 0;
-    if(typeof raw==='number' && Number.isFinite(raw)) return Math.max(0,Math.min(3,Math.trunc(raw)));
-    const s=String(raw).trim();
-    if(/^[ABCD]$/i.test(s)) return 'ABCD'.indexOf(s.toUpperCase());
-    const n=Number(s); if(Number.isFinite(n)) return Math.max(0,Math.min(3,Math.trunc(n)));
-    return 0;
-  }
-  function qPool(){
-    const src=[];
-    (window.questionBank||[]).forEach(q=>src.push(q));
-    (window.exams||[]).forEach(e=>(e.questions||[]).forEach(q=>src.push({...q,topicId:q.topicId||e.topicId,sourceExamTitle:e.title})));
-    const seen=new Set();
-    return src.map((q,idx)=>{
-      const options=Array.isArray(q?.options)?q.options:(Array.isArray(q?.choices)?q.choices:[]);
-      const rawAnswer=q?.answer!==undefined?q.answer:(q?.correctAnswer!==undefined?q.correctAnswer:q?.answerText);
-      return {...q,_arenaId:String(q?.id||q?.bankId||q?.sourceQuestionId||q?.text||('arena_'+idx)),options,answer:normalizeArenaAnswer(rawAnswer)};
-    }).filter(q=>{
-      if(!q || !q.text || !Array.isArray(q.options) || q.options.length<4) return false;
-      const id=q._arenaId; if(seen.has(id)) return false; seen.add(id);
-      return q.options.slice(0,4).every(op=>String(op??'').trim().length>0) && q.answer>=0 && q.answer<=3;
-    });
-  }
-  function arenaFallbackQuestions(){
-    return [
-      {id:'p5a',type:'mc',text:'Đạo hàm của hàm số $y=x^2$ là',options:['$2x$','$x$','$x^3$','$1$'],answer:0,topicId:4,solution:'$(x^2)^{\prime}=2x$.'},
-      {id:'p5b',type:'mc',text:'Thể tích khối nón bán kính đáy $r$, chiều cao $h$ là',options:['$\pi r^2h$','$\dfrac13\pi r^2h$','$2\pi rh$','$4\pi r^2$'],answer:1,topicId:3,solution:'Công thức $V=\dfrac13\pi r^2h$.'},
-      {id:'p5c',type:'mc',text:'Nếu $y=\ln x$ với $x>0$ thì $y\prime$ bằng',options:['$x$','$\dfrac1x$','$e^x$','$\ln x$'],answer:1,topicId:4,solution:'$(\ln x)^{\prime}=\dfrac1x$.'},
-      {id:'p5d',type:'mc',text:'Công thức diện tích mặt cầu bán kính $R$ là',options:['$4\pi R^2$','$\pi R^2$','$\dfrac43\pi R^3$','$2\pi R$'],answer:0,topicId:3,solution:'Diện tích mặt cầu là $S=4\pi R^2$.'},
-      {id:'p5e',type:'mc',text:'Một vectơ pháp tuyến của mặt phẳng $ax+by+cz+d=0$ là',options:['$(a;b;c)$','$(b;c;d)$','$(a;c;d)$','$(1;1;1)$'],answer:0,topicId:6,solution:'Mặt phẳng có vectơ pháp tuyến $(a;b;c)$.'},
-      {id:'p5f',type:'mc',text:'Tập xác định của hàm số $y=\sqrt{x-2}$ là',options:['$[2;+\infty)$','$(-\infty;2]$','$\mathbb R$','$(2;+\infty)$'],answer:0,topicId:1,solution:'Điều kiện $x-2\ge0\Leftrightarrow x\ge2$.'},
-      {id:'p5g',type:'mc',text:'Giá trị của $\log_2 8$ bằng',options:['$2$','$3$','$4$','$8$'],answer:1,topicId:2,solution:'Vì $2^3=8$ nên $\log_2 8=3$.'},
-      {id:'p5h',type:'mc',text:'Nguyên hàm của hàm số $f(x)=2x$ là',options:['$x^2+C$','$2+C$','$2x^2+C$','$\dfrac{x^2}{2}+C$'],answer:0,topicId:5,solution:'$\int 2x\,dx=x^2+C$.'},
-      {id:'p5i',type:'mc',text:'Trong không gian $Oxyz$, điểm $A(1;2;3)$ có tung độ bằng',options:['$1$','$2$','$3$','$6$'],answer:1,topicId:6,solution:'Tung độ là tọa độ thứ hai, bằng $2$.'},
-      {id:'p5j',type:'mc',text:'Hàm số $y=x^3$ đồng biến trên khoảng nào?',options:['$\mathbb R$','$(-\infty;0)$','$(0;+\infty)$','Không đồng biến trên khoảng nào'],answer:0,topicId:4,solution:'$y\prime=3x^2\ge0$ với mọi $x$, nên hàm số đồng biến trên $\mathbb R$.'}
-    ];
-  }
-  function pickQs(n=10){
-    let arr=qPool();
-    const topic=window.arenaState?.topic;
-    if(topic && topic!=='all'){
-      const f=arr.filter(q=>String(q.topicId)===String(topic));
-      if(f.length>=Math.min(5,n)) arr=f;
-    }
-    arr=arr.sort(()=>Math.random()-.5).slice(0,n);
-    if(arr.length<n){
-      const need=n-arr.length;
-      const used=new Set(arr.map(q=>String(q._arenaId||q.id)));
-      const extra=arenaFallbackQuestions().filter(q=>!used.has(String(q.id))).slice(0,need);
-      arr=arr.concat(extra);
-    }
-    return arr.slice(0,n).map((q,i)=>({
-      id:String(q._arenaId||q.id||q.bankId||'q'+i),type:'mc',text:q.text||'',options:(q.options||[]).slice(0,4),
-      answer:normalizeArenaAnswer(q.answer??q.correctAnswer??q.answerText),topicId:q.topicId||'',solution:q.solution||q.explanation||''
-    }));
-  }
-  function myProgress(){return live.players[uid()]||{answers:{},score:0,answered:0,submitted:false,name:uname(),className:uclass()};}
-  function calcScore(room,answers){
-    const qs=room?.questions||[]; let score=0; qs.forEach((q,i)=>{ if(String(answers[i])===String(q.answer)) score++; });
-    return {score,total:qs.length,percent:qs.length?Math.round(score*100/qs.length):0,answered:Object.keys(answers||{}).length};
-  }
-  function arenaRankByElo(elo=1000){
-    elo=Number(elo||1000);
-    if(elo>=1900) return {name:'Kim cương',icon:'fa-gem'};
-    if(elo>=1650) return {name:'Bạch kim',icon:'fa-shield-halved'};
-    if(elo>=1400) return {name:'Vàng',icon:'fa-crown'};
-    if(elo>=1200) return {name:'Bạc',icon:'fa-medal'};
-    return {name:'Đồng',icon:'fa-award'};
-  }
-  function expectedElo(a,b){return 1/(1+Math.pow(10,((Number(b||1000)-Number(a||1000))/400)));}
-  function calcEloDelta(myElo=1000,opElo=1000,result=0.5){return Math.round(32*(result-expectedElo(myElo,opElo)));}
-  async function getArenaProfile(id){
-    if(!fb()||!id) return {elo:1000,xp:0,wins:0,losses:0,draws:0};
-    try{const snap=await db.collection('arenaPlayers').doc(id).get(); return snap.exists?{elo:1000,xp:0,wins:0,losses:0,draws:0,...snap.data()}:{elo:1000,xp:0,wins:0,losses:0,draws:0};}catch(e){return {elo:1000,xp:0,wins:0,losses:0,draws:0};}
-  }
-  function playArenaSound(type='click'){
-    try{
-      const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
-      const ctx=new AC(), o=ctx.createOscillator(), g=ctx.createGain();
-      const freq=type==='win'?880:(type==='lose'?180:(type==='submit'?520:340));
-      o.frequency.value=freq; o.type=type==='win'?'triangle':'sine'; o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(.001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(.09,ctx.currentTime+.02); g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+(type==='win'?.32:.16));
-      o.start(); o.stop(ctx.currentTime+(type==='win'?.34:.18));
-    }catch(e){}
-  }
-  function arenaConfetti(){
-    const colors=['#facc15','#f97316','#22c55e','#06b6d4','#2563eb','#dc2626'];
-    for(let i=0;i<90;i++){const d=document.createElement('i');d.className='arena-confetti-piece';d.style.left=Math.random()*100+'vw';d.style.background=colors[i%colors.length];d.style.animationDelay=(Math.random()*.35)+'s';d.style.transform='rotate('+Math.random()*360+'deg)';document.body.appendChild(d);setTimeout(()=>d.remove(),2200);}
-  }
-  function playerPanel(id,type,qs){
-    const p=id===uid()?myProgress():live.players[id]||{}; const name=p.name||(live.room?.playerNames||{})[id]||(type==='me'?uname():'Đối thủ');
-    const pct=qs.length?Math.round(((p.answered||0)/qs.length)*100):0; const submitted=!!p.submitted;
-    return `<div class="arena-fighter-card ${type==='me'?'me':'opponent'}"><div class="flex items-center gap-3"><div class="arena-avatar ${type==='me'?'':'fire'}">${type==='me'?'<i class="fa-solid fa-user-graduate"></i>':'<i class="fa-solid fa-dragon"></i>'}</div><div class="min-w-0"><h3 class="font-black truncate">${esc(name)}</h3><p class="text-xs" style="color:var(--muted)">${esc(p.className||'Chưa phân lớp')} • ${submitted?'Đã nộp':'Đang làm'}</p></div></div><div class="grid grid-cols-3 gap-2 mt-3 text-center"><div><b class="text-xl">${p.score||0}</b><p class="text-[11px]" style="color:var(--muted)">điểm</p></div><div><b class="text-xl">${p.answered||0}</b><p class="text-[11px]" style="color:var(--muted)">đã làm</p></div><div><b class="text-xl">${p.percent||0}%</b><p class="text-[11px]" style="color:var(--muted)">đúng</p></div></div><div class="arena-battle-progress mt-3"><div class="arena-battle-fill ${type==='me'?'':'enemy'}" style="width:${pct}%"></div></div></div>`;
-  }
-  function bindAntiCheat(){
-    if(live.antiBound) return; live.antiBound=true;
-    const report=(kind)=>{ if(!live.roomId||!live.room||live.room.status!=='playing') return; const msg={kind,atMs:Date.now(),userId:uid(),name:uname()}; db.collection('arenaRooms').doc(live.roomId).collection('cheatLogs').add({...msg,createdAt:nowServer()}).catch(()=>{}); db.collection('arenaRooms').doc(live.roomId).collection('players').doc(uid()).set({cheatCount:firebase.firestore.FieldValue.increment(1),lastCheat:kind,lastCheatAt:nowServer(),updatedAt:nowServer()},{merge:true}).catch(()=>{}); toast('Cảnh báo đấu trường: '+kind,'bad'); };
-    document.addEventListener('visibilitychange',()=>{if(document.hidden) report('rời tab / ẩn trang');});
-    window.addEventListener('blur',()=>report('mất tiêu điểm cửa sổ'));
-    ['copy','paste','cut','contextmenu'].forEach(ev=>document.addEventListener(ev,e=>{ if(live.room?.status==='playing'){e.preventDefault(); report('chặn '+ev);} },true));
-  }
-  async function quickMatch(){
-    if(!fb()){toast('Cần đăng nhập để Quick Match.','bad');return;}
-    try{
-      toast('Đang tìm đối thủ ngẫu nhiên...','info');
-      const snap=await db.collection('arenaRooms').where('mode','==','realtime').where('status','==','waiting').limit(12).get();
-      const room=snap.docs.map(d=>({id:d.id,...d.data()})).find(r=>(r.players||[]).length<2 && !(r.players||[]).includes(uid()));
-      if(room) return joinRoom(room.id);
-      return createRoom({quick:true});
-    }catch(err){toast('Quick Match chưa chạy được: '+(err.message||err),'bad');}
-  }
-  async function saveProgress(extra={}){
-    if(!fb()||!live.roomId||!live.room) return;
-    const stat=calcScore(live.room,live.answers||{});
-    await db.collection('arenaRooms').doc(live.roomId).collection('players').doc(uid()).set({
-      userId:uid(),name:uname(),className:uclass(),answers:live.answers||{},...stat,submitted:false,lastSeenAt:nowServer(),updatedAt:nowServer(),...extra
-    },{merge:true}).catch(err=>toast('Chưa lưu được tiến độ: '+(err.message||err),'bad'));
-  }
-  function phase5PanelHTML(){
-    const rooms=((window.onlineState?.rooms)||(()=>{try{return JSON.parse(localStorage.getItem('mathpro12_arena_online_rooms_cache')||'[]')}catch(e){return []}})()).filter(r=>r.mode==='realtime' && ['waiting','countdown','playing'].includes(r.status));
-    return `<div class="space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4 items-start"><div><span class="arena-pill"><i class="fa-solid fa-satellite-dish"></i> Math Arena Phase 5</span><h3 class="text-3xl font-black mt-2">Realtime Duel chuẩn Firestore</h3><p class="text-sm mt-1 text-orange-100">Hai học sinh vào cùng một phòng, làm cùng một bộ câu hỏi, đồng bộ tiến độ và kết quả trực tiếp.</p></div><div class="flex flex-wrap gap-2"><button onclick="arenaP5QuickMatch()" class="bg-gradient-to-r from-emerald-600 via-cyan-500 to-blue-500 text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Match</button><button onclick="arenaP5CreateRoom()" class="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-plus"></i> Tạo phòng realtime</button><button onclick="arenaForceOnlineSync&&arenaForceOnlineSync()" class="btn-soft px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-rotate"></i> Tải phòng</button></div></div></section><section class="grid lg:grid-cols-[1fr_.85fr] gap-5"><div class="glass-card p-5"><h3 class="text-2xl font-black mb-3"><i class="fa-solid fa-door-open text-orange-500"></i> Phòng realtime đang mở</h3><div class="arena-room-grid">${rooms.map(roomCard).join('')||'<div class="arena-online-card text-center"><i class="fa-solid fa-users text-3xl text-orange-500"></i><p class="font-black mt-2">Chưa có phòng realtime.</p><p class="text-sm" style="color:var(--muted)">Tạo phòng rồi cho học sinh khác bấm tham gia.</p></div>'}</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-circle-info text-orange-500"></i> Cách hoạt động</h3><div class="space-y-3 text-sm" style="color:var(--muted)"><p><b>1.</b> Chủ phòng tạo phòng realtime.</p><p><b>2.</b> Học sinh thứ hai bấm tham gia.</p><p><b>3.</b> Cả hai bấm Sẵn sàng trong phòng chờ realtime.</p><p><b>4.</b> Hệ thống tự đếm ngược 3-2-1 rồi vào trận, đồng bộ tiến độ, điểm, nộp bài và chọn người thắng.</p></div></div></section></div>`;
-  }
-  function roomCard(r){const n=(r.players||[]).length;return `<div class="arena-room-card arena-p5-room"><div class="flex justify-between gap-3"><div><span class="mini-badge"><i class="fa-solid fa-bolt"></i> ${esc(r.status==='waiting'?'Chờ ready':(r.status==='countdown'?'Đếm ngược':'Đang đấu'))}</span><h4 class="text-xl font-black mt-2">${esc(r.title||'Phòng realtime')}</h4><p class="text-sm" style="color:var(--muted)">Chủ phòng: ${esc(r.hostName||'')}</p></div><div class="text-right"><b class="text-2xl">${n}/2</b><p class="text-xs" style="color:var(--muted)">người</p></div></div><p class="text-sm mt-2" style="color:var(--muted)">${esc(r.topicName||'Tổng hợp')} • ${r.questionCount||10} câu • ${Math.round((r.durationMs||480000)/60000)} phút</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="arenaP5OpenRoom('${esc(r.id)}')" class="btn-soft py-2 rounded-xl font-black"><i class="fa-solid fa-eye"></i> Mở</button><button onclick="arenaP5JoinRoom('${esc(r.id)}')" class="btn-primary text-white py-2 rounded-xl font-black" ${r.status!=='waiting'||n>=2?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> Tham gia</button></div></div>`;}
-  async function createRoom(opts={}){
-    if(!fb()){toast('Cần đăng nhập và Firebase sẵn sàng.','bad');return;}
-    const topicId=window.arenaState?.topic||'all';
-    const topic=(TOPICS||[]).find(t=>String(t.id)===String(topicId));
-    const qs=pickQs(10);
-    if(qs.length<5){toast('Ngân hàng chưa có đủ câu hỏi trắc nghiệm hợp lệ, hệ thống sẽ dùng bộ câu hỏi mẫu an toàn.','info');}
-    const idName=uname(); const quick=!!opts.quick;
-    try{
-      await db.collection('arenaPlayers').doc(uid()).set({id:uid(),userId:uid(),name:idName,fullname:idName,className:uclass(),lastSeen:nowServer(),updatedAt:nowServer()},{merge:true}).catch(()=>{});
-      const ref=await db.collection('arenaRooms').add({
-        mode:'realtime',quickMatch:quick,title:(quick?'Quick Match - ':'Realtime Duel - ')+idName,
-        hostId:uid(),hostName:idName,players:[uid()],playerNames:{[uid()]:idName},status:'waiting',
-        readyMap:{[uid()]:false},countdownUntilMs:0,topicId:String(topicId),topicName:topic?.name||'Tổng hợp',
-        questionCount:qs.length,durationMs:8*60*1000,questions:qs,createdAt:nowServer(),updatedAt:nowServer(),createdAtMs:Date.now()
-      });
-      await ref.collection('players').doc(uid()).set({userId:uid(),name:idName,className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,joinedAt:nowServer(),ready:false,lastSeenAt:nowServer(),updatedAt:nowServer()},{merge:true});
-      localStorage.setItem(P5_KEY,ref.id); toast('Đã tạo phòng realtime.','ok'); openRoom(ref.id);
-    }catch(err){toast('Chưa tạo được phòng realtime: '+(err.message||err),'bad');}
-  }
-  async function joinRoom(id){
     if(!fb()){toast('Cần đăng nhập để tham gia.','bad');return;}
+    const myId=uid();
     try{
       const ref=db.collection('arenaRooms').doc(id);
       await db.runTransaction(async tx=>{
@@ -6939,27 +6728,36 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
         const r=s.data()||{};
         if(!['waiting','countdown'].includes(r.status||'waiting')) throw new Error('Trận đã bắt đầu, không thể tham gia thêm');
         const oldPlayers=Array.isArray(r.players)?r.players.filter(Boolean):[];
-        const players=Array.from(new Set([...oldPlayers,uid()]));
-        if(players.length>2) throw new Error('Phòng đã đủ người');
+        let players=oldPlayers.includes(myId)?oldPlayers:[...oldPlayers,myId];
+        players=Array.from(new Set(players));
+        if(players.length>2 && !oldPlayers.includes(myId)) throw new Error('Phòng đã đủ người');
+        players=players.slice(0,2);
+        if(!players.includes(myId)) throw new Error('Phòng đã đủ 2 người chơi');
         const readyMap={...(r.readyMap||{})};
         players.forEach(pid=>{ if(readyMap[pid]!==true) readyMap[pid]=false; });
-        readyMap[uid()]=false;
+        readyMap[myId]=false;
         tx.set(ref,{
           players,
-          playerNames:{...(r.playerNames||{}),[uid()]:uname()},
+          playerNames:{...(r.playerNames||{}),[myId]:uname()},
+          playerAuthMap:{...(r.playerAuthMap||{}),[myId]:authUid()},
           readyMap,
           status:'waiting',
           countdownUntilMs:0,
           updatedAt:nowServer()
         },{merge:true});
-        tx.set(ref.collection('players').doc(uid()),{
-          userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,
+        tx.set(ref.collection('players').doc(myId),{
+          userId:myId,authUid:authUid(),deviceId:arenaDeviceId(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,
           submitted:false,ready:false,joinedAt:nowServer(),lastSeenAt:nowServer(),updatedAt:nowServer()
         },{merge:true});
       });
+      localStorage.setItem(P5_KEY,id);
       toast('Đã tham gia phòng realtime. Bấm “Tôi đã sẵn sàng” để vào trận.','ok');
       openRoom(id);
-    }catch(err){toast('Chưa tham gia được: '+(err.message||err),'bad');}
+    }catch(err){
+      const msg=err?.message||String(err);
+      toast('Chưa tham gia được: '+msg,'bad');
+      console.error('arena join error',err);
+    }
   }
   function openRoom(id){
     if(!fb()){toast('Cần đăng nhập.','bad');return;} clearLive(); bindAntiCheat(); live.roomId=id; localStorage.setItem(P5_KEY,id);
@@ -7089,7 +6887,7 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     const old=live.room; const players=(old.players||[]).filter(Boolean); const name='Tái đấu - '+uname();
     try{
       const ref=await db.collection('arenaRooms').add({mode:'realtime',rematchFrom:live.roomId,quickMatch:false,title:name,hostId:uid(),hostName:uname(),players:[uid()],playerNames:{[uid()]:uname()},status:'waiting',readyMap:{[uid()]:false},countdownUntilMs:0,topicId:old.topicId||'all',topicName:old.topicName||'Tổng hợp',questionCount:old.questionCount||((old.questions||[]).length),durationMs:old.durationMs||480000,questions:(old.questions||pickQs(10)),createdAt:nowServer(),updatedAt:nowServer(),createdAtMs:Date.now()});
-      await ref.collection('players').doc(uid()).set({userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,joinedAt:nowServer(),ready:false,updatedAt:nowServer()},{merge:true});
+      await ref.collection('players').doc(uid()).set({userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,joinedAt:nowServer(),ready:false,authUid:authUid(),deviceId:arenaDeviceId(),updatedAt:nowServer()},{merge:true});
       localStorage.setItem(P5_KEY,ref.id); toast('Đã tạo phòng tái đấu. Mời đối thủ tham gia lại.','ok'); openRoom(ref.id);
     }catch(err){toast('Chưa tạo được phòng tái đấu: '+(err.message||err),'bad');}
   }
@@ -7331,6 +7129,14 @@ document.addEventListener('click', function(e){
   const oldSwitch=window.arenaSwitchTab; window.arenaSwitchTab=function(tab){ const out=oldSwitch&&oldSwitch.apply(this,arguments); polishArena(); return out; };
   document.addEventListener('DOMContentLoaded',polishArena);
 })();
+</script>
+
+
+<script>
+/* JOIN DIAGNOSTIC V3 */
+window.arenaJoinHelp=function(){
+  if(window.toast) toast('Mỗi trình duyệt/máy sẽ có một mã đấu thủ riêng. Nếu vẫn không tham gia được, hãy kiểm tra Firestore Rules cho arenaRooms và arenaRooms/{roomId}/players.','info');
+};
 </script>
 
 </body>
