@@ -6546,5 +6546,159 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 })();
 </script>
 
+
+<!-- ===== ĐẤU TRƯỜNG PHASE 4: ONLINE FIRESTORE SYNC + ONLINE ROOMS ===== -->
+<style>
+  .arena-online-dot{width:.62rem;height:.62rem;border-radius:999px;display:inline-block;background:#94a3b8;box-shadow:0 0 0 0 rgba(148,163,184,.45)}
+  .arena-online-dot.on{background:#22c55e;animation:livePulse 1.25s infinite}.arena-online-dot.off{background:#ef4444}
+  .arena-online-card{border:1px solid var(--line);border-radius:1.25rem;padding:1rem;background:rgba(255,255,255,.62)}
+  html[data-theme="dark"] .arena-online-card{background:rgba(15,23,42,.52)}
+  .arena-room-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.85rem}
+  .arena-room-card{border:1px solid var(--line);border-radius:1.2rem;padding:1rem;background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(245,158,11,.08));transition:.16s ease}
+  html[data-theme="dark"] .arena-room-card{background:linear-gradient(135deg,rgba(15,23,42,.72),rgba(245,158,11,.12))}
+  .arena-room-card:hover{transform:translateY(-2px);box-shadow:0 20px 48px -34px rgba(2,6,23,.58)}
+  .arena-sync-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.13);color:white;border-radius:999px;padding:.35rem .7rem;font-size:.78rem;font-weight:900}
+</style>
+<script>
+(function(){
+  const ONLINE_FLAG='mathpro12_arena_online_enabled';
+  const STORE_KEY='mathpro12_arena';
+  const ROOM_KEY='mathpro12_arena_online_rooms_cache';
+  const RANKS=[['Bronze',0],['Silver',250],['Gold',700],['Platinum',1300],['Diamond',2200],['Champion',3500]];
+  let onlineState={ready:false,loading:false,lastSync:0,profiles:[],rooms:[],unsubs:[],roomUnsub:null};
+  function readJSON(k,d){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch(e){return d;}}
+  function writeJSON(k,v){localStorage.setItem(k,JSON.stringify(v));}
+  function meId(){return String(currentUser?.id||currentUser?.uid||'guest');}
+  function meName(){return currentUser?.fullname||currentUser?.displayName||currentUser?.email||'Học sinh';}
+  function esc(s){return (window.safe?safe(s):String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));}
+  function rankName(xp){let r=RANKS[0][0]; for(const [n,min] of RANKS){if((xp||0)>=min) r=n;} return r;}
+  function isOnlineEnabled(){return localStorage.getItem(ONLINE_FLAG)!=='0';}
+  function setOnlineEnabled(v){localStorage.setItem(ONLINE_FLAG,v?'1':'0');}
+  function fbOK(){return !!(window.firebase && window.db && firebaseReady && currentUser && !String(meId()).includes('guest'));}
+  function serverNow(){return firebase.firestore.FieldValue.serverTimestamp();}
+  function localStore(){return readJSON(STORE_KEY,{profiles:{},history:[]});}
+  function saveLocalStore(v){writeJSON(STORE_KEY,{...localStore(),...v});}
+  function localProfile(){const st=localStore(); return (st.profiles||{})[meId()]||{id:meId(),name:meName(),email:currentUser?.email||'',className:currentUser?.className||'Chưa phân lớp',xp:0,wins:0,losses:0,streak:0,bestStreak:0,avgScore:0,online:false};}
+  function profilePayload(extra={}){const p={...localProfile(),...extra}; return {id:meId(),uid:meId(),name:meName(),email:currentUser?.email||'',className:currentUser?.className||'Chưa phân lớp',role:currentUser?.role||'student',xp:Number(p.xp||0),wins:Number(p.wins||0),losses:Number(p.losses||0),streak:Number(p.streak||0),bestStreak:Number(p.bestStreak||0),avgScore:Number(p.avgScore||0),rank:rankName(Number(p.xp||0)),online:true,lastSeen:serverNow(),updatedAt:serverNow()};}
+  async function ensureOnlineProfile(extra={}){
+    if(!fbOK() || !isOnlineEnabled()) return false;
+    try{ await db.collection('arenaPlayers').doc(meId()).set(profilePayload(extra),{merge:true}); return true; }
+    catch(err){console.warn('Arena profile sync failed',err); return false;}
+  }
+  async function syncLocalHistoryToOnline(){
+    if(!fbOK() || !isOnlineEnabled()) return;
+    const hist=(localStore().history||[]).slice(0,30);
+    for(const h of hist){
+      const id=String(h.id||('hist_'+meId()+'_'+(h.at||Date.now())));
+      if(h.syncedOnline) continue;
+      try{await db.collection('arenaResults').doc(id).set({...h,id,userId:meId(),userName:meName(),className:currentUser?.className||'',createdAt:h.at?new Date(h.at):serverNow(),updatedAt:serverNow()},{merge:true}); h.syncedOnline=true;}catch(e){break;}
+    }
+    const st=localStore(); st.history=hist.concat((st.history||[]).slice(30)); saveLocalStore(st);
+  }
+  async function loadOnlineArenaData(){
+    if(!fbOK() || !isOnlineEnabled()){onlineState.ready=false; return false;}
+    if(onlineState.loading) return true; onlineState.loading=true;
+    try{
+      await ensureOnlineProfile(); await syncLocalHistoryToOnline();
+      const pSnap=await db.collection('arenaPlayers').orderBy('xp','desc').limit(100).get();
+      onlineState.profiles=pSnap.docs.map(d=>({id:d.id,...d.data()}));
+      const rSnap=await db.collection('arenaRooms').where('status','in',['waiting','playing']).limit(30).get().catch(()=>null);
+      onlineState.rooms=rSnap?rSnap.docs.map(d=>({id:d.id,...d.data()})):readJSON(ROOM_KEY,[]);
+      writeJSON(ROOM_KEY,onlineState.rooms); onlineState.ready=true; onlineState.lastSync=Date.now();
+      return true;
+    }catch(err){console.warn('Không tải được dữ liệu Đấu Trường online:',err); onlineState.ready=false; return false;}
+    finally{onlineState.loading=false;}
+  }
+  function listenOnlineArena(){
+    if(!fbOK() || !isOnlineEnabled() || onlineState.unsubs.length) return;
+    try{
+      onlineState.unsubs.push(db.collection('arenaPlayers').orderBy('xp','desc').limit(100).onSnapshot(s=>{onlineState.profiles=s.docs.map(d=>({id:d.id,...d.data()})); if(window.arenaState && !window.arenaState.duel && document.getElementById('arenaPanel')) renderArena();}));
+      onlineState.unsubs.push(db.collection('arenaRooms').where('status','in',['waiting','playing']).limit(30).onSnapshot(s=>{onlineState.rooms=s.docs.map(d=>({id:d.id,...d.data()})); writeJSON(ROOM_KEY,onlineState.rooms); if(window.arenaState && window.arenaState.tab==='online') renderArena();}));
+    }catch(e){console.warn('Listener Arena lỗi:',e);}
+  }
+  function mergedProfiles(){
+    const st=localStore(), locals=Object.values(st.profiles||{}); const map={};
+    locals.forEach(p=>map[String(p.id)]=p); onlineState.profiles.forEach(p=>map[String(p.id||p.uid)]=p);
+    if(!map[meId()]) map[meId()]=localProfile();
+    return Object.values(map).sort((a,b)=>(b.xp||0)-(a.xp||0));
+  }
+  function onlineStatusHTML(){
+    const on=fbOK() && isOnlineEnabled() && onlineState.ready;
+    const label=!fbOK()?'Chưa đăng nhập/Firebase chưa sẵn sàng':(!isOnlineEnabled()?'Đang tắt online':(on?'Online Firestore':'Đang dùng tạm local'));
+    return `<span class="arena-sync-pill"><span class="arena-online-dot ${on?'on':'off'}"></span>${label}</span>`;
+  }
+  function leaderboardOnlineHTML(){
+    const rows=mergedProfiles();
+    return `<div class="glass-card p-5"><div class="flex flex-wrap justify-between gap-3 items-center mb-4"><div><h3 class="text-2xl font-black"><i class="fa-solid fa-cloud text-orange-500"></i> Leaderboard Online</h3><p class="text-sm" style="color:var(--muted)">Đọc từ collection <b>arenaPlayers</b>, tự fallback về localStorage khi Firestore lỗi.</p></div><button onclick="arenaForceOnlineSync()" class="btn-primary text-white px-4 py-2 rounded-xl font-black"><i class="fa-solid fa-rotate"></i> Đồng bộ</button></div><div class="space-y-3">${rows.slice(0,20).map((p,i)=>`<div class="arena-board-row"><div class="arena-medal ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div><div><b>${esc(p.name||p.email||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${esc(p.className||'')} • ${esc(p.rank||rankName(p.xp||0))}</p></div><div class="text-right"><b>${p.xp||0} XP</b><p class="text-xs" style="color:var(--muted)">${p.wins||0} thắng • streak ${p.streak||0}</p></div><div></div></div>`).join('')||'<p class="text-sm" style="color:var(--muted)">Chưa có dữ liệu online.</p>'}</div></div>`;
+  }
+  function onlineRoomsHTML(){
+    const rooms=(onlineState.rooms||[]).filter(r=>['waiting','playing'].includes(r.status));
+    return `<div class="space-y-5"><section class="arena-online-card"><div class="flex flex-wrap justify-between gap-4"><div><h3 class="text-2xl font-black"><i class="fa-solid fa-wifi text-orange-500"></i> Phòng đấu Online</h3><p class="text-sm mt-1" style="color:var(--muted)">Tạo phòng trên Firestore để học sinh khác máy có thể thấy và tham gia.</p></div><div class="flex flex-wrap gap-2"><button onclick="arenaCreateOnlineRoom()" class="btn-primary text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-plus"></i> Tạo phòng online</button><button onclick="arenaForceOnlineSync()" class="btn-soft px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-rotate"></i> Tải lại</button></div></div></section><div class="arena-room-grid">${rooms.map(r=>`<div class="arena-room-card"><div class="flex justify-between gap-3"><div><span class="mini-badge">${esc(r.status==='waiting'?'Đang chờ':'Đang đấu')}</span><h4 class="text-xl font-black mt-2">${esc(r.title||'Phòng đấu')}</h4><p class="text-sm" style="color:var(--muted)">Chủ phòng: ${esc(r.hostName||'')}</p></div><div class="text-right"><b>${(r.players||[]).length}/2</b><p class="text-xs" style="color:var(--muted)">người</p></div></div><div class="mt-3 text-sm" style="color:var(--muted)">Chủ đề: ${esc(r.topicName||'Tổng hợp')} • ${r.questionCount||10} câu</div><button onclick="arenaJoinOnlineRoom('${esc(r.id)}')" class="mt-4 w-full ${r.status==='waiting'?'btn-primary text-white':'btn-soft'} py-2 rounded-xl font-black" ${r.status!=='waiting'?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> ${r.status==='waiting'?'Tham gia':'Đang diễn ra'}</button></div>`).join('')||'<div class="arena-online-card text-center"><i class="fa-solid fa-door-open text-3xl text-orange-500"></i><p class="font-black mt-2">Chưa có phòng online đang chờ.</p><p class="text-sm" style="color:var(--muted)">Thầy tạo phòng đầu tiên để học sinh khác thấy.</p></div>'}</div>${leaderboardOnlineHTML()}</div>`;
+  }
+  function onlinePanelHTML(){return `<div class="space-y-5"><section class="arena-season-card"><div class="flex flex-wrap justify-between gap-4 items-start"><div><span class="arena-pill"><i class="fa-solid fa-cloud-arrow-up"></i> Math Arena Phase 4</span><h3 class="text-3xl font-black mt-2">Đấu Trường Online bằng Firestore</h3><p class="text-sm mt-1" style="color:var(--muted)">Đồng bộ leaderboard, XP, lịch sử, phòng đấu giữa nhiều máy. Quick Duel hiện vẫn là mô phỏng chấm điểm, kết quả được ghi online.</p></div><div class="text-right">${onlineStatusHTML()}<div class="mt-2"><button onclick="arenaToggleOnline()" class="btn-soft px-3 py-2 rounded-xl font-black text-sm">${isOnlineEnabled()?'Tắt online':'Bật online'}</button></div></div></div></section>${onlineRoomsHTML()}</div>`;}
+  async function createRoom(){
+    if(!fbOK()){toast('Cần đăng nhập và Firebase sẵn sàng để tạo phòng online.','bad');return;}
+    const topicId=window.arenaState?.topic||'all'; const topic=(TOPICS||[]).find(t=>String(t.id)===String(topicId));
+    try{
+      await ensureOnlineProfile();
+      const ref=await db.collection('arenaRooms').add({title:'Phòng đấu của '+meName(),hostId:meId(),hostName:meName(),players:[meId()],playerNames:{[meId()]:meName()},status:'waiting',topicId:String(topicId),topicName:topic?.name||'Tổng hợp',questionCount:10,createdAt:serverNow(),updatedAt:serverNow()});
+      toast('Đã tạo phòng online. Mã phòng: '+ref.id.slice(0,6),'ok'); await loadOnlineArenaData(); window.renderArena();
+    }catch(err){toast('Chưa tạo được phòng online: '+(err.message||err),'bad');}
+  }
+  async function joinRoom(id){
+    if(!fbOK()){toast('Cần đăng nhập để tham gia phòng online.','bad');return;}
+    try{
+      const ref=db.collection('arenaRooms').doc(id); const snap=await ref.get(); if(!snap.exists){toast('Phòng không còn tồn tại.','bad');return;}
+      const r=snap.data(); const players=Array.from(new Set([...(r.players||[]),meId()]));
+      if(players.length>2){toast('Phòng đã đủ người.','bad');return;}
+      await ref.set({players,playerNames:{...(r.playerNames||{}),[meId()]:meName()},status:players.length>=2?'playing':'waiting',updatedAt:serverNow()},{merge:true});
+      toast(players.length>=2?'Đã vào phòng, trận online đã sẵn sàng.':'Đã tham gia phòng, chờ đối thủ.','ok'); await loadOnlineArenaData(); window.renderArena();
+    }catch(err){toast('Chưa tham gia được phòng: '+(err.message||err),'bad');}
+  }
+  async function saveResultOnline(result, profile){
+    if(!fbOK() || !isOnlineEnabled()) return false;
+    try{
+      const id=String(result.id||('result_'+meId()+'_'+Date.now()));
+      await db.collection('arenaResults').doc(id).set({...result,id,userId:meId(),userName:meName(),className:currentUser?.className||'',createdAt:serverNow(),updatedAt:serverNow()},{merge:true});
+      await ensureOnlineProfile(profile||{});
+      return true;
+    }catch(err){console.warn('Không lưu được result online',err); return false;}
+  }
+  async function afterDuelSync(){
+    const st=localStore(); const me=(st.profiles||{})[meId()]; const last=(st.history||[])[0];
+    if(me) await ensureOnlineProfile(me); if(last) await saveResultOnline(last,me); await loadOnlineArenaData();
+  }
+  window.arenaForceOnlineSync=async function(){toast('Đang đồng bộ Đấu Trường online...','info'); const ok=await loadOnlineArenaData(); listenOnlineArena(); toast(ok?'Đã đồng bộ Firestore.':'Chưa đồng bộ được, đang dùng dữ liệu local. ',ok?'ok':'bad'); if(window.renderArena) window.renderArena();};
+  window.arenaToggleOnline=function(){setOnlineEnabled(!isOnlineEnabled()); if(!isOnlineEnabled()) onlineState.unsubs.forEach(u=>{try{u()}catch(e){}}), onlineState.unsubs=[]; window.arenaForceOnlineSync();};
+  window.arenaCreateOnlineRoom=createRoom; window.arenaJoinOnlineRoom=joinRoom;
+  const oldFinish=window.finishQuickDuel;
+  window.finishQuickDuel=function(auto){
+    const before=JSON.stringify(localStore());
+    const ret=oldFinish?oldFinish(auto):null;
+    setTimeout(()=>{afterDuelSync();},250);
+    return ret;
+  };
+  const oldSwitch=window.arenaSwitchTab;
+  window.arenaSwitchTab=function(tab){if(tab==='online'){if(window.arenaState) window.arenaState.tab='online'; loadOnlineArenaData().then(()=>{listenOnlineArena(); if(window.renderArena) window.renderArena();}); return;} return oldSwitch?oldSwitch(tab):null;};
+  const oldRender=window.renderArena;
+  window.renderArena=function(){
+    if(!onlineState.ready && fbOK() && isOnlineEnabled()) loadOnlineArenaData().then(()=>listenOnlineArena());
+    oldRender&&oldRender();
+    setTimeout(()=>{
+      const bar=document.querySelector('.arena-tabbar');
+      if(bar && !bar.querySelector('[data-online]')) bar.insertAdjacentHTML('beforeend',`<button data-online class="${window.arenaState&&window.arenaState.tab==='online'?'active':''}" onclick="arenaSwitchTab('online')"><i class="fa-solid fa-cloud"></i> Online</button>`);
+      const hero=document.querySelector('.arena-hero .flex.flex-wrap.gap-2.mt-4');
+      if(hero && !hero.querySelector('[data-online-status]')) hero.insertAdjacentHTML('beforeend',`<span data-online-status class="arena-pill"><i class="fa-solid fa-cloud"></i> Firestore online</span>`);
+      if(window.arenaState && window.arenaState.tab==='online'){
+        const panel=document.getElementById('arenaPanel'); if(panel) panel.innerHTML=onlinePanelHTML();
+        const badge=document.querySelector('.arena-hero .arena-pill'); if(badge) badge.innerHTML='<i class="fa-solid fa-cloud-arrow-up"></i> Math Arena Phase 4';
+      }
+      if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise();
+    },0);
+  };
+  window.addEventListener('beforeunload',()=>{if(fbOK()) db.collection('arenaPlayers').doc(meId()).set({online:false,lastSeen:serverNow()},{merge:true}).catch(()=>{});});
+})();
+</script>
+
 </body>
 </html>
