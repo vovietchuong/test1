@@ -7235,6 +7235,53 @@ document.addEventListener('click', function(e){
 })();
 </script>
 
+
+<script>
+/* ===== ĐẤU TRƯỜNG - FINAL POLISH UI CONTROLLER ===== */
+(function(){
+  function qs(sel,root=document){return root.querySelector(sel);} function qsa(sel,root=document){return Array.from(root.querySelectorAll(sel));}
+  function txt(n){return (n&&n.textContent||'').trim().toLowerCase();}
+  function normalizeArenaTabs(){
+    const card=document.querySelector('.arena-tabbar')?.closest('.glass-card'); const bar=document.querySelector('.arena-tabbar'); if(!card||!bar||card.dataset.finalArenaToolbar==='1') return;
+    card.dataset.finalArenaToolbar='1'; card.classList.add('arena-command-center');
+    const buttons=qsa('button',bar);
+    buttons.forEach(btn=>{
+      const t=txt(btn);
+      const primary=/thách|battle|online|quick|realtime/.test(t);
+      btn.dataset.tabPrimary=primary?'1':'0'; btn.dataset.tabSecondary=primary?'0':'1';
+      if(/leaderboard/.test(t)) btn.innerHTML='<i class="fa-solid fa-ranking-star"></i> BXH';
+      if(/daily/.test(t)) btn.innerHTML='<i class="fa-solid fa-calendar-check"></i> Daily';
+      if(/phần thưởng/.test(t)) btn.innerHTML='<i class="fa-solid fa-gift"></i> Thưởng';
+      if(/giải tuần/.test(t)) btn.innerHTML='<i class="fa-solid fa-trophy"></i> Giải tuần';
+      if(/lớp chiến/.test(t)) btn.innerHTML='<i class="fa-solid fa-people-group"></i> Lớp chiến';
+      if(/phase 3/.test(t)) btn.innerHTML='<i class="fa-solid fa-rocket"></i> Phase 3';
+      if(/^online$/.test(t)) btn.innerHTML='<i class="fa-solid fa-cloud"></i> Online';
+      if(/battle pro/.test(t)) btn.innerHTML='<i class="fa-solid fa-satellite-dish"></i> Battle Pro';
+      if(/bxh pro/.test(t)) btn.innerHTML='<i class="fa-solid fa-ranking-star"></i> BXH Pro';
+      if(/season/.test(t)) btn.innerHTML='<i class="fa-solid fa-scroll"></i> Season';
+      if(/spectator/.test(t)) btn.innerHTML='<i class="fa-solid fa-eye"></i> Giám sát';
+    });
+    const filters=card.querySelector('.flex.gap-2.flex-wrap');
+    const onlineReady=!!(window.firebaseReady&&window.db);
+    const qCount=(window.arenaQuestions?window.arenaQuestions((window.arenaState&&window.arenaState.topic)||'all',1000).length:0);
+    const active=(window.arenaState&&window.arenaState.tab)||'leaderboard';
+    const head=document.createElement('div');
+    head.className='arena-command-head';
+    head.innerHTML='<div class="arena-command-title"><div class="arena-command-icon"><i class="fa-solid fa-gamepad"></i></div><div><h3>Trung tâm thi đấu</h3><p>Chọn chế độ, lọc chủ đề, bấm Battle Pro để vào phòng thi realtime.</p></div></div><div class="arena-match-cta"><button class="arena-quick-btn" onclick="arenaSwitchTab(\'phase5\')"><i class="fa-solid fa-bolt"></i> Vào Battle Pro</button><button class="arena-online-btn" onclick="arenaSwitchTab(\'online\')"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ Online</button></div>';
+    card.insertBefore(head,card.firstChild);
+    const wrap=document.createElement('div'); wrap.className='arena-toolbar-row';
+    if(filters){ qsa('select',filters).forEach(s=>wrap.appendChild(s)); filters.remove(); }
+    const status=document.createElement('div'); status.className='arena-status-strip';
+    status.innerHTML='<span class="mini-badge"><i class="fa-solid '+(onlineReady?'fa-circle-check':'fa-triangle-exclamation')+'"></i> '+(onlineReady?'Firestore sẵn sàng':'Chế độ local')+'</span><span class="mini-badge"><i class="fa-solid fa-list-check"></i> '+qCount+' câu có thể thi đấu</span><span class="mini-badge"><i class="fa-solid fa-location-dot"></i> '+active+'</span>';
+    wrap.appendChild(status); card.appendChild(wrap);
+  }
+  function polishArena(){ setTimeout(normalizeArenaTabs,90); setTimeout(normalizeArenaTabs,260); }
+  const oldRender=window.renderArena; window.renderArena=function(){ const out=oldRender&&oldRender.apply(this,arguments); polishArena(); return out; };
+  const oldSwitch=window.arenaSwitchTab; window.arenaSwitchTab=function(tab){ const out=oldSwitch&&oldSwitch.apply(this,arguments); polishArena(); return out; };
+  document.addEventListener('DOMContentLoaded',polishArena);
+})();
+</script>
+
 </body>
 </html>
 
@@ -7268,6 +7315,20 @@ html[data-theme="dark"] .arena-chat-presets button{background:rgba(15,23,42,.55)
 .arena-alert-row{border:1px solid rgba(217,119,6,.28);border-radius:1rem;padding:.75rem;background:rgba(217,119,6,.08);display:flex;justify-content:space-between;gap:.75rem;align-items:center}
 @media(max-width:1000px){.arena-spectator-grid,.arena-watch-board{grid-template-columns:1fr}.arena-watch-vs{display:none}.arena-spectator-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.arena-spectator-kpis{grid-template-columns:1fr}}
+
+
+/* ===== ĐẤU TRƯỜNG - FINAL POLISH: THANH THI ĐẤU CHUẨN, GỌN, DỄ BẮT ĐẦU ===== */
+.arena-command-center{border:1px solid rgba(249,115,22,.24);border-radius:1.65rem;padding:1rem;background:linear-gradient(135deg,rgba(249,115,22,.08),rgba(250,204,21,.05),var(--card));box-shadow:0 22px 55px -38px rgba(127,29,29,.55)}
+.arena-command-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:center;margin-bottom:.85rem}
+.arena-command-title{display:flex;align-items:center;gap:.75rem;min-width:240px}.arena-command-icon{width:3rem;height:3rem;border-radius:1.1rem;display:grid;place-items:center;color:white;background:linear-gradient(135deg,#dc2626,#f97316,#facc15);box-shadow:0 14px 30px rgba(249,115,22,.24)}
+.arena-command-title h3{font-size:1.22rem;font-weight:1000;line-height:1.05}.arena-command-title p{font-size:.82rem;color:var(--muted);font-weight:750;margin-top:.15rem}
+.arena-match-cta{display:flex;flex-wrap:wrap;gap:.55rem}.arena-match-cta button{min-height:2.75rem;border-radius:1rem;padding:.65rem .95rem;font-weight:1000;display:inline-flex;align-items:center;justify-content:center;gap:.42rem;transition:.16s ease}.arena-match-cta button:hover{transform:translateY(-1px)}
+.arena-quick-btn{background:linear-gradient(100deg,#dc2626,#f97316,#facc15);color:white;box-shadow:0 14px 28px rgba(249,115,22,.24)}.arena-online-btn{background:rgba(37,99,235,.10);color:var(--brand);border:1px solid rgba(37,99,235,.20)}
+.arena-tabbar{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem;width:100%;align-items:stretch}.arena-tabbar button{min-height:3.15rem;border-radius:1.05rem!important;padding:.65rem .82rem!important;background:rgba(255,255,255,.68)!important;border:1px solid var(--line)!important;box-shadow:none!important;display:flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;font-size:.92rem;color:var(--text);transition:.16s ease}.arena-tabbar button:hover{transform:translateY(-1px);border-color:rgba(249,115,22,.45)!important;background:rgba(249,115,22,.08)!important}.arena-tabbar button.active{background:linear-gradient(100deg,#dc2626,#f97316,#facc15)!important;color:white!important;border-color:transparent!important;box-shadow:0 14px 28px rgba(220,38,38,.20)!important}
+html[data-theme="dark"] .arena-tabbar button{background:rgba(15,23,42,.62)!important}.arena-toolbar-row{display:grid;grid-template-columns:repeat(2,minmax(180px,280px)) 1fr;gap:.75rem;align-items:center;margin-top:.85rem}.arena-toolbar-row .exam-admin-input{min-height:3rem;border-radius:1rem}.arena-status-strip{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.5rem}.arena-status-strip .mini-badge{min-height:2.35rem;background:rgba(249,115,22,.10);color:#c2410c;border:1px solid rgba(249,115,22,.20)}
+.arena-tabbar [data-tab-secondary="1"]{opacity:.92}.arena-tabbar [data-tab-primary="1"]{font-size:.98rem}.arena-tabbar [data-p5],.arena-tabbar [data-open-online],.arena-tabbar button[onclick*="phase5"],.arena-tabbar button[onclick*="online"]{font-size:.98rem}
+@media(max-width:900px){.arena-command-head{align-items:stretch}.arena-match-cta{width:100%}.arena-match-cta button{flex:1}.arena-toolbar-row{grid-template-columns:1fr}.arena-status-strip{justify-content:flex-start}.arena-tabbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.arena-tabbar{grid-template-columns:1fr}.arena-match-cta button{flex-basis:100%}.arena-command-title{min-width:0}.arena-command-icon{width:2.65rem;height:2.65rem}}
 </style>
 <script>
 /* ===== MATH ARENA - BƯỚC 11: SPECTATOR / ADMIN LIVE + CHAT NHANH AN TOÀN ===== */
