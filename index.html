@@ -7191,6 +7191,350 @@ window.arenaJoinHelp=function(){
 };
 </script>
 
+
+<script>
+/* =========================================================
+   MATHPRO 12 - ARENA FULL PRODUCTION OVERRIDE 2026-05-03
+   Mục tiêu: chạy ổn định trên Firestore, không phá code cũ.
+   Collections dùng: questionBanks, arenaRooms, arenaRooms/{roomId}/players,
+   arenaHistory, arenaPlayers.
+========================================================= */
+(function(){
+  if(window.__ARENA_FULL_PRODUCTION_20260503__) return;
+  window.__ARENA_FULL_PRODUCTION_20260503__ = true;
+
+  const A = window.ArenaProduction = {
+    roomId: null,
+    room: null,
+    players: {},
+    answers: {},
+    unsubs: [],
+    timer: null,
+    finishing: false,
+    lastEffectRoom: '',
+    lastQuestionStats: null
+  };
+
+  const $ = id => document.getElementById(id);
+  const esc = v => (window.safe ? window.safe(v) : String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+  const hasFB = () => !!(window.firebase && window.db && window.auth && auth.currentUser);
+  const nowServer = () => firebase.firestore.FieldValue.serverTimestamp();
+  const toast2 = (m,t='info') => window.toast ? window.toast(m,t) : console.log('[Arena]',m);
+  const currentId = () => auth.currentUser?.uid || currentUser?.id || localStorage.getItem('mathpro12_arena_device_id') || 'guest';
+  const currentName = () => currentUser?.fullname || auth.currentUser?.displayName || auth.currentUser?.email || currentUser?.email || 'Đấu thủ';
+  const currentClass = () => currentUser?.className || currentUser?.classCode || 'Chưa phân lớp';
+  const topicList = () => Array.isArray(window.TOPICS) ? window.TOPICS : [];
+  const topicNameById = id => topicList().find(t => String(t.id) === String(id))?.name || 'Tổng hợp';
+  function deviceId(){
+    let id=localStorage.getItem('mathpro12_arena_device_id');
+    if(!id){ id='dev_'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('mathpro12_arena_device_id',id); }
+    return id;
+  }
+  function isMCType(q){
+    const raw = String(q?.type || q?.questionType || q?.kind || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    if(!raw) return Array.isArray(q?.options) || q?.optionA || q?.choiceA;
+    return ['mc','mcq','multiple_choice','choice','single_choice','trac nghiem','tracnghiem','tn','abcd'].some(x => raw.includes(x));
+  }
+  function answerIndex(q){
+    if(Array.isArray(q?.options)){
+      const i=q.options.findIndex(o => o && typeof o==='object' && (o.correct===true || o.isCorrect===true || o.true===true));
+      if(i>=0) return i;
+    }
+    const raw = q?.answer ?? q?.correct ?? q?.correctAnswer ?? q?.correctIndex ?? q?.key ?? q?.dapAn ?? q?.['đápÁn'] ?? q?.rightAnswer;
+    if(raw === undefined || raw === null || raw === '') return null;
+    if(typeof raw === 'number' || /^\d+$/.test(String(raw).trim())){
+      const n=Number(raw); if(n>=0 && n<=3) return n; if(n>=1 && n<=4) return n-1;
+    }
+    const t=String(raw).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(['A','B','C','D'].includes(t)) return 'ABCD'.indexOf(t);
+    const m=t.match(/(?:DAP AN|ANSWER|PHUONG AN)?\s*([ABCD])\b/); if(m) return 'ABCD'.indexOf(m[1]);
+    return null;
+  }
+  function normalizeArenaQuestion(q, idx=0){
+    if(!q || !isMCType(q)) return null;
+    let options = [];
+    if(Array.isArray(q.options)) options = q.options.map(o => typeof o==='object' ? (o.text ?? o.content ?? o.label ?? '') : o);
+    if(options.length < 4){
+      options = ['A','B','C','D'].map(k => q['option'+k] ?? q['choice'+k] ?? q['answer'+k] ?? q['phuongAn'+k]).filter(x => x !== undefined && x !== null && String(x).trim() !== '');
+    }
+    options = options.map(x => String(x ?? '').trim()).filter(Boolean);
+    const ans = answerIndex(q);
+    const text = String(q.text ?? q.question ?? q.content ?? q.title ?? '').trim();
+    const status = String(q.status ?? '').toLowerCase();
+    if(['trash','deleted','removed'].includes(status)) return null;
+    if(!text || options.length < 4 || ans === null || ans < 0 || ans >= options.length) return null;
+    return {
+      id: String(q.id || q.sourceQuestionId || ('arena_q_'+idx)),
+      text,
+      options: options.slice(0,4),
+      answer: ans,
+      solution: q.solution || q.explain || q.explanation || '',
+      topicId: q.topicId || q.topic || 'all',
+      level: q.level || q.difficulty || ''
+    };
+  }
+  function localQuestionPool(){
+    const arr=[];
+    if(Array.isArray(window.questionBank)) arr.push(...window.questionBank);
+    if(Array.isArray(window.exams)) (window.exams||[]).forEach(e => Array.isArray(e.questions) && arr.push(...e.questions));
+    const map={};
+    arr.forEach((q,i)=>{ const n=normalizeArenaQuestion(q,i); if(n) map[n.id]=n; });
+    return Object.values(map);
+  }
+  async function firestoreQuestionPool(limit=800){
+    if(!hasFB()) return [];
+    const docs=[];
+    try{
+      const snap = await db.collection('questionBanks').limit(limit).get();
+      snap.forEach(d => docs.push({id:d.id,...d.data()}));
+    }catch(e){ console.warn('[Arena] questionBanks read failed',e); }
+    const map={};
+    docs.forEach((q,i)=>{ const n=normalizeArenaQuestion(q,i); if(n) map[n.id]=n; });
+    return Object.values(map);
+  }
+  async function loadProductionQuestions({topic='all', count=10}={}){
+    const fromFS = await firestoreQuestionPool();
+    const fromLocal = localQuestionPool();
+    const map={}; [...fromLocal,...fromFS].forEach(q => map[q.id]=q);
+    let all=Object.values(map);
+    const beforeTopic = all.length;
+    if(String(topic) !== 'all'){
+      const scoped = all.filter(q => String(q.topicId) === String(topic));
+      if(scoped.length >= Math.min(3,count)) all = scoped;
+    }
+    A.lastQuestionStats = {firestore:fromFS.length, local:fromLocal.length, valid:beforeTopic, afterTopic:all.length, topic};
+    all = all.sort(()=>Math.random()-0.5).slice(0,count).map((q,i)=>({...q,arenaNo:i+1}));
+    return all;
+  }
+  function questionErrorHTML(){
+    const st=A.lastQuestionStats||{};
+    return `<div class="glass-card p-6 border-orange-200"><h3 class="text-2xl font-black"><i class="fa-solid fa-triangle-exclamation text-orange-500"></i> Chưa có câu hỏi trắc nghiệm hợp lệ</h3><p class="text-sm mt-2" style="color:var(--muted)">Đấu Trường chỉ lấy câu hỏi có đủ: nội dung, 4 phương án A-B-C-D và đáp án đúng.</p><div class="grid sm:grid-cols-4 gap-3 mt-4"><div class="arena-live-score"><b>${st.firestore||0}</b><span>hợp lệ từ Firestore</span></div><div class="arena-live-score"><b>${st.local||0}</b><span>hợp lệ local</span></div><div class="arena-live-score"><b>${st.valid||0}</b><span>tổng hợp lệ</span></div><div class="arena-live-score"><b>${st.afterTopic||0}</b><span>sau lọc chủ đề</span></div></div><p class="text-sm mt-4" style="color:var(--muted)">Cách sửa nhanh: trong ngân hàng, câu trắc nghiệm nên có <b>type: mc</b>, <b>options</b> gồm 4 phần tử, và <b>answer</b> là 0-3 hoặc A-D.</p></div>`;
+  }
+  function clearLive(){
+    A.unsubs.forEach(fn=>{try{fn&&fn()}catch(e){}}); A.unsubs=[]; A.room=null; A.players={}; A.answers={}; A.finishing=false;
+    if(A.timer) clearInterval(A.timer); A.timer=null;
+  }
+  function roomListHTML(rooms=[]){
+    const active = rooms.filter(r => ['waiting','countdown','playing'].includes(r.status));
+    return `<div class="space-y-3">${active.map(r=>`<div class="arena-p5-room glass-card p-4"><div class="flex flex-wrap justify-between gap-3"><div><span class="mini-badge">${esc(r.status==='waiting'?'Đang chờ':r.status==='countdown'?'Đếm ngược':'Đang đấu')}</span><h4 class="text-xl font-black mt-2">${esc(r.title||'Phòng đấu')}</h4><p class="text-sm" style="color:var(--muted)">Chủ phòng: ${esc(r.hostName||'')} • ${esc(r.topicName||'Tổng hợp')} • Mã: <b>${esc(String(r.id).slice(0,8))}</b></p></div><div class="text-right"><b class="text-3xl">${(r.players||[]).length}/2</b><p class="text-xs" style="color:var(--muted)">người chơi</p></div></div><button onclick="ArenaProductionJoinRoom('${esc(r.id)}')" class="mt-3 w-full ${r.status==='waiting'?'btn-primary text-white':'btn-soft'} py-3 rounded-2xl font-black" ${r.status==='waiting'?'':'disabled'}><i class="fa-solid fa-right-to-bracket"></i> ${r.status==='waiting'?'Tham gia phòng':'Trận đã bắt đầu'}</button></div>`).join('') || '<div class="live-monitor-empty">Chưa có phòng đang chờ. Bấm Quick Match hoặc Tạo phòng mới.</div>'}</div>`;
+  }
+  async function loadRooms(){
+    if(!hasFB()) return [];
+    try{
+      const snap=await db.collection('arenaRooms').where('mode','==','production').where('status','in',['waiting','countdown','playing']).limit(30).get();
+      return snap.docs.map(d=>({id:d.id,...d.data()}));
+    }catch(e){
+      console.warn('[Arena] load rooms failed',e); return [];
+    }
+  }
+  async function panelHTML(){
+    const rooms = await loadRooms();
+    const topic = window.arenaState?.topic || 'all';
+    return `<div class="space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4 items-start"><div><span class="arena-pill"><i class="fa-solid fa-satellite-dish"></i> Full Production</span><h3 class="text-3xl font-black mt-2">Battle Realtime ổn định</h3><p class="text-sm mt-1 text-orange-100">Quick Match, tạo phòng, ready, countdown, chấm điểm realtime, lưu lịch sử, cộng XP/ELO và anti-cheat.</p><div class="flex flex-wrap gap-2 mt-3"><span class="arena-pill"><i class="fa-solid fa-database"></i> questionBanks</span><span class="arena-pill"><i class="fa-solid fa-cloud"></i> Firestore</span><span class="arena-pill"><i class="fa-solid fa-shield-halved"></i> Anti-cheat</span></div></div><div class="text-right"><p class="text-sm text-orange-100 font-bold">Chế độ</p><p class="text-4xl font-black">1 VS 1</p></div></div></section><section class="grid lg:grid-cols-[.85fr_1.15fr] gap-5"><div class="glass-card p-5"><h3 class="text-2xl font-black"><i class="fa-solid fa-bolt text-orange-500"></i> Bắt đầu trận</h3><p class="text-sm mt-1" style="color:var(--muted)">Chủ đề hiện tại: <b>${esc(topic==='all'?'Tất cả':topicNameById(topic))}</b>. Mỗi trận tự chọn 10 câu hợp lệ.</p><div class="grid gap-3 mt-4"><button onclick="ArenaProductionQuickMatch()" class="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white py-4 rounded-2xl font-black"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Match</button><button onclick="ArenaProductionCreateRoom()" class="btn-primary text-white py-4 rounded-2xl font-black"><i class="fa-solid fa-plus"></i> Tạo phòng mới</button><button onclick="ArenaProductionReloadPanel()" class="btn-soft py-3 rounded-2xl font-black"><i class="fa-solid fa-rotate"></i> Tải lại danh sách phòng</button></div><div class="arena-cheat-log mt-4"><i class="fa-solid fa-circle-info"></i> Nếu vẫn báo không có câu hỏi, mở Ngân hàng câu hỏi kiểm tra các trường <b>type/options/answer</b>.</div></div><div class="glass-card p-5"><h3 class="text-2xl font-black mb-3"><i class="fa-solid fa-door-open text-orange-500"></i> Phòng đang mở</h3>${roomListHTML(rooms)}</div></section></div>`;
+  }
+  async function renderProductionPanel(){
+    const panel=$('arenaPanel'); if(!panel) return;
+    panel.innerHTML='<div class="glass-card p-5 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-orange-500"></i><p class="font-black mt-2">Đang tải Battle Production...</p></div>';
+    panel.innerHTML=await panelHTML();
+  }
+  async function createRoom(){
+    if(!hasFB()){ toast2('Cần đăng nhập và Firebase sẵn sàng để tạo phòng.','bad'); return; }
+    const topic=window.arenaState?.topic || 'all';
+    const qs=await loadProductionQuestions({topic,count:10});
+    if(!qs.length){ toast2('Chưa có câu trắc nghiệm hợp lệ cho Đấu Trường.','bad'); const panel=$('arenaPanel'); if(panel) panel.innerHTML=questionErrorHTML(); return; }
+    try{
+      const my=currentId(); const ref=await db.collection('arenaRooms').add({
+        mode:'production', version:'2026-05-03-full', title:'Phòng đấu của '+currentName(), hostId:my, hostName:currentName(),
+        players:[my], playerNames:{[my]:currentName()}, playerClassMap:{[my]:currentClass()}, readyMap:{[my]:false},
+        status:'waiting', topicId:String(topic), topicName:topic==='all'?'Tổng hợp':topicNameById(topic), questionCount:qs.length,
+        durationMs:8*60*1000, questions:qs, createdAt:nowServer(), createdAtMs:Date.now(), updatedAt:nowServer(), lastActivityMs:Date.now()
+      });
+      await ref.collection('players').doc(my).set({userId:my,authUid:auth.currentUser.uid,deviceId:deviceId(),name:currentName(),className:currentClass(),ready:false,answers:{},answered:0,score:0,percent:0,submitted:false,cheatCount:0,joinedAt:nowServer(),updatedAt:nowServer()},{merge:true});
+      toast2('Đã tạo phòng production: '+ref.id.slice(0,8),'ok'); openRoom(ref.id);
+    }catch(e){ toast2('Chưa tạo được phòng: '+(e.message||e),'bad'); console.error(e); }
+  }
+  async function joinRoom(id){
+    if(!hasFB()){ toast2('Cần đăng nhập để tham gia phòng.','bad'); return; }
+    try{
+      const my=currentId(); const ref=db.collection('arenaRooms').doc(id);
+      await db.runTransaction(async tx=>{
+        const s=await tx.get(ref); if(!s.exists) throw new Error('Phòng không tồn tại');
+        const r=s.data()||{}; if(!['waiting','countdown'].includes(r.status||'waiting')) throw new Error('Trận đã bắt đầu');
+        let players=Array.isArray(r.players)?r.players.filter(Boolean):[];
+        if(!players.includes(my) && players.length>=2) throw new Error('Phòng đã đủ 2 người');
+        if(!players.includes(my)) players.push(my);
+        const ready={...(r.readyMap||{})}; players.forEach(p=>{ if(ready[p]!==true) ready[p]=false; }); ready[my]=false;
+        tx.set(ref,{players,playerNames:{...(r.playerNames||{}),[my]:currentName()},playerClassMap:{...(r.playerClassMap||{}),[my]:currentClass()},readyMap:ready,status:'waiting',countdownUntilMs:0,updatedAt:nowServer(),lastActivityMs:Date.now()},{merge:true});
+        tx.set(ref.collection('players').doc(my),{userId:my,authUid:auth.currentUser.uid,deviceId:deviceId(),name:currentName(),className:currentClass(),ready:false,answers:{},answered:0,score:0,percent:0,submitted:false,cheatCount:0,joinedAt:nowServer(),updatedAt:nowServer()},{merge:true});
+      });
+      toast2('Đã tham gia phòng. Bấm “Tôi đã sẵn sàng”.','ok'); openRoom(id);
+    }catch(e){ toast2('Chưa tham gia được: '+(e.message||e),'bad'); console.error(e); }
+  }
+  async function quickMatch(){
+    if(!hasFB()){ toast2('Cần đăng nhập và Firebase sẵn sàng.','bad'); return; }
+    try{
+      const rooms=await loadRooms();
+      const my=currentId();
+      const room=rooms.find(r => r.status==='waiting' && !(r.players||[]).includes(my) && (r.players||[]).length < 2);
+      if(room) await joinRoom(room.id); else await createRoom();
+    }catch(e){ toast2('Quick Match lỗi: '+(e.message||e),'bad'); }
+  }
+  function openRoom(id){
+    if(!hasFB()) return; clearLive(); bindAntiCheat(); A.roomId=id;
+    const ref=db.collection('arenaRooms').doc(id);
+    A.unsubs.push(ref.onSnapshot(s=>{ if(!s.exists){toast2('Phòng đã bị xóa.','bad'); renderProductionPanel(); return;} A.room={id:s.id,...s.data()}; if(A.room.status==='finished') renderResult(); else renderRoom(); }));
+    A.unsubs.push(ref.collection('players').onSnapshot(s=>{ A.players={}; s.forEach(d=>A.players[d.id]={id:d.id,...d.data()}); const mine=A.players[currentId()]; if(mine?.answers) A.answers={...mine.answers}; if(A.room){ if(A.room.status==='finished') renderResult(); else renderRoom(); }}));
+  }
+  function mine(){ return A.players[currentId()] || {}; }
+  function calc(room, answers){
+    const qs=room?.questions||[]; let score=0, answered=0;
+    qs.forEach((q,i)=>{ if(answers && answers[i] !== undefined && answers[i] !== null && answers[i] !== ''){ answered++; if(Number(answers[i])===Number(q.answer)) score++; } });
+    const total=qs.length||0, percent=total?Math.round(score*100/total):0;
+    return {score,total,answered,percent};
+  }
+  async function saveProgress(extra={}){
+    if(!A.roomId || !hasFB()) return;
+    const st=calc(A.room,A.answers); const my=currentId();
+    await db.collection('arenaRooms').doc(A.roomId).collection('players').doc(my).set({userId:my,name:currentName(),className:currentClass(),answers:A.answers,...st,lastSeenAt:nowServer(),updatedAt:nowServer(),...extra},{merge:true});
+    await db.collection('arenaRooms').doc(A.roomId).set({lastActivityMs:Date.now(),updatedAt:nowServer()},{merge:true}).catch(()=>{});
+  }
+  async function setReady(flag){
+    if(!A.roomId || !hasFB()) return;
+    const my=currentId(); const ref=db.collection('arenaRooms').doc(A.roomId);
+    await ref.set({readyMap:{...((A.room||{}).readyMap||{}),[my]:!!flag},updatedAt:nowServer(),lastActivityMs:Date.now()},{merge:true});
+    await ref.collection('players').doc(my).set({ready:!!flag,updatedAt:nowServer()},{merge:true});
+    setTimeout(maybeCountdown,250);
+  }
+  async function maybeCountdown(){
+    const r=A.room; if(!r || !hasFB()) return;
+    const players=r.players||[], ready=r.readyMap||{};
+    const allReady=players.length===2 && players.every(p => ready[p]===true || A.players[p]?.ready===true);
+    if(!allReady){ toast2('Cần đủ 2 người và cả hai đều sẵn sàng.','info'); return; }
+    if(r.hostId !== currentId()){ toast2('Đang chờ chủ phòng bấm bắt đầu hoặc hệ thống tự đồng bộ.','info'); return; }
+    const startsAt=Date.now()+3200;
+    await db.collection('arenaRooms').doc(A.roomId).set({status:'countdown',countdownUntilMs:startsAt,updatedAt:nowServer(),lastActivityMs:Date.now()},{merge:true});
+    setTimeout(async()=>{
+      const snap=await db.collection('arenaRooms').doc(A.roomId).get(); const latest=snap.data()||{};
+      if(latest.status==='countdown') await db.collection('arenaRooms').doc(A.roomId).set({status:'playing',startedAt:nowServer(),startedAtMs:Date.now(),endsAtMs:Date.now()+(latest.durationMs||8*60*1000),updatedAt:nowServer()},{merge:true});
+    },3300);
+  }
+  function renderRoom(){
+    const r=A.room; if(!r) return;
+    if(r.status==='playing'){ renderBattle(); return; }
+    const players=r.players||[], ready=r.readyMap||{}, my=currentId(), iAm=players.includes(my), mineReady=ready[my]===true || A.players[my]?.ready===true;
+    const allReady=players.length===2 && players.every(p => ready[p]===true || A.players[p]?.ready===true);
+    if(r.status==='countdown') showCountdown(Math.max(0,Math.ceil(((r.countdownUntilMs||Date.now())-Date.now())/1000)));
+    $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-hourglass-half"></i> Phòng chờ Production</span><h2 class="text-3xl font-black mt-2">${esc(r.title||'Phòng đấu')}</h2><p class="text-orange-100">Mã phòng: <b>${esc(A.roomId.slice(0,8))}</b> • ${esc(r.topicName||'Tổng hợp')} • ${r.questions?.length||0} câu</p></div><div class="text-right"><p class="text-sm text-orange-100 font-bold">Người chơi</p><p class="text-5xl font-black">${players.length}/2</p></div></div></section><section class="grid lg:grid-cols-[1.05fr_.95fr] gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-users text-orange-500"></i> Sảnh chờ</h3><div class="arena-lobby-stage space-y-3">${[0,1].map(slot=>{const id=players[slot]; if(!id) return `<div class="arena-lobby-player"><div class="flex items-center gap-3"><div class="arena-avatar fire"><i class="fa-solid fa-user-plus"></i></div><div><b>Đang chờ đối thủ...</b><p class="text-xs" style="color:var(--muted)">Học sinh khác bấm Quick Match hoặc nhập phòng</p></div></div><span class="mini-badge">Trống</span></div>`; const p=A.players[id]||{}; const ok=ready[id]===true || p.ready===true; return `<div class="arena-lobby-player ${ok?'ready':''}"><div class="flex items-center gap-3"><div class="arena-avatar ${id===my?'':'fire'}"><i class="fa-solid ${id===my?'fa-user-graduate':'fa-dragon'}"></i></div><div><b>${esc((r.playerNames||{})[id]||p.name||id)}</b><p class="text-xs" style="color:var(--muted)">${id===r.hostId?'Chủ phòng':'Người chơi'} • ${esc(p.className || (r.playerClassMap||{})[id] || '')}</p></div></div><div class="flex items-center gap-2"><span class="arena-ready-dot"></span><span class="mini-badge">${ok?'Đã sẵn sàng':'Chưa ready'}</span></div></div>`;}).join('')}</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-gamepad text-orange-500"></i> Điều khiển</h3><button onclick="ArenaProductionJoinRoom('${esc(A.roomId)}')" class="w-full btn-soft py-3 rounded-2xl font-black mb-3" ${iAm?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> Tham gia phòng</button><button onclick="ArenaProductionReady(${mineReady?'false':'true'})" class="w-full ${mineReady?'arena-unready-btn':'arena-ready-btn'} py-4 rounded-2xl font-black mb-3" ${!iAm||r.status==='countdown'?'disabled':''}><i class="fa-solid ${mineReady?'fa-rotate-left':'fa-circle-check'}"></i> ${mineReady?'Hủy sẵn sàng':'Tôi đã sẵn sàng'}</button><button onclick="ArenaProductionStartCountdown()" class="w-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white py-4 rounded-2xl font-black" ${!(r.hostId===my && allReady) || r.status==='countdown'?'disabled':''}><i class="fa-solid fa-stopwatch"></i> Bắt đầu 3-2-1</button><button onclick="arenaSwitchTab('phase5')" class="w-full mt-3 btn-soft py-3 rounded-2xl font-black"><i class="fa-solid fa-arrow-left"></i> Về Battle Production</button></div></section></div>`;
+  }
+  function showCountdown(n){
+    let old=document.getElementById('arenaProductionCountdown'); if(old) old.remove();
+    if(n<=0) return;
+    const d=document.createElement('div'); d.id='arenaProductionCountdown'; d.className='arena-countdown-overlay'; d.innerHTML=`<div><div class="arena-countdown-number">${n}</div><p class="text-2xl font-black">Chuẩn bị vào trận!</p></div>`; document.body.appendChild(d); setTimeout(()=>d.remove(),900);
+  }
+  function playerPanel(id,kind){
+    const r=A.room||{}, p=A.players[id]||{}, st=id===currentId()?calc(r,A.answers):calc(r,p.answers||{}), pct=st.total?Math.round(st.answered*100/st.total):0;
+    return `<div class="arena-fighter-card ${kind}"><div class="flex justify-between gap-3"><div class="flex items-center gap-3"><div class="arena-avatar ${kind==='opponent'?'fire':''}"><i class="fa-solid ${kind==='me'?'fa-user-graduate':'fa-dragon'}"></i></div><div><h3 class="font-black">${esc(p.name || (r.playerNames||{})[id] || (kind==='me'?currentName():'Đối thủ'))}</h3><p class="text-xs" style="color:var(--muted)">${p.submitted?'Đã nộp':'Đang thi'} • ${p.cheatCount||0} cảnh báo</p></div></div><div class="text-right"><b class="text-2xl">${st.score}</b><p class="text-xs" style="color:var(--muted)">điểm</p></div></div><div class="mt-4"><div class="flex justify-between text-xs font-black mb-1" style="color:var(--muted)"><span>Tiến độ</span><span>${st.answered}/${st.total}</span></div><div class="arena-battle-progress"><div class="arena-battle-fill ${kind==='opponent'?'enemy':''}" style="width:${pct}%"></div></div></div></div>`;
+  }
+  function renderBattle(){
+    const r=A.room||{}, qs=r.questions||[], my=currentId(), op=(r.players||[]).find(x=>x!==my), submitted=!!mine().submitted;
+    $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-topbar glass-card p-4"><div class="flex flex-wrap justify-between gap-3 items-center"><div><span class="mini-badge"><i class="fa-solid fa-satellite-dish"></i> Battle Production</span><h2 class="text-2xl font-black mt-1">${esc(currentName())} vs ${esc(A.players[op]?.name || (r.playerNames||{})[op] || 'Đối thủ')}</h2><p class="text-xs mt-1" style="color:var(--muted)">Đồng bộ đáp án, tiến độ, nộp bài và anti-cheat theo thời gian thực.</p></div><div class="text-right"><p class="text-xs font-bold" style="color:var(--muted)">Thời gian</p><div id="arenaProductionTimer" class="arena-countdown">--:--</div></div></div><div class="arena-battle-grid mt-4">${playerPanel(my,'me')}<div class="arena-vs-badge">VS</div>${playerPanel(op,'opponent')}</div>${submitted?'<div class="arena-submit-banner mt-3"><i class="fa-solid fa-hourglass-half"></i> Em đã nộp bài, chờ đối thủ hoặc hết giờ.</div>':''}</section><section class="grid lg:grid-cols-[300px_1fr] gap-5"><aside class="glass-card p-4"><h3 class="font-black mb-3">Tiến độ câu hỏi</h3><div class="question-nav-grid">${qs.map((q,i)=>`<button class="qnav-btn ${A.answers[i]!==undefined?'answered':''}" onclick="document.getElementById('apq${i}').scrollIntoView({behavior:'smooth',block:'start'})">${i+1}</button>`).join('')}</div><button onclick="ArenaProductionSubmit()" class="w-full mt-4 focus-submit-btn px-4 py-3 rounded-2xl font-black" ${submitted?'disabled':''}><i class="fa-solid fa-flag-checkered"></i> ${submitted?'Đã nộp':'Nộp bài'}</button></aside><div class="space-y-4">${qs.map((q,i)=>`<div id="apq${i}" class="glass-card p-5 exam-question-card"><div class="flex justify-between gap-3"><h3 class="font-black text-lg">Câu ${i+1}</h3><span class="mini-badge">${A.answers[i]!==undefined?'Đã chọn':'Chưa làm'}</span></div><div class="math-content mt-2">${q.text}</div><div class="grid md:grid-cols-2 gap-3 mt-4">${q.options.map((op,k)=>`<button onclick="ArenaProductionChoose(${i},${k})" class="option-card text-left ${Number(A.answers[i])===k?'selected':''}" ${submitted?'disabled':''}><b>${'ABCD'[k]}.</b> <span class="math-content">${op}</span></button>`).join('')}</div></div>`).join('')}</div></section></div>`;
+    startTimer(); if(window.MathJax?.typesetPromise) MathJax.typesetPromise().catch(()=>{});
+  }
+  function startTimer(){
+    if(A.timer) clearInterval(A.timer);
+    const tick=()=>{ const left=Math.max(0,(A.room?.endsAtMs||Date.now())-Date.now()); const m=Math.floor(left/60000), s=Math.floor((left%60000)/1000); const el=$('arenaProductionTimer'); if(el) el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(left<=0 && !mine().submitted) submit(true); };
+    tick(); A.timer=setInterval(tick,1000);
+  }
+  async function choose(i,k){ if(mine().submitted){toast2('Em đã nộp bài.','bad');return;} A.answers={...A.answers,[i]:k}; playSound('click'); renderBattle(); await saveProgress(); }
+  async function submit(auto=false){
+    if(!A.roomId) return; playSound('submit');
+    await saveProgress({submitted:true,submittedAt:nowServer(),autoSubmit:!!auto});
+    const players=A.room?.players||[]; const all=players.every(id => id===currentId() ? true : A.players[id]?.submitted);
+    const expired=Date.now() >= (A.room?.endsAtMs||0);
+    if(all || expired) await finishRoom(); else toast2('Đã nộp bài, đang chờ đối thủ.','ok');
+  }
+  async function finishRoom(){
+    if(A.finishing || !hasFB() || !A.roomId || !A.room) return; A.finishing=true;
+    try{
+      const ref=db.collection('arenaRooms').doc(A.roomId);
+      const latest=await ref.get(); if(latest.exists && latest.data().status==='finished') return;
+      const r={...A.room,...(latest.data()||{})}, players=r.players||[], results={};
+      players.forEach(id=>{ const p=id===currentId()?{...mine(),answers:A.answers,submitted:true}:A.players[id]||{}; results[id]={userId:id,name:p.name||(r.playerNames||{})[id]||id,className:p.className||(r.playerClassMap||{})[id]||'',...calc(r,p.answers||{}),submitted:!!p.submitted,cheatCount:p.cheatCount||0}; });
+      const sorted=players.slice().sort((a,b)=>(results[b].score-results[a].score)||(results[b].answered-results[a].answered));
+      const draw=players.length===2 && results[players[0]].score===results[players[1]].score && results[players[0]].answered===results[players[1]].answered;
+      const winnerId=draw?'':sorted[0]; const eloInfo=await buildElo(players,results,winnerId,draw);
+      await ref.set({status:'finished',finishedAt:nowServer(),finishedAtMs:Date.now(),results,winnerId,draw,eloInfo,updatedAt:nowServer()},{merge:true});
+      await db.collection('arenaHistory').doc(A.roomId).set({roomId:A.roomId,mode:'production',players,winnerId,draw,results,eloInfo,topicId:r.topicId||'',topicName:r.topicName||'',createdAt:nowServer(),createdAtMs:Date.now()},{merge:true});
+      for(const id of players){ const info=eloInfo[id]||{}, res=results[id]||{}; await db.collection('arenaPlayers').doc(id).set({id,userId:id,name:res.name,className:res.className,elo:info.newElo||1000,rankName:rankByElo(info.newElo||1000).name,xp:firebase.firestore.FieldValue.increment(info.xpDelta||0),matches:firebase.firestore.FieldValue.increment(1),wins:firebase.firestore.FieldValue.increment(id===winnerId?1:0),losses:firebase.firestore.FieldValue.increment(!draw&&id!==winnerId?1:0),draws:firebase.firestore.FieldValue.increment(draw?1:0),updatedAt:nowServer(),lastRoomId:A.roomId},{merge:true}).catch(console.warn); }
+    }catch(e){ console.error(e); toast2('Chưa kết thúc được trận: '+(e.message||e),'bad'); }
+    finally{ A.finishing=false; }
+  }
+  async function getPlayer(id){ const s=await db.collection('arenaPlayers').doc(id).get().catch(()=>null); return s?.exists?s.data():{elo:1000}; }
+  function rankByElo(elo=1000){ elo=Number(elo||1000); if(elo>=1900)return{name:'Kim cương'}; if(elo>=1650)return{name:'Bạch kim'}; if(elo>=1400)return{name:'Vàng'}; if(elo>=1200)return{name:'Bạc'}; return{name:'Đồng'}; }
+  function eloDelta(a,b,outcome){ const expected=1/(1+Math.pow(10,((b||1000)-(a||1000))/400)); return Math.round(32*(outcome-expected)); }
+  async function buildElo(players,results,winner,draw){ const profiles={}; for(const id of players) profiles[id]=await getPlayer(id); const out={}; players.forEach(id=>{ const op=players.find(x=>x!==id); const oldElo=Number(profiles[id]?.elo||1000), opElo=Number(profiles[op]?.elo||1000); const outcome=draw?0.5:(id===winner?1:0); const d=eloDelta(oldElo,opElo,outcome); const newElo=Math.max(100,oldElo+d); const xpDelta=(id===winner?45:(draw?28:18))+Math.max(0,(results[id]?.score||0)*2); out[id]={oldElo,newElo,eloDelta:d,xpDelta,newRank:rankByElo(newElo).name}; }); return out; }
+  function renderResult(){
+    const r=A.room||{}, res=r.results||{}, my=currentId(), players=r.players||[], op=players.find(x=>x!==my), mineRes=res[my]||{}, opRes=res[op]||{}, win=r.winnerId===my, draw=!!r.draw, info=(r.eloInfo||{})[my]||{};
+    if(A.lastEffectRoom!==A.roomId){ A.lastEffectRoom=A.roomId; playSound(win?'win':draw?'submit':'lose'); if(win) confetti(); }
+    $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="result-hero ${win?'arena-result-win':draw?'':'arena-result-lose'}"><div class="flex flex-wrap justify-between gap-5"><div><p class="uppercase tracking-[.2em] text-xs font-black">Battle Production</p><h2 class="text-4xl font-black mt-2">${draw?'Hòa trận!':win?'Chiến thắng!':'Trận đấu kết thúc'}</h2><p class="mt-2 text-white/85">Em đạt ${mineRes.score||0}/${mineRes.total||0} • Đối thủ đạt ${opRes.score||0}/${opRes.total||0}</p><div class="mt-4 flex flex-wrap gap-2"><span class="arena-pill"><i class="fa-solid fa-ranking-star"></i> ${esc(info.newRank||rankByElo(info.newElo).name)}</span><span class="arena-pill"><i class="fa-solid fa-bolt"></i> +${info.xpDelta||0} XP</span><span class="arena-pill"><i class="fa-solid fa-chart-line"></i> ${Number(info.eloDelta||0)>=0?'+':''}${info.eloDelta||0} Elo</span></div></div><div class="score-ring" style="--p:${mineRes.percent||0}%"><div class="score-ring-inner"><b class="text-3xl">${mineRes.percent||0}%</b><span class="text-xs text-blue-100">Kết quả</span></div></div></div></section><section class="glass-card p-5"><h3 class="text-xl font-black mb-3">Bảng kết quả</h3><div class="space-y-3">${players.map(id=>{const rr=res[id]||{}, inf=(r.eloInfo||{})[id]||{}; return `<div class="arena-board-row"><div class="arena-medal ${id===r.winnerId?'gold':''}">${id===r.winnerId?'<i class="fa-solid fa-crown"></i>':draw?'<i class="fa-solid fa-handshake"></i>':'<i class="fa-solid fa-user"></i>'}</div><div><b>${esc(rr.name||id)}</b><p class="text-xs" style="color:var(--muted)">${esc(rr.className||'')}</p></div><div class="text-right"><b>${rr.score||0}/${rr.total||0}</b><p class="text-xs" style="color:var(--muted)">${rr.percent||0}%</p></div><div class="text-right"><b>${Number(inf.eloDelta||0)>=0?'+':''}${inf.eloDelta||0}</b><p class="text-xs" style="color:var(--muted)">Elo</p></div></div>`;}).join('')}</div></section><section class="flex flex-wrap gap-2"><button onclick="arenaSwitchTab('phase5')" class="btn-primary text-white px-5 py-3 rounded-2xl font-black"><i class="fa-solid fa-satellite-dish"></i> Đấu tiếp</button><button onclick="renderArena()" class="btn-soft px-5 py-3 rounded-2xl font-black"><i class="fa-solid fa-house"></i> Về Đấu Trường</button></section></div>`;
+  }
+  async function warn(kind){
+    if(!A.roomId || !hasFB() || !A.room || A.room.status!=='playing' || mine().submitted) return;
+    const my=currentId();
+    await db.collection('arenaRooms').doc(A.roomId).collection('players').doc(my).set({cheatCount:firebase.firestore.FieldValue.increment(1),lastCheat:kind,lastCheatAt:nowServer(),updatedAt:nowServer()},{merge:true}).catch(()=>{});
+  }
+  function bindAntiCheat(){
+    if(window.__ARENA_PROD_ANTICHEAT_BOUND__) return; window.__ARENA_PROD_ANTICHEAT_BOUND__=true;
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) warn('Rời tab'); });
+    window.addEventListener('blur',()=>warn('Mất focus'));
+    document.addEventListener('copy',()=>warn('Copy nội dung'));
+    document.addEventListener('paste',()=>warn('Paste nội dung'));
+  }
+  function playSound(type){
+    try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(), g=ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value=type==='win'?880:type==='lose'?180:type==='submit'?520:360; g.gain.value=.04; o.start(); setTimeout(()=>{o.stop();ctx.close();},140); }catch(e){}
+  }
+  function confetti(){
+    for(let i=0;i<90;i++){ const d=document.createElement('div'); d.className='arena-confetti-piece'; d.style.left=Math.random()*100+'vw'; d.style.background=`hsl(${Math.random()*360},100%,60%)`; d.style.animationDelay=(Math.random()*0.35)+'s'; document.body.appendChild(d); setTimeout(()=>d.remove(),2200); }
+  }
+
+  window.ArenaProductionCreateRoom=createRoom;
+  window.ArenaProductionJoinRoom=joinRoom;
+  window.ArenaProductionQuickMatch=quickMatch;
+  window.ArenaProductionOpenRoom=openRoom;
+  window.ArenaProductionReady=setReady;
+  window.ArenaProductionStartCountdown=maybeCountdown;
+  window.ArenaProductionChoose=choose;
+  window.ArenaProductionSubmit=()=>submit(false);
+  window.ArenaProductionReloadPanel=renderProductionPanel;
+  window.loadArenaQuestionsProduction=loadProductionQuestions;
+
+  const oldSwitch = window.arenaSwitchTab;
+  window.arenaSwitchTab = function(tab){
+    if(tab === 'phase5' || tab === 'production'){
+      if(window.arenaState) window.arenaState.tab='phase5';
+      if(window.renderArena) window.renderArena();
+      setTimeout(renderProductionPanel,80);
+      return false;
+    }
+    return oldSwitch ? oldSwitch(tab) : null;
+  };
+  const oldRender = window.renderArena;
+  window.renderArena = function(){
+    oldRender && oldRender();
+    setTimeout(()=>{
+      const bar=document.querySelector('.arena-tabbar');
+      if(bar && !bar.querySelector('[data-production-arena]')){
+        bar.insertAdjacentHTML('beforeend',`<button data-production-arena class="${window.arenaState&&window.arenaState.tab==='phase5'?'active':''}" onclick="arenaSwitchTab('phase5')"><i class="fa-solid fa-rocket"></i> Battle Production</button>`);
+      }
+      if(window.arenaState && window.arenaState.tab==='phase5'){
+        const badge=document.querySelector('.arena-hero .arena-pill'); if(badge) badge.innerHTML='<i class="fa-solid fa-rocket"></i> Math Arena Full Production';
+        renderProductionPanel();
+      }
+    },120);
+  };
+})();
+</script>
+
 </body>
 </html>
 
