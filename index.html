@@ -6786,31 +6786,61 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   const toast=(m,t='info')=>window.toast?window.toast(m,t):alert(m);
   let live={room:null,roomId:null,players:{},unsubs:[],timer:null,countdownTimer:null,remain:0,answers:{},antiBound:false,lastEffectRoom:null,lastCountdownSecond:null};
   function clearLive(){live.unsubs.forEach(u=>{try{u()}catch(e){}});live.unsubs=[]; if(live.timer) clearInterval(live.timer); if(live.countdownTimer) clearInterval(live.countdownTimer); live.timer=null; live.countdownTimer=null; removeCountdownOverlay();}
+  function normalizeArenaAnswer(raw){
+    if(raw===undefined||raw===null) return 0;
+    if(typeof raw==='number' && Number.isFinite(raw)) return Math.max(0,Math.min(3,Math.trunc(raw)));
+    const s=String(raw).trim();
+    if(/^[ABCD]$/i.test(s)) return 'ABCD'.indexOf(s.toUpperCase());
+    const n=Number(s); if(Number.isFinite(n)) return Math.max(0,Math.min(3,Math.trunc(n)));
+    return 0;
+  }
   function qPool(){
     const src=[];
     (window.questionBank||[]).forEach(q=>src.push(q));
     (window.exams||[]).forEach(e=>(e.questions||[]).forEach(q=>src.push({...q,topicId:q.topicId||e.topicId,sourceExamTitle:e.title})));
     const seen=new Set();
-    return src.filter(q=>{
-      const id=String(q.id||q.bankId||q.text||Math.random()); if(seen.has(id)) return false; seen.add(id);
-      return q && q.text && Array.isArray(q.options) && q.options.length>=2 && (q.answer!==undefined || q.correctAnswer!==undefined);
+    return src.map((q,idx)=>{
+      const options=Array.isArray(q?.options)?q.options:(Array.isArray(q?.choices)?q.choices:[]);
+      const rawAnswer=q?.answer!==undefined?q.answer:(q?.correctAnswer!==undefined?q.correctAnswer:q?.answerText);
+      return {...q,_arenaId:String(q?.id||q?.bankId||q?.sourceQuestionId||q?.text||('arena_'+idx)),options,answer:normalizeArenaAnswer(rawAnswer)};
+    }).filter(q=>{
+      if(!q || !q.text || !Array.isArray(q.options) || q.options.length<4) return false;
+      const id=q._arenaId; if(seen.has(id)) return false; seen.add(id);
+      return q.options.slice(0,4).every(op=>String(op??'').trim().length>0) && q.answer>=0 && q.answer<=3;
     });
+  }
+  function arenaFallbackQuestions(){
+    return [
+      {id:'p5a',type:'mc',text:'Đạo hàm của hàm số $y=x^2$ là',options:['$2x$','$x$','$x^3$','$1$'],answer:0,topicId:4,solution:'$(x^2)^{\prime}=2x$.'},
+      {id:'p5b',type:'mc',text:'Thể tích khối nón bán kính đáy $r$, chiều cao $h$ là',options:['$\pi r^2h$','$\dfrac13\pi r^2h$','$2\pi rh$','$4\pi r^2$'],answer:1,topicId:3,solution:'Công thức $V=\dfrac13\pi r^2h$.'},
+      {id:'p5c',type:'mc',text:'Nếu $y=\ln x$ với $x>0$ thì $y\prime$ bằng',options:['$x$','$\dfrac1x$','$e^x$','$\ln x$'],answer:1,topicId:4,solution:'$(\ln x)^{\prime}=\dfrac1x$.'},
+      {id:'p5d',type:'mc',text:'Công thức diện tích mặt cầu bán kính $R$ là',options:['$4\pi R^2$','$\pi R^2$','$\dfrac43\pi R^3$','$2\pi R$'],answer:0,topicId:3,solution:'Diện tích mặt cầu là $S=4\pi R^2$.'},
+      {id:'p5e',type:'mc',text:'Một vectơ pháp tuyến của mặt phẳng $ax+by+cz+d=0$ là',options:['$(a;b;c)$','$(b;c;d)$','$(a;c;d)$','$(1;1;1)$'],answer:0,topicId:6,solution:'Mặt phẳng có vectơ pháp tuyến $(a;b;c)$.'},
+      {id:'p5f',type:'mc',text:'Tập xác định của hàm số $y=\sqrt{x-2}$ là',options:['$[2;+\infty)$','$(-\infty;2]$','$\mathbb R$','$(2;+\infty)$'],answer:0,topicId:1,solution:'Điều kiện $x-2\ge0\Leftrightarrow x\ge2$.'},
+      {id:'p5g',type:'mc',text:'Giá trị của $\log_2 8$ bằng',options:['$2$','$3$','$4$','$8$'],answer:1,topicId:2,solution:'Vì $2^3=8$ nên $\log_2 8=3$.'},
+      {id:'p5h',type:'mc',text:'Nguyên hàm của hàm số $f(x)=2x$ là',options:['$x^2+C$','$2+C$','$2x^2+C$','$\dfrac{x^2}{2}+C$'],answer:0,topicId:5,solution:'$\int 2x\,dx=x^2+C$.'},
+      {id:'p5i',type:'mc',text:'Trong không gian $Oxyz$, điểm $A(1;2;3)$ có tung độ bằng',options:['$1$','$2$','$3$','$6$'],answer:1,topicId:6,solution:'Tung độ là tọa độ thứ hai, bằng $2$.'},
+      {id:'p5j',type:'mc',text:'Hàm số $y=x^3$ đồng biến trên khoảng nào?',options:['$\mathbb R$','$(-\infty;0)$','$(0;+\infty)$','Không đồng biến trên khoảng nào'],answer:0,topicId:4,solution:'$y\prime=3x^2\ge0$ với mọi $x$, nên hàm số đồng biến trên $\mathbb R$.'}
+    ];
   }
   function pickQs(n=10){
     let arr=qPool();
     const topic=window.arenaState?.topic;
-    if(topic && topic!=='all'){ const f=arr.filter(q=>String(q.topicId)===String(topic)); if(f.length>=5) arr=f; }
-    arr=arr.sort(()=>Math.random()-.5).slice(0,n);
-    if(arr.length<5){
-      arr=[
-        {id:'p5a',type:'mc',text:'Đạo hàm của hàm số $y=x^2$ là',options:['$2x$','$x$','$x^3$','$1$'],answer:0,topicId:4},
-        {id:'p5b',type:'mc',text:'Thể tích khối nón bán kính đáy $r$, chiều cao $h$ là',options:['$\\pi r^2h$','$\\dfrac13\\pi r^2h$','$2\\pi rh$','$4\\pi r^2$'],answer:1,topicId:3},
-        {id:'p5c',type:'mc',text:'Nếu $y=\\ln x$ thì $y\\prime$ bằng',options:['$x$','$\\dfrac1x$','$e^x$','$\\ln x$'],answer:1,topicId:4},
-        {id:'p5d',type:'mc',text:'Công thức diện tích mặt cầu bán kính $R$ là',options:['$4\\pi R^2$','$\\pi R^2$','$\\dfrac43\\pi R^3$','$2\\pi R$'],answer:0,topicId:3},
-        {id:'p5e',type:'mc',text:'Một vectơ pháp tuyến của mặt phẳng $ax+by+cz+d=0$ là',options:['$(a;b;c)$','$(b;c;d)$','$(a;c;d)$','$(1;1;1)$'],answer:0,topicId:6}
-      ];
+    if(topic && topic!=='all'){
+      const f=arr.filter(q=>String(q.topicId)===String(topic));
+      if(f.length>=Math.min(5,n)) arr=f;
     }
-    return arr.map((q,i)=>({id:String(q.id||q.bankId||'q'+i),type:q.type||'mc',text:q.text||'',options:q.options||[],answer:Number(q.answer??q.correctAnswer??0),topicId:q.topicId||'',solution:q.solution||q.explanation||''}));
+    arr=arr.sort(()=>Math.random()-.5).slice(0,n);
+    if(arr.length<n){
+      const need=n-arr.length;
+      const used=new Set(arr.map(q=>String(q._arenaId||q.id)));
+      const extra=arenaFallbackQuestions().filter(q=>!used.has(String(q.id))).slice(0,need);
+      arr=arr.concat(extra);
+    }
+    return arr.slice(0,n).map((q,i)=>({
+      id:String(q._arenaId||q.id||q.bankId||'q'+i),type:'mc',text:q.text||'',options:(q.options||[]).slice(0,4),
+      answer:normalizeArenaAnswer(q.answer??q.correctAnswer??q.answerText),topicId:q.topicId||'',solution:q.solution||q.explanation||''
+    }));
   }
   function myProgress(){return live.players[uid()]||{answers:{},score:0,answered:0,submitted:false,name:uname(),className:uclass()};}
   function calcScore(room,answers){
@@ -6881,8 +6911,22 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   function roomCard(r){const n=(r.players||[]).length;return `<div class="arena-room-card arena-p5-room"><div class="flex justify-between gap-3"><div><span class="mini-badge"><i class="fa-solid fa-bolt"></i> ${esc(r.status==='waiting'?'Chờ ready':(r.status==='countdown'?'Đếm ngược':'Đang đấu'))}</span><h4 class="text-xl font-black mt-2">${esc(r.title||'Phòng realtime')}</h4><p class="text-sm" style="color:var(--muted)">Chủ phòng: ${esc(r.hostName||'')}</p></div><div class="text-right"><b class="text-2xl">${n}/2</b><p class="text-xs" style="color:var(--muted)">người</p></div></div><p class="text-sm mt-2" style="color:var(--muted)">${esc(r.topicName||'Tổng hợp')} • ${r.questionCount||10} câu • ${Math.round((r.durationMs||480000)/60000)} phút</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="arenaP5OpenRoom('${esc(r.id)}')" class="btn-soft py-2 rounded-xl font-black"><i class="fa-solid fa-eye"></i> Mở</button><button onclick="arenaP5JoinRoom('${esc(r.id)}')" class="btn-primary text-white py-2 rounded-xl font-black" ${r.status!=='waiting'||n>=2?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> Tham gia</button></div></div>`;}
   async function createRoom(opts={}){
     if(!fb()){toast('Cần đăng nhập và Firebase sẵn sàng.','bad');return;}
-    const topicId=window.arenaState?.topic||'all'; const topic=(TOPICS||[]).find(t=>String(t.id)===String(topicId)); const qs=pickQs(10); const idName=uname(); const quick=!!opts.quick;
-    try{const ref=await db.collection('arenaRooms').add({mode:'realtime',quickMatch:quick,title:(quick?'Quick Match - ':'Realtime Duel - ')+idName,hostId:uid(),hostName:idName,players:[uid()],playerNames:{[uid()]:idName},status:'waiting',readyMap:{[uid()]:false},countdownUntilMs:0,topicId:String(topicId),topicName:topic?.name||'Tổng hợp',questionCount:qs.length,durationMs:8*60*1000,questions:qs,createdAt:nowServer(),updatedAt:nowServer(),createdAtMs:Date.now()}); await ref.collection('players').doc(uid()).set({userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,joinedAt:nowServer(),ready:false,updatedAt:nowServer()},{merge:true}); localStorage.setItem(P5_KEY,ref.id); toast('Đã tạo phòng realtime.','ok'); openRoom(ref.id);}catch(err){toast('Chưa tạo được phòng realtime: '+(err.message||err),'bad');}
+    const topicId=window.arenaState?.topic||'all';
+    const topic=(TOPICS||[]).find(t=>String(t.id)===String(topicId));
+    const qs=pickQs(10);
+    if(qs.length<5){toast('Ngân hàng chưa có đủ câu hỏi trắc nghiệm hợp lệ, hệ thống sẽ dùng bộ câu hỏi mẫu an toàn.','info');}
+    const idName=uname(); const quick=!!opts.quick;
+    try{
+      await db.collection('arenaPlayers').doc(uid()).set({id:uid(),userId:uid(),name:idName,fullname:idName,className:uclass(),lastSeen:nowServer(),updatedAt:nowServer()},{merge:true}).catch(()=>{});
+      const ref=await db.collection('arenaRooms').add({
+        mode:'realtime',quickMatch:quick,title:(quick?'Quick Match - ':'Realtime Duel - ')+idName,
+        hostId:uid(),hostName:idName,players:[uid()],playerNames:{[uid()]:idName},status:'waiting',
+        readyMap:{[uid()]:false},countdownUntilMs:0,topicId:String(topicId),topicName:topic?.name||'Tổng hợp',
+        questionCount:qs.length,durationMs:8*60*1000,questions:qs,createdAt:nowServer(),updatedAt:nowServer(),createdAtMs:Date.now()
+      });
+      await ref.collection('players').doc(uid()).set({userId:uid(),name:idName,className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,joinedAt:nowServer(),ready:false,lastSeenAt:nowServer(),updatedAt:nowServer()},{merge:true});
+      localStorage.setItem(P5_KEY,ref.id); toast('Đã tạo phòng realtime.','ok'); openRoom(ref.id);
+    }catch(err){toast('Chưa tạo được phòng realtime: '+(err.message||err),'bad');}
   }
   async function joinRoom(id){
     if(!fb()){toast('Cần đăng nhập để tham gia.','bad');return;}
@@ -6948,13 +6992,16 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-topbar glass-card p-4"><div class="flex flex-wrap justify-between gap-3 items-center"><div><span class="mini-badge"><i class="fa-solid fa-satellite-dish"></i> Battle realtime</span><h2 class="text-2xl font-black mt-1">${esc(uname())} vs ${esc(op?.name||(r.playerNames||{})[opponent]||'Đối thủ')}</h2><p class="text-xs mt-1" style="color:var(--muted)">Đồng bộ điểm, tiến độ, trạng thái nộp bài và cảnh báo theo thời gian thực.</p></div><div class="text-right"><p class="text-xs font-bold" style="color:var(--muted)">Thời gian</p><div id="p5Timer" class="arena-countdown">--:--</div></div></div><div class="arena-battle-grid mt-4">${playerPanel(uid(),'me',qs)}<div class="arena-vs-badge">VS</div>${playerPanel(opponent,'opponent',qs)}</div>${opSubmitted&&!submitted?'<div class="arena-submit-banner mt-3"><i class="fa-solid fa-bell"></i> Đối thủ đã nộp bài. Em vẫn có thể làm tiếp đến khi hết giờ hoặc bấm nộp.</div>':''}${submitted?'<div class="arena-submit-banner mt-3"><i class="fa-solid fa-hourglass-half"></i> Em đã nộp bài. Kết quả sẽ hiện realtime khi đối thủ nộp hoặc hết giờ.</div>':''}${warn?`<div class="arena-cheat-log mt-3"><i class="fa-solid fa-shield-halved"></i> Cảnh báo anti-cheat của em: ${warn}. Hệ thống đã ghi nhận vào phòng đấu.</div>`:''}</section><section class="grid lg:grid-cols-[300px_1fr] gap-5"><aside class="glass-card p-4"><h3 class="font-black mb-3">Tiến độ câu hỏi</h3><div class="question-nav-grid">${qs.map((q,i)=>`<button class="qnav-btn ${live.answers[i]!==undefined?'answered':''}" onclick="document.getElementById('p5q${i}').scrollIntoView({behavior:'smooth',block:'start'})">${i+1}</button>`).join('')}</div><button onclick="arenaP5Submit()" class="w-full mt-4 focus-submit-btn px-4 py-3 rounded-2xl font-black" ${submitted?'disabled':''}><i class="fa-solid fa-flag-checkered"></i> ${submitted?'Đã nộp':'Nộp bài'}</button><button onclick="arenaSwitchTab('phase5')" class="w-full mt-3 btn-soft px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-door-open"></i> Về phòng realtime</button></aside><div class="space-y-4">${qs.map(qHTML).join('')}</div></section></div>`; startTimer(r); if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise();
   }
   function qHTML(q,i){return `<div id="p5q${i}" class="glass-card p-5 exam-question-card"><div class="flex justify-between gap-3"><h3 class="font-black text-lg">Câu ${i+1}</h3><span class="mini-badge">${live.answers[i]!==undefined?'Đã chọn':'Chưa làm'}</span></div><div class="math-content mt-2">${q.text}</div><div class="grid md:grid-cols-2 gap-3 mt-4">${(q.options||[]).map((op,k)=>`<button onclick="arenaP5Choose(${i},${k})" class="option-card text-left ${String(live.answers[i])===String(k)?'selected':''}" ${myProgress().submitted?'disabled':''}><b>${String.fromCharCode(65+k)}.</b> <span class="math-content">${op}</span></button>`).join('')}</div></div>`;}
-  function startTimer(r){ if(live.timer) clearInterval(live.timer); const tick=()=>{const left=Math.max(0,(r.endsAtMs||Date.now())-Date.now()); const m=Math.floor(left/60000),s=Math.floor((left%60000)/1000); const el=$('p5Timer'); if(el) el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(left<=0){clearInterval(live.timer); submit(true);}}; tick(); live.timer=setInterval(tick,1000); }
+  function startTimer(r){ if(live.timer) clearInterval(live.timer); live.autoSubmitted=false; const tick=()=>{const left=Math.max(0,(r.endsAtMs||Date.now())-Date.now()); const m=Math.floor(left/60000),s=Math.floor((left%60000)/1000); const el=$('p5Timer'); if(el) el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(left<=0 && !live.autoSubmitted){live.autoSubmitted=true; clearInterval(live.timer); submit(true);}}; tick(); live.timer=setInterval(tick,1000); }
   async function choose(i,k){if(myProgress().submitted){toast('Em đã nộp bài, không thể đổi đáp án.','bad');return;} live.answers={...(live.answers||{}),[i]:k}; playArenaSound('click'); renderBattle(live.room); await saveProgress();}
   async function submit(auto=false){
     if(!live.roomId||!live.room) return; const stat=calcScore(live.room,live.answers||{});
-    try{playArenaSound('submit'); await saveProgress({submitted:true,submittedAt:nowServer(),autoSubmit:!!auto}); const all=(live.room.players||[]).every(id=>id===uid()?true:live.players[id]?.submitted); if(all||auto) await finishRoom(); else toast('Đã nộp bài, chờ đối thủ.','ok');}catch(err){toast('Chưa nộp được: '+(err.message||err),'bad');}
+    try{playArenaSound('submit'); await saveProgress({submitted:true,submittedAt:nowServer(),autoSubmit:!!auto}); const all=(live.room.players||[]).every(id=>id===uid()?true:live.players[id]?.submitted); const expired=Date.now()>=(live.room.endsAtMs||0); if(all||expired) await finishRoom(); else toast('Đã nộp bài, chờ đối thủ.','ok');}catch(err){toast('Chưa nộp được: '+(err.message||err),'bad');}
   }
   async function finishRoom(){
+    if(live.finishing) return; live.finishing=true;
+    const latest=await db.collection('arenaRooms').doc(live.roomId).get().catch(()=>null);
+    if(latest?.exists && latest.data()?.status==='finished'){live.finishing=false; return;}
     const players=live.room.players||[]; const results={};
     players.forEach(id=>{const p=id===uid()?{...myProgress(),answers:live.answers,submitted:true}:live.players[id]; const st=calcScore(live.room,p?.answers||{}); results[id]={userId:id,name:p?.name||(live.room.playerNames||{})[id]||id,className:p?.className||'',...st,submitted:!!p?.submitted,cheatCount:p?.cheatCount||0};});
     const sorted=players.slice().sort((a,b)=>(results[b]?.score||0)-(results[a]?.score||0) || (results[b]?.answered||0)-(results[a]?.answered||0));
