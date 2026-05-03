@@ -295,6 +295,18 @@
     @media(max-width:1100px){.live-monitor-filter{grid-template-columns:1fr 1fr}.live-monitor-filter button{grid-column:1/-1}.live-student-card{grid-template-columns:1fr 1fr}.live-student-card>div:last-child{grid-column:1/-1}}
     @media(max-width:640px){.live-monitor-filter{grid-template-columns:1fr}.live-student-card{grid-template-columns:1fr}}
 
+  
+    /* ===== MATH ARENA - BƯỚC 5: REALTIME DUEL FIRESTORE ===== */
+    .arena-p5-hero{position:relative;overflow:hidden;border-radius:1.85rem;padding:1.35rem;background:linear-gradient(135deg,#111827,#b91c1c 48%,#f59e0b);color:white;border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 88px -40px rgba(2,6,23,.72)}
+    .arena-p5-hero:before{content:"";position:absolute;right:-5rem;top:-7rem;width:24rem;height:24rem;border-radius:999px;background:rgba(255,255,255,.13)}
+    .arena-p5-hero>*{position:relative;z-index:1}
+    .arena-p5-room{border-color:rgba(245,158,11,.32);background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(255,255,255,.55))}
+    html[data-theme="dark"] .arena-p5-room{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(15,23,42,.58))}
+    .arena-p5-topbar{position:sticky;top:5rem;z-index:25;border-color:rgba(245,158,11,.28)}
+    .arena-live-score{border:1px solid var(--line);border-radius:1.15rem;padding:.85rem;background:rgba(245,158,11,.08)}
+    .arena-live-score b{display:block;font-size:1.55rem;color:var(--brand);line-height:1}
+    .arena-live-score span{font-size:.78rem;font-weight:800;color:var(--muted)}
+
   </style>
 </head>
 <body>
@@ -6697,6 +6709,115 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     },0);
   };
   window.addEventListener('beforeunload',()=>{if(fbOK()) db.collection('arenaPlayers').doc(meId()).set({online:false,lastSeen:serverNow()},{merge:true}).catch(()=>{});});
+})();
+</script>
+
+<script>
+/* ===== MATH ARENA - BƯỚC 5: REALTIME DUEL CHUẨN FIRESTORE ===== */
+(function(){
+  if(window.__MATH_ARENA_PHASE5__) return; window.__MATH_ARENA_PHASE5__=true;
+  const P5_KEY='mathpro12_arena_phase5_room';
+  const esc=(s)=> (window.safe?window.safe(s):String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+  const fb=()=>!!(window.firebaseReady&&window.db&&window.auth&&auth.currentUser);
+  const nowServer=()=>firebase.firestore.FieldValue.serverTimestamp();
+  const uid=()=>auth.currentUser?.uid || currentUser?.id || 'local_'+Date.now();
+  const uname=()=>currentUser?.fullname||currentUser?.displayName||auth.currentUser?.displayName||auth.currentUser?.email||'Học sinh';
+  const uclass=()=>currentUser?.className || (Array.isArray(currentUser?.classNames)?currentUser.classNames[0]:'') || 'Chưa phân lớp';
+  const toast=(m,t='info')=>window.toast?window.toast(m,t):alert(m);
+  let live={room:null,roomId:null,players:{},unsubs:[],timer:null,remain:0,answers:{}};
+  function clearLive(){live.unsubs.forEach(u=>{try{u()}catch(e){}});live.unsubs=[]; if(live.timer) clearInterval(live.timer); live.timer=null;}
+  function qPool(){
+    const src=[];
+    (window.questionBank||[]).forEach(q=>src.push(q));
+    (window.exams||[]).forEach(e=>(e.questions||[]).forEach(q=>src.push({...q,topicId:q.topicId||e.topicId,sourceExamTitle:e.title})));
+    const seen=new Set();
+    return src.filter(q=>{
+      const id=String(q.id||q.bankId||q.text||Math.random()); if(seen.has(id)) return false; seen.add(id);
+      return q && q.text && Array.isArray(q.options) && q.options.length>=2 && (q.answer!==undefined || q.correctAnswer!==undefined);
+    });
+  }
+  function pickQs(n=10){
+    let arr=qPool();
+    const topic=window.arenaState?.topic;
+    if(topic && topic!=='all'){ const f=arr.filter(q=>String(q.topicId)===String(topic)); if(f.length>=5) arr=f; }
+    arr=arr.sort(()=>Math.random()-.5).slice(0,n);
+    if(arr.length<5){
+      arr=[
+        {id:'p5a',type:'mc',text:'Đạo hàm của hàm số $y=x^2$ là',options:['$2x$','$x$','$x^3$','$1$'],answer:0,topicId:4},
+        {id:'p5b',type:'mc',text:'Thể tích khối nón bán kính đáy $r$, chiều cao $h$ là',options:['$\\pi r^2h$','$\\dfrac13\\pi r^2h$','$2\\pi rh$','$4\\pi r^2$'],answer:1,topicId:3},
+        {id:'p5c',type:'mc',text:'Nếu $y=\\ln x$ thì $y\\prime$ bằng',options:['$x$','$\\dfrac1x$','$e^x$','$\\ln x$'],answer:1,topicId:4},
+        {id:'p5d',type:'mc',text:'Công thức diện tích mặt cầu bán kính $R$ là',options:['$4\\pi R^2$','$\\pi R^2$','$\\dfrac43\\pi R^3$','$2\\pi R$'],answer:0,topicId:3},
+        {id:'p5e',type:'mc',text:'Một vectơ pháp tuyến của mặt phẳng $ax+by+cz+d=0$ là',options:['$(a;b;c)$','$(b;c;d)$','$(a;c;d)$','$(1;1;1)$'],answer:0,topicId:6}
+      ];
+    }
+    return arr.map((q,i)=>({id:String(q.id||q.bankId||'q'+i),type:q.type||'mc',text:q.text||'',options:q.options||[],answer:Number(q.answer??q.correctAnswer??0),topicId:q.topicId||'',solution:q.solution||q.explanation||''}));
+  }
+  function myProgress(){return live.players[uid()]||{answers:{},score:0,answered:0,submitted:false,name:uname(),className:uclass()};}
+  function calcScore(room,answers){
+    const qs=room?.questions||[]; let score=0; qs.forEach((q,i)=>{ if(String(answers[i])===String(q.answer)) score++; });
+    return {score,total:qs.length,percent:qs.length?Math.round(score*100/qs.length):0,answered:Object.keys(answers||{}).length};
+  }
+  async function saveProgress(extra={}){
+    if(!fb()||!live.roomId||!live.room) return;
+    const stat=calcScore(live.room,live.answers||{});
+    await db.collection('arenaRooms').doc(live.roomId).collection('players').doc(uid()).set({
+      userId:uid(),name:uname(),className:uclass(),answers:live.answers||{},...stat,submitted:false,lastSeenAt:nowServer(),updatedAt:nowServer(),...extra
+    },{merge:true}).catch(err=>toast('Chưa lưu được tiến độ: '+(err.message||err),'bad'));
+  }
+  function phase5PanelHTML(){
+    const rooms=(window.onlineState?.rooms||[]).filter(r=>r.mode==='realtime' && ['waiting','playing'].includes(r.status));
+    return `<div class="space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4 items-start"><div><span class="arena-pill"><i class="fa-solid fa-satellite-dish"></i> Math Arena Phase 5</span><h3 class="text-3xl font-black mt-2">Realtime Duel chuẩn Firestore</h3><p class="text-sm mt-1 text-orange-100">Hai học sinh vào cùng một phòng, làm cùng một bộ câu hỏi, đồng bộ tiến độ và kết quả trực tiếp.</p></div><div class="flex flex-wrap gap-2"><button onclick="arenaP5CreateRoom()" class="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-plus"></i> Tạo phòng realtime</button><button onclick="arenaForceOnlineSync&&arenaForceOnlineSync()" class="btn-soft px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-rotate"></i> Tải phòng</button></div></div></section><section class="grid lg:grid-cols-[1fr_.85fr] gap-5"><div class="glass-card p-5"><h3 class="text-2xl font-black mb-3"><i class="fa-solid fa-door-open text-orange-500"></i> Phòng realtime đang mở</h3><div class="arena-room-grid">${rooms.map(roomCard).join('')||'<div class="arena-online-card text-center"><i class="fa-solid fa-users text-3xl text-orange-500"></i><p class="font-black mt-2">Chưa có phòng realtime.</p><p class="text-sm" style="color:var(--muted)">Tạo phòng rồi cho học sinh khác bấm tham gia.</p></div>'}</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-circle-info text-orange-500"></i> Cách hoạt động</h3><div class="space-y-3 text-sm" style="color:var(--muted)"><p><b>1.</b> Chủ phòng tạo phòng realtime.</p><p><b>2.</b> Học sinh thứ hai bấm tham gia.</p><p><b>3.</b> Chủ phòng bấm bắt đầu, cả hai làm cùng một đề.</p><p><b>4.</b> Hệ thống đồng bộ tiến độ, điểm, nộp bài và chọn người thắng.</p></div></div></section></div>`;
+  }
+  function roomCard(r){const n=(r.players||[]).length;return `<div class="arena-room-card arena-p5-room"><div class="flex justify-between gap-3"><div><span class="mini-badge"><i class="fa-solid fa-bolt"></i> ${esc(r.status==='waiting'?'Chờ đối thủ':'Đang đấu')}</span><h4 class="text-xl font-black mt-2">${esc(r.title||'Phòng realtime')}</h4><p class="text-sm" style="color:var(--muted)">Chủ phòng: ${esc(r.hostName||'')}</p></div><div class="text-right"><b class="text-2xl">${n}/2</b><p class="text-xs" style="color:var(--muted)">người</p></div></div><p class="text-sm mt-2" style="color:var(--muted)">${esc(r.topicName||'Tổng hợp')} • ${r.questionCount||10} câu • ${Math.round((r.durationMs||480000)/60000)} phút</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="arenaP5OpenRoom('${esc(r.id)}')" class="btn-soft py-2 rounded-xl font-black"><i class="fa-solid fa-eye"></i> Mở</button><button onclick="arenaP5JoinRoom('${esc(r.id)}')" class="btn-primary text-white py-2 rounded-xl font-black" ${r.status!=='waiting'||n>=2?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> Tham gia</button></div></div>`;}
+  async function createRoom(){
+    if(!fb()){toast('Cần đăng nhập và Firebase sẵn sàng.','bad');return;}
+    const topicId=window.arenaState?.topic||'all'; const topic=(TOPICS||[]).find(t=>String(t.id)===String(topicId)); const qs=pickQs(10); const idName=uname();
+    try{const ref=await db.collection('arenaRooms').add({mode:'realtime',title:'Realtime Duel - '+idName,hostId:uid(),hostName:idName,players:[uid()],playerNames:{[uid()]:idName},status:'waiting',topicId:String(topicId),topicName:topic?.name||'Tổng hợp',questionCount:qs.length,durationMs:8*60*1000,questions:qs,createdAt:nowServer(),updatedAt:nowServer(),createdAtMs:Date.now()}); localStorage.setItem(P5_KEY,ref.id); toast('Đã tạo phòng realtime.','ok'); openRoom(ref.id);}catch(err){toast('Chưa tạo được phòng realtime: '+(err.message||err),'bad');}
+  }
+  async function joinRoom(id){
+    if(!fb()){toast('Cần đăng nhập để tham gia.','bad');return;}
+    try{const ref=db.collection('arenaRooms').doc(id); await db.runTransaction(async tx=>{const s=await tx.get(ref); if(!s.exists) throw new Error('Phòng không còn tồn tại'); const r=s.data(); let players=Array.from(new Set([...(r.players||[]),uid()])); if(players.length>2) throw new Error('Phòng đã đủ người'); tx.set(ref,{players,playerNames:{...(r.playerNames||{}),[uid()]:uname()},updatedAt:nowServer()},{merge:true}); tx.set(ref.collection('players').doc(uid()),{userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,joinedAt:nowServer(),updatedAt:nowServer()},{merge:true});}); toast('Đã tham gia phòng realtime.','ok'); openRoom(id);}catch(err){toast('Chưa tham gia được: '+(err.message||err),'bad');}
+  }
+  function openRoom(id){
+    if(!fb()){toast('Cần đăng nhập.','bad');return;} clearLive(); live.roomId=id; localStorage.setItem(P5_KEY,id);
+    const ref=db.collection('arenaRooms').doc(id);
+    live.unsubs.push(ref.onSnapshot(s=>{if(!s.exists){toast('Phòng đã bị xóa.','bad');renderArena();return;} live.room={id:s.id,...s.data()}; renderRoom();}));
+    live.unsubs.push(ref.collection('players').onSnapshot(s=>{live.players={}; s.docs.forEach(d=>live.players[d.id]={id:d.id,...d.data()}); const mine=live.players[uid()]; if(mine?.answers) live.answers=mine.answers; renderRoom();}));
+  }
+  async function startRoom(){
+    if(!live.roomId||!live.room) return; const r=live.room; if(r.hostId!==uid() && !(window.isTeacherUser&&isTeacherUser())){toast('Chỉ chủ phòng/giáo viên được bắt đầu.','bad');return;} if((r.players||[]).length<2){toast('Cần đủ 2 học sinh để bắt đầu.','bad');return;}
+    try{await db.collection('arenaRooms').doc(live.roomId).set({status:'playing',startedAt:nowServer(),startedAtMs:Date.now(),endsAtMs:Date.now()+(r.durationMs||480000),updatedAt:nowServer()},{merge:true}); toast('Trận đấu bắt đầu!','ok');}catch(err){toast('Chưa bắt đầu được: '+(err.message||err),'bad');}
+  }
+  function renderRoom(){
+    if(!live.room) return; const r=live.room; if(r.status==='waiting') return renderLobby(r); if(r.status==='finished') return renderResult(r); return renderBattle(r);
+  }
+  function renderLobby(r){
+    const players=r.players||[]; $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-hourglass-half"></i> Phòng chờ realtime</span><h2 class="text-3xl font-black mt-2">${esc(r.title)}</h2><p class="text-orange-100">Mã phòng: <b>${esc((r.id||live.roomId).slice(0,8))}</b></p></div><div class="text-right"><p class="text-sm text-orange-100 font-bold">Người chơi</p><p class="text-5xl font-black">${players.length}/2</p></div></div></section><section class="grid md:grid-cols-2 gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-3">Danh sách người chơi</h3>${players.map(id=>`<div class="arena-board-row"><div class="arena-medal"><i class="fa-solid fa-user"></i></div><div><b>${esc((r.playerNames||{})[id]||live.players[id]?.name||id)}</b><p class="text-xs" style="color:var(--muted)">${id===r.hostId?'Chủ phòng':'Người chơi'}</p></div><div></div><div></div></div>`).join('')}</div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3">Điều khiển</h3><button onclick="arenaP5JoinRoom('${esc(live.roomId)}')" class="w-full btn-soft py-3 rounded-2xl font-black mb-3"><i class="fa-solid fa-right-to-bracket"></i> Tham gia phòng này</button><button onclick="arenaP5StartRoom()" class="w-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white py-4 rounded-2xl font-black" ${players.length<2?'disabled':''}><i class="fa-solid fa-play"></i> Bắt đầu trận</button><button onclick="renderArena()" class="w-full mt-3 btn-soft py-3 rounded-2xl font-black"><i class="fa-solid fa-arrow-left"></i> Về Đấu Trường</button></div></section></div>`;
+  }
+  function renderBattle(r){
+    const qs=r.questions||[]; const mine=myProgress(); const opponent=(r.players||[]).find(x=>x!==uid()); const op=opponent?live.players[opponent]:null;
+    $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-topbar glass-card p-4"><div class="flex flex-wrap justify-between gap-3 items-center"><div><span class="mini-badge"><i class="fa-solid fa-satellite-dish"></i> Realtime</span><h2 class="text-2xl font-black mt-1">${esc(uname())} vs ${esc(op?.name||(r.playerNames||{})[opponent]||'Đối thủ')}</h2></div><div class="text-right"><p class="text-xs font-bold" style="color:var(--muted)">Thời gian</p><div id="p5Timer" class="arena-countdown">--:--</div></div></div><div class="grid md:grid-cols-2 gap-3 mt-4"><div class="arena-live-score"><b>${mine.score||0}/${qs.length}</b><span>Điểm của em • đã làm ${mine.answered||0}</span></div><div class="arena-live-score"><b>${op?.score||0}/${qs.length}</b><span>Đối thủ • đã làm ${op?.answered||0}</span></div></div></section><section class="grid lg:grid-cols-[280px_1fr] gap-5"><aside class="glass-card p-4"><h3 class="font-black mb-3">Tiến độ realtime</h3><div class="question-nav-grid">${qs.map((q,i)=>`<button class="qnav-btn ${live.answers[i]!==undefined?'answered':''}" onclick="document.getElementById('p5q${i}').scrollIntoView({behavior:'smooth',block:'start'})">${i+1}</button>`).join('')}</div><button onclick="arenaP5Submit()" class="w-full mt-4 focus-submit-btn px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-flag-checkered"></i> Nộp bài</button></aside><div class="space-y-4">${qs.map(qHTML).join('')}</div></section></div>`; startTimer(r); if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise();
+  }
+  function qHTML(q,i){return `<div id="p5q${i}" class="glass-card p-5 exam-question-card"><div class="flex justify-between gap-3"><h3 class="font-black text-lg">Câu ${i+1}</h3><span class="mini-badge">${live.answers[i]!==undefined?'Đã chọn':'Chưa làm'}</span></div><div class="math-content mt-2">${q.text}</div><div class="grid md:grid-cols-2 gap-3 mt-4">${(q.options||[]).map((op,k)=>`<button onclick="arenaP5Choose(${i},${k})" class="option-card text-left ${String(live.answers[i])===String(k)?'selected':''}"><b>${String.fromCharCode(65+k)}.</b> <span class="math-content">${op}</span></button>`).join('')}</div></div>`;}
+  function startTimer(r){ if(live.timer) clearInterval(live.timer); const tick=()=>{const left=Math.max(0,(r.endsAtMs||Date.now())-Date.now()); const m=Math.floor(left/60000),s=Math.floor((left%60000)/1000); const el=$('p5Timer'); if(el) el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(left<=0){clearInterval(live.timer); submit(true);}}; tick(); live.timer=setInterval(tick,1000); }
+  async function choose(i,k){live.answers={...(live.answers||{}),[i]:k}; renderBattle(live.room); await saveProgress();}
+  async function submit(auto=false){
+    if(!live.roomId||!live.room) return; const stat=calcScore(live.room,live.answers||{});
+    try{await saveProgress({submitted:true,submittedAt:nowServer(),autoSubmit:!!auto}); const all=(live.room.players||[]).every(id=>id===uid()?true:live.players[id]?.submitted); if(all||auto) await finishRoom(); else toast('Đã nộp bài, chờ đối thủ.','ok');}catch(err){toast('Chưa nộp được: '+(err.message||err),'bad');}
+  }
+  async function finishRoom(){
+    const players=live.room.players||[]; const results={}; players.forEach(id=>{const p=id===uid()?{...myProgress(),answers:live.answers,submitted:true}:live.players[id]; const st=calcScore(live.room,p?.answers||{}); results[id]={userId:id,name:p?.name||(live.room.playerNames||{})[id]||id,className:p?.className||'',...st,submitted:!!p?.submitted};});
+    const winner=players.slice().sort((a,b)=>(results[b]?.score||0)-(results[a]?.score||0) || (results[b]?.answered||0)-(results[a]?.answered||0))[0]||'';
+    await db.collection('arenaRooms').doc(live.roomId).set({status:'finished',finishedAt:nowServer(),finishedAtMs:Date.now(),winnerId:winner,results,updatedAt:nowServer()},{merge:true});
+    await saveHistoryAndXP(results,winner);
+  }
+  async function saveHistoryAndXP(results,winner){
+    try{const r=live.room; const result=results[uid()]||{}; const xp=(uid()===winner?45:18)+Math.max(0,(result.score||0)*2); await db.collection('arenaHistory').add({roomId:live.roomId,mode:'realtime',players:r.players||[],winnerId:winner,results,createdAt:nowServer()}); await db.collection('arenaPlayers').doc(uid()).set({id:uid(),userId:uid(),name:uname(),fullname:uname(),className:uclass(),xp:firebase.firestore.FieldValue.increment(xp),wins:firebase.firestore.FieldValue.increment(uid()===winner?1:0),losses:firebase.firestore.FieldValue.increment(uid()===winner?0:1),lastSeen:nowServer(),updatedAt:nowServer()},{merge:true});}catch(e){console.warn(e);}
+  }
+  function renderResult(r){const res=r.results||{}; const mine=res[uid()]||{}; const win=r.winnerId===uid(); const players=r.players||[]; const other=players.find(x=>x!==uid()); const op=res[other]||{}; $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="result-hero ${win?'arena-result-win':'arena-result-lose'}"><div class="flex flex-wrap justify-between gap-5"><div><p class="uppercase tracking-[.2em] text-xs font-black">Realtime Duel</p><h2 class="text-4xl font-black mt-2">${win?'Chiến thắng realtime!':'Đã kết thúc trận'}</h2><p class="mt-2 text-white/85">Em đạt ${mine.score||0}/${mine.total||0} • Đối thủ đạt ${op.score||0}/${op.total||0}</p></div><div class="score-ring" style="--p:${mine.percent||0}%"><div class="score-ring-inner"><b class="text-3xl">${mine.percent||0}%</b><span class="text-xs text-blue-100">Kết quả</span></div></div></div></section><section class="grid md:grid-cols-2 gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-3">Bảng kết quả</h3>${players.map(id=>`<div class="arena-board-row"><div class="arena-medal ${id===r.winnerId?'gold':''}">${id===r.winnerId?'<i class="fa-solid fa-crown"></i>':'<i class="fa-solid fa-user"></i>'}</div><div><b>${esc(res[id]?.name||(r.playerNames||{})[id]||id)}</b><p class="text-xs" style="color:var(--muted)">${id===r.winnerId?'Người thắng':'Người chơi'}</p></div><div class="text-right"><b>${res[id]?.score||0}/${res[id]?.total||0}</b><p class="text-xs" style="color:var(--muted)">${res[id]?.percent||0}%</p></div><div></div></div>`).join('')}</div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3">Điều hướng</h3><button onclick="arenaSwitchTab('phase5')" class="w-full btn-primary text-white py-3 rounded-2xl font-black"><i class="fa-solid fa-satellite-dish"></i> Về realtime duel</button><button onclick="renderArena()" class="w-full mt-3 btn-soft py-3 rounded-2xl font-black"><i class="fa-solid fa-house"></i> Về Đấu Trường</button></div></section></div>`;}
+  window.arenaP5CreateRoom=createRoom; window.arenaP5JoinRoom=joinRoom; window.arenaP5OpenRoom=openRoom; window.arenaP5StartRoom=startRoom; window.arenaP5Choose=choose; window.arenaP5Submit=()=>submit(false);
+  const prevSwitch=window.arenaSwitchTab; window.arenaSwitchTab=function(tab){ if(tab==='phase5'){ if(window.arenaState) window.arenaState.tab='phase5'; if(window.renderArena) window.renderArena(); return;} return prevSwitch?prevSwitch(tab):null; };
+  const prevRender=window.renderArena; window.renderArena=function(){ prevRender&&prevRender(); setTimeout(()=>{const bar=document.querySelector('.arena-tabbar'); if(bar&&!bar.querySelector('[data-p5]')) bar.insertAdjacentHTML('beforeend',`<button data-p5 class="${window.arenaState&&window.arenaState.tab==='phase5'?'active':''}" onclick="arenaSwitchTab('phase5')"><i class="fa-solid fa-satellite-dish"></i> Realtime</button>`); if(window.arenaState&&window.arenaState.tab==='phase5'){const panel=document.getElementById('arenaPanel'); if(panel) panel.innerHTML=phase5PanelHTML(); const badge=document.querySelector('.arena-hero .arena-pill'); if(badge) badge.innerHTML='<i class="fa-solid fa-satellite-dish"></i> Math Arena Phase 5';} },0); };
 })();
 </script>
 
