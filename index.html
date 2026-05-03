@@ -510,9 +510,20 @@ async function loadExamsFromFirestore(){
 
 async function loadQuestionBankFromFirestore(){
   if(!firebaseReady) return false;
-  const snap=await db.collection('questionBanks').orderBy('updatedAt','desc').limit(500).get().catch(()=>null);
-  if(!snap) return false;
-  questionBank=snap.docs.map(d=>({id:d.id,...d.data()}));
+  // Nâng cấp Đấu Trường/Ngân hàng: tải nhiều hơn 500 câu bằng phân trang Firestore.
+  // Trước đây limit(500) làm kho thật có >500 câu nhưng client chỉ thấy 500 câu đầu.
+  const all=[];
+  let lastDoc=null;
+  for(let page=0; page<8; page++){ // tối đa khoảng 4000 câu, đủ nhẹ cho trình duyệt
+    let ref=db.collection('questionBanks').orderBy('updatedAt','desc').limit(500);
+    if(lastDoc) ref=ref.startAfter(lastDoc);
+    const snap=await ref.get().catch(()=>null);
+    if(!snap) return false;
+    snap.docs.forEach(d=>all.push({id:d.id,...d.data()}));
+    if(snap.size<500) break;
+    lastDoc=snap.docs[snap.docs.length-1];
+  }
+  questionBank=all;
   localStorage.setItem('mathpro12_questionBank',JSON.stringify(canSeeSensitiveExamData()?questionBank:questionBank.map(stripSensitiveQuestionData)));
   return true;
 }
@@ -6331,10 +6342,51 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     if(arenaState.scope==='class' && currentUser?.className) arr=arr.filter(p=>String(p.className||'')===String(currentUser.className));
     return arr;
   }
+  function arenaAnswerIndex(q){
+    const raw=q?.answer ?? q?.correctAnswer ?? q?.correct ?? q?.key ?? q?.correctIndex ?? q?.dapAn ?? q?.đápÁn;
+    if(raw===undefined || raw===null || raw==='') return null;
+    if(typeof raw==='number' || /^\d+$/.test(String(raw).trim())){
+      const n=Number(raw);
+      // Hỗ trợ cả kiểu 0-3 và 1-4
+      if(n>=0 && n<=3) return n;
+      if(n>=1 && n<=4) return n-1;
+    }
+    const t=String(raw).trim().toUpperCase();
+    if(['A','B','C','D'].includes(t)) return 'ABCD'.indexOf(t);
+    if(['ĐÁP ÁN A','DAP AN A','ANSWER A'].includes(t)) return 0;
+    if(['ĐÁP ÁN B','DAP AN B','ANSWER B'].includes(t)) return 1;
+    if(['ĐÁP ÁN C','DAP AN C','ANSWER C'].includes(t)) return 2;
+    if(['ĐÁP ÁN D','DAP AN D','ANSWER D'].includes(t)) return 3;
+    return null;
+  }
+  function arenaNormalizeMCQuestion(q){
+    if(!q) return null;
+    const type=normalizeQuestionType(q.type||q.questionType||q.kind||'');
+    if(type!=='mc') return null;
+    let options=Array.isArray(q.options)?q.options.slice():[];
+    if(!options.length){
+      options=['A','B','C','D'].map(k=>q['option'+k]??q['answer'+k]??q['choice'+k]).filter(x=>x!==undefined && x!==null && String(x).trim()!=='');
+    }
+    options=options.filter(x=>x!==undefined && x!==null && String(x).trim()!=='');
+    const answer=arenaAnswerIndex(q);
+    if(options.length<2 || answer===null || answer<0 || answer>=options.length) return null;
+    return {...q,type:'mc',text:q.text||q.question||q.content||'',options,answer};
+  }
+  function arenaQuestionSource(){
+    const fromBank=Array.isArray(questionBank)?questionBank:[];
+    const fromExam=questionBankFromLocalExams();
+    const byId={};
+    [...fromBank,...fromExam].forEach(q=>{const id=String(q?.id||q?.bankId||uid()); byId[id]={...(byId[id]||{}),...q,id};});
+    return Object.values(byId);
+  }
   function arenaQuestions(topic='all',count=10){
-    let pool=(questionBank&&questionBank.length?questionBank:questionBankFromLocalExams()).filter(q=>q&&q.type==='mc'&&Array.isArray(q.options)&&q.options.length>=2&&q.answer!==undefined);
-    if(topic!=='all') pool=pool.filter(q=>topicMatches(q.topicId,topic));
-    if(pool.length<count) pool=(questionBank&&questionBank.length?questionBank:questionBankFromLocalExams()).filter(q=>q&&q.type==='mc'&&Array.isArray(q.options)&&q.options.length>=2&&q.answer!==undefined);
+    const source=arenaQuestionSource();
+    let pool=source.map(arenaNormalizeMCQuestion).filter(Boolean);
+    if(topic!=='all'){
+      const scoped=pool.filter(q=>topicMatches(q.topicId,topic));
+      if(scoped.length) pool=scoped; // nếu chủ đề đang chọn chưa gắn đúng topicId thì tự fallback toàn kho
+    }
+    console.log('[Arena] Tổng kho:',source.length,'| MC đủ điều kiện:',pool.length,'| topic:',topic);
     return [...pool].sort(()=>Math.random()-.5).slice(0,count).map((q,i)=>({...q,arenaNo:i+1}));
   }
   function arenaOpponent(){
@@ -6364,7 +6416,7 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   function arenaDailyHTML(){return `<div class="glass-card p-6"><div class="flex flex-wrap justify-between gap-3"><div><h3 class="text-2xl font-black"><i class="fa-solid fa-calendar-day text-orange-500"></i> Daily Arena</h3><p style="color:var(--muted)">Mỗi ngày một thử thách 10 câu. Phase 1 dùng chung bộ Quick Duel để tích XP ngày.</p></div><button onclick="startQuickDuel(true)" class="btn-primary text-white px-5 py-3 rounded-2xl font-black"><i class="fa-solid fa-play"></i> Làm thử thách hôm nay</button></div></div>`;}
   function arenaSwitchTab(tab){arenaState.tab=tab;renderArena();}
   function startQuickDuel(daily=false){
-    const qs=arenaQuestions(arenaState.topic,10); if(!qs.length) return toast('Chưa có câu hỏi trắc nghiệm đủ đáp án trong ngân hàng.','bad');
+    const qs=arenaQuestions(arenaState.topic,10); if(!qs.length) return toast('Chưa có câu hỏi trắc nghiệm đủ đáp án cho Đấu Trường. Thầy kiểm tra type=mc, options A-D và đáp án đúng.','bad');
     arenaState.duel={id:'duel_'+Date.now(),daily,opponent:arenaOpponent(),questions:qs}; arenaState.answers={}; arenaState.remain=8*60; arenaState.startedAt=Date.now();
     renderArenaDuelPlay(); arenaState.timer=setInterval(()=>{arenaState.remain--; updateArenaTimer(); if(arenaState.remain<=0) finishQuickDuel(true);},1000);
   }
