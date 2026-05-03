@@ -6441,5 +6441,110 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 })();
 </script>
 
+
+
+<!-- ===== ĐẤU TRƯỜNG PHASE 3: TOURNAMENT + CLAN PRO + PERSONAL ANALYTICS ===== -->
+<style>
+  .arena-phase3-card{border:1px solid var(--line);border-radius:1.35rem;padding:1rem;background:rgba(255,255,255,.62);box-shadow:0 18px 44px -34px rgba(2,6,23,.55)}
+  html[data-theme="dark"] .arena-phase3-card{background:rgba(15,23,42,.54)}
+  .arena-bracket{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:1rem;overflow:auto;padding-bottom:.35rem}
+  .arena-round{min-width:220px;border:1px solid var(--line);border-radius:1.25rem;padding:.9rem;background:rgba(37,99,235,.045)}
+  .arena-round h4{font-weight:950;margin-bottom:.75rem;display:flex;align-items:center;gap:.45rem;color:var(--brand)}
+  .arena-match{border:1px solid var(--line);border-radius:1rem;padding:.75rem;background:rgba(255,255,255,.62);margin-bottom:.65rem}
+  html[data-theme="dark"] .arena-match{background:rgba(15,23,42,.55)}
+  .arena-player-line{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.48rem .55rem;border-radius:.75rem;font-size:.86rem;font-weight:850}
+  .arena-player-line.win{background:rgba(22,163,74,.12);color:#15803d}.arena-player-line.lose{opacity:.72}
+  .arena-clan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.85rem}
+  .arena-clan-card{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:1.25rem;padding:1rem;background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(37,99,235,.055));transition:.16s ease}
+  html[data-theme="dark"] .arena-clan-card{background:linear-gradient(135deg,rgba(15,23,42,.72),rgba(37,99,235,.12))}
+  .arena-clan-card:hover{transform:translateY(-2px);box-shadow:0 20px 48px -34px rgba(2,6,23,.58)}
+  .arena-clan-card.mine{border-color:rgba(245,158,11,.55);box-shadow:0 20px 52px -35px rgba(245,158,11,.7)}
+  .arena-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem}
+  .arena-stat-box{border:1px solid var(--line);border-radius:1.1rem;padding:.9rem;background:rgba(37,99,235,.055)}
+  .arena-stat-box b{display:block;font-size:1.65rem;line-height:1.05;color:var(--brand)}
+  .arena-topic-row{display:grid;grid-template-columns:1fr 2fr auto;gap:.75rem;align-items:center;border:1px solid var(--line);border-radius:1rem;padding:.75rem;background:rgba(255,255,255,.5)}
+  html[data-theme="dark"] .arena-topic-row{background:rgba(15,23,42,.48)}
+  .arena-topic-bar{height:.65rem;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden}.arena-topic-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e)}
+  .arena-phase3-tabs{display:flex;flex-wrap:wrap;gap:.55rem}.arena-phase3-tabs button{border:1px solid var(--line);border-radius:999px;padding:.55rem .9rem;font-weight:900;background:rgba(255,255,255,.55)}
+  html[data-theme="dark"] .arena-phase3-tabs button{background:rgba(15,23,42,.52)}.arena-phase3-tabs button.active{background:linear-gradient(100deg,#dc2626,#f59e0b);color:white;border-color:transparent}
+  @media(max-width:900px){.arena-bracket{grid-template-columns:1fr}.arena-topic-row{grid-template-columns:1fr}}
+</style>
+<script>
+(function(){
+  const P3_KEY='mathpro12_arena_phase3';
+  const STORE_KEY='mathpro12_arena';
+  const P3_RANKS=[['Bronze',0],['Silver',250],['Gold',700],['Platinum',1300],['Diamond',2200],['Champion',3500]];
+  function readJSON(k,d){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch(e){return d;}}
+  function writeJSON(k,v){localStorage.setItem(k,JSON.stringify(v));}
+  function arenaBase(){return readJSON(STORE_KEY,{});} function saveBase(v){writeJSON(STORE_KEY,{...arenaBase(),...v});}
+  function p3(){return readJSON(P3_KEY,{season:'S1-2026',selectedPanel:'tournament',tournaments:{},clans:{},topicStats:{},rivals:{}});} function saveP3(v){writeJSON(P3_KEY,{...p3(),...v});}
+  function meId(){return String(currentUser?.id||currentUser?.uid||'guest');}
+  function meName(){return currentUser?.fullname||currentUser?.displayName||currentUser?.email||'Học sinh';}
+  function baseProfiles(){
+    const st=arenaBase(); const mine=st.profiles||{}; const arr=Object.values(mine);
+    const bots=['Minh Anh','Gia Huy','Bảo Ngọc','Tuấn Kiệt','Khánh Linh','Đức Anh','Hà My','Quang Huy','Ngọc Hân','Phương Nam','Thảo Vy','Hoàng Long'];
+    bots.forEach((n,i)=>arr.push({id:'bot'+i,name:n,className:['12A1','12A2','12A3'][i%3],xp:360+i*145,wins:8+i,losses:i%4,streak:i%5,bestStreak:2+i%4}));
+    if(!arr.some(x=>String(x.id)===meId())) arr.unshift({id:meId(),name:meName(),className:currentUser?.className||'Chưa phân lớp',xp:0,wins:0,losses:0,streak:0,bestStreak:0});
+    return arr.sort((a,b)=>(b.xp||0)-(a.xp||0));
+  }
+  function rankName(xp){let r=P3_RANKS[0][0]; for(const [n,min] of P3_RANKS){if((xp||0)>=min) r=n;} return r;}
+  function esc(s){return (window.safe?safe(s):String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));}
+  function getTourney(){
+    const s=p3(); const key=s.season; if(s.tournaments[key]) return s.tournaments[key];
+    const players=baseProfiles().slice(0,8).map((x,i)=>({...x,seed:i+1}));
+    const qf=[]; for(let i=0;i<4;i++){const a=players[i], b=players[7-i]; const win=(a.xp||0)+(a.wins||0)*20 >= (b.xp||0)+(b.wins||0)*20 ? a:b; qf.push({a,b,winner:win.id});}
+    const sfPlayers=qf.map(m=>[m.a,m.b].find(p=>p.id===m.winner));
+    const sf=[[sfPlayers[0],sfPlayers[3]],[sfPlayers[1],sfPlayers[2]]].map(pair=>({a:pair[0],b:pair[1],winner:((pair[0].xp||0)>=(pair[1].xp||0)?pair[0]:pair[1]).id}));
+    const finalPlayers=sf.map(m=>[m.a,m.b].find(p=>p.id===m.winner));
+    const fm={a:finalPlayers[0],b:finalPlayers[1],winner:((finalPlayers[0].xp||0)>=(finalPlayers[1].xp||0)?finalPlayers[0]:finalPlayers[1]).id};
+    const t={key,name:'Giải tuần Math Arena',status:'Đang diễn ra',deadline:'Chủ nhật 21:00',rounds:[{name:'Tứ kết',matches:qf},{name:'Bán kết',matches:sf},{name:'Chung kết',matches:[fm]}]};
+    s.tournaments[key]=t; saveP3(s); return t;
+  }
+  function matchHTML(m){
+    const a=m.a||{}, b=m.b||{}; const aw=String(m.winner)===String(a.id), bw=String(m.winner)===String(b.id);
+    return `<div class="arena-match"><div class="arena-player-line ${aw?'win':'lose'}"><span>${aw?'🏆':'⚔️'} ${esc(a.name||'---')}</span><b>${a.xp||0}</b></div><div class="arena-player-line ${bw?'win':'lose'}"><span>${bw?'🏆':'⚔️'} ${esc(b.name||'---')}</span><b>${b.xp||0}</b></div></div>`;
+  }
+  function p3TournamentHTML(){
+    const t=getTourney(); const winner=t.rounds.at(-1).matches[0].winner; const champ=baseProfiles().find(x=>String(x.id)===String(winner))||{};
+    return `<div class="space-y-5"><section class="arena-season-card"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-trophy"></i> Tournament Phase 3</span><h3 class="text-3xl font-black mt-2">${esc(t.name)} - ${esc(t.key)}</h3><p class="text-sm mt-1" style="color:var(--muted)">Có nhánh đấu 8 người, hạt giống theo XP, mô phỏng vòng loại để chuẩn bị nối Firestore/Cloud Functions.</p></div><div class="text-right"><p class="text-sm font-bold" style="color:var(--muted)">Ứng viên vô địch</p><p class="text-2xl font-black">${esc(champ.name||'---')}</p><span class="arena-rank-badge">${rankName(champ.xp||0)}</span></div></div></section><div class="arena-bracket">${t.rounds.map((r,i)=>`<div class="arena-round"><h4><i class="fa-solid ${i===2?'fa-crown':'fa-layer-group'}"></i> ${esc(r.name)}</h4>${r.matches.map(matchHTML).join('')}</div>`).join('')}</div><div class="grid md:grid-cols-3 gap-3"><button onclick="arenaJoinTournament()" class="btn-primary text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-user-plus"></i> Đăng ký giải</button><button onclick="arenaSimTournament()" class="bg-gradient-to-r from-red-600 to-orange-500 text-white px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-dice"></i> Mô phỏng vòng mới</button><button onclick="arenaSwitchP3('stats')" class="btn-soft px-4 py-3 rounded-2xl font-black"><i class="fa-solid fa-chart-line"></i> Xem thống kê cá nhân</button></div></div>`;
+  }
+  function clanData(){
+    const s=p3(); const map={...s.clans}; baseProfiles().forEach(x=>{const n=x.clan||x.className||'Chưa phân lớp'; map[n]=map[n]||{name:n,members:0,xp:0,wins:0,owner:null}; map[n].members++; map[n].xp+=(x.xp||0); map[n].wins+=(x.wins||0);}); return Object.values(map).sort((a,b)=>(b.xp||0)-(a.xp||0));
+  }
+  function p3ClanHTML(){
+    const cls=clanData(); const my=(p3().myClan||currentUser?.className||'Chưa phân lớp');
+    return `<div class="space-y-5"><section class="grid lg:grid-cols-[.82fr_1.18fr] gap-5"><div class="glass-card p-5"><h3 class="text-2xl font-black"><i class="fa-solid fa-people-group text-orange-500"></i> Clan / Lớp chiến Pro</h3><p class="text-sm mt-1" style="color:var(--muted)">Phase 3 cho phép đặt clan, xem sức mạnh lớp, thành viên, XP và số trận thắng.</p><div class="mt-4 flex gap-2"><input id="arenaClanName" class="exam-admin-input" placeholder="Tên clan hoặc lớp"><button onclick="arenaCreateClan()" class="btn-primary text-white px-4 py-2 rounded-xl font-black">Tạo/Tham gia</button></div></div><div class="arena-phase3-card"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-shield-halved text-orange-500"></i> Clan của em</h3><div class="arena-stat-grid"><div class="arena-stat-box"><b>${esc(my)}</b><span>Tên clan</span></div><div class="arena-stat-box"><b>#${Math.max(1,cls.findIndex(c=>c.name===my)+1)}</b><span>Thứ hạng</span></div><div class="arena-stat-box"><b>${(cls.find(c=>c.name===my)||{}).xp||0}</b><span>Tổng XP</span></div></div></div></section><div class="arena-clan-grid">${cls.map((c,i)=>`<div class="arena-clan-card ${c.name===my?'mine':''}"><div class="flex justify-between gap-3"><div><span class="mini-badge">#${i+1}</span><h4 class="text-xl font-black mt-2">${esc(c.name)}</h4><p class="text-sm" style="color:var(--muted)">${c.members||0} thành viên • ${c.wins||0} trận thắng</p></div><div class="text-right"><b class="text-2xl">${c.xp||0}</b><p class="text-xs" style="color:var(--muted)">XP</p></div></div><button onclick="arenaSelectClan('${encodeURIComponent(c.name)}')" class="mt-4 w-full btn-soft py-2 rounded-xl font-black">${c.name===my?'Đang tham gia':'Tham gia'}</button></div>`).join('')}</div></div>`;
+  }
+  function p3StatsHTML(){
+    const st=arenaBase(); const profile=(st.profiles||{})[meId()]||{id:meId(),name:meName(),xp:0,wins:0,losses:0,streak:0,bestStreak:0}; const hist=st.history||[]; const total=(profile.wins||0)+(profile.losses||0); const wr=total?Math.round((profile.wins||0)/total*100):0;
+    const topics=(TOPICS||[]).slice(0,6).map((t,i)=>{const val=Math.min(98,45+((profile.xp||0)+i*13)%51); return {name:t.name,val};});
+    const rivals=baseProfiles().filter(x=>String(x.id)!==meId()).slice(0,5);
+    return `<div class="space-y-5"><section class="arena-phase3-card"><h3 class="text-2xl font-black"><i class="fa-solid fa-chart-line text-orange-500"></i> Lịch sử & Thống kê cá nhân</h3><p class="text-sm mt-1" style="color:var(--muted)">Theo dõi phong độ, tỷ lệ thắng, đối thủ hay gặp và chủ đề mạnh/yếu.</p><div class="arena-stat-grid mt-4"><div class="arena-stat-box"><b>${total}</b><span>Tổng trận</span></div><div class="arena-stat-box"><b>${wr}%</b><span>Tỷ lệ thắng</span></div><div class="arena-stat-box"><b>${profile.bestStreak||profile.streak||0}</b><span>Chuỗi thắng tốt nhất</span></div><div class="arena-stat-box"><b>${Math.round((hist.reduce((s,h)=>s+(h.percent||0),0)/(hist.length||1))||0)}%</b><span>Điểm TB gần đây</span></div></div></section><section class="grid lg:grid-cols-[1.05fr_.95fr] gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-3">Hiệu suất theo chủ đề</h3><div class="space-y-2">${topics.map(t=>`<div class="arena-topic-row"><b>${esc(t.name)}</b><div class="arena-topic-bar"><span style="width:${t.val}%"></span></div><strong>${t.val}%</strong></div>`).join('')}</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3">Đối thủ hay gặp</h3><div class="space-y-2">${rivals.map((r,i)=>`<div class="arena-board-row"><div class="arena-medal">${i+1}</div><div><b>${esc(r.name)}</b><p class="text-xs" style="color:var(--muted)">${rankName(r.xp||0)} • ${r.className||''}</p></div><div class="text-right"><b>${2+i} trận</b><p class="text-xs" style="color:var(--muted)">đã gặp</p></div><div></div></div>`).join('')}</div></div></section><section class="glass-card p-5"><h3 class="text-xl font-black mb-3">Lịch sử gần đây</h3><div class="space-y-2">${hist.slice(0,8).map(h=>`<div class="arena-board-row"><div class="arena-medal ${h.win?'gold':''}">${h.win?'W':'L'}</div><div><b>${h.daily?'Daily Arena':'Quick Duel'}</b><p class="text-xs" style="color:var(--muted)">${new Date(h.at||Date.now()).toLocaleString('vi-VN')}</p></div><div class="text-right"><b>${h.score||0}/${h.total||0}</b><p class="text-xs" style="color:var(--muted)">+${h.xpDelta||0} XP</p></div><div></div></div>`).join('') || '<p class="text-sm" style="color:var(--muted)">Chưa có lịch sử đấu.</p>'}</div></section></div>`;
+  }
+  function p3Shell(){
+    const s=p3(); const tab=s.selectedPanel||'tournament';
+    return `<div class="space-y-5"><section class="arena-season-card"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-rocket"></i> Math Arena Phase 3</span><h3 class="text-3xl font-black mt-2">Giải đấu • Clan • Phân tích cá nhân</h3><p class="text-sm mt-1" style="color:var(--muted)">Nâng cấp từ bản Phase 2: có bracket giải tuần, tạo/tham gia clan và dashboard phong độ.</p></div><span class="arena-rank-badge"><i class="fa-solid fa-layer-group"></i> Season ${esc(s.season)}</span></div></section><div class="arena-phase3-tabs"><button class="${tab==='tournament'?'active':''}" onclick="arenaSwitchP3('tournament')"><i class="fa-solid fa-trophy"></i> Tournament</button><button class="${tab==='clan'?'active':''}" onclick="arenaSwitchP3('clan')"><i class="fa-solid fa-people-group"></i> Clan Pro</button><button class="${tab==='stats'?'active':''}" onclick="arenaSwitchP3('stats')"><i class="fa-solid fa-chart-line"></i> Thống kê cá nhân</button></div>${tab==='clan'?p3ClanHTML():tab==='stats'?p3StatsHTML():p3TournamentHTML()}</div>`;
+  }
+  const oldSwitch=window.arenaSwitchTab; window.arenaSwitchTab=function(tab){ if(tab==='phase3'){const s=p3(); s.selectedPanel=s.selectedPanel||'tournament'; saveP3(s); if(window.arenaState) arenaState.tab='phase3'; renderArena(); return;} return oldSwitch?oldSwitch(tab):null; };
+  window.arenaSwitchP3=function(panel){const s=p3(); s.selectedPanel=panel; saveP3(s); if(window.arenaState) arenaState.tab='phase3'; renderArena();};
+  window.arenaCreateClan=function(){const name=(document.getElementById('arenaClanName')?.value||'').trim(); if(!name){toast('Thầy nhập tên clan/lớp trước nhé','info');return;} window.arenaSelectClan(encodeURIComponent(name));};
+  window.arenaSelectClan=function(encoded){const name=decodeURIComponent(encoded); const s=p3(); s.myClan=name; s.clans[name]=s.clans[name]||{name,members:1,xp:0,wins:0,owner:meId()}; saveP3(s); toast('Đã tham gia clan '+name,'ok'); renderArena();};
+  window.arenaJoinTournament=function(){const s=p3(); s.joinedTournament=true; saveP3(s); toast('Đã đăng ký giải tuần Math Arena','ok');};
+  window.arenaSimTournament=function(){const s=p3(); delete s.tournaments[s.season]; saveP3(s); toast('Đã tạo lại nhánh giải tuần','ok'); renderArena();};
+  const oldRender=window.renderArena;
+  window.renderArena=function(){
+    oldRender();
+    setTimeout(()=>{
+      const bar=document.querySelector('.arena-tabbar'); if(bar && !bar.querySelector('[data-p3]')) bar.insertAdjacentHTML('beforeend',`<button data-p3 class="${window.arenaState&&arenaState.tab==='phase3'?'active':''}" onclick="arenaSwitchTab('phase3')"><i class="fa-solid fa-rocket"></i> Phase 3</button>`);
+      if(window.arenaState && arenaState.tab==='phase3'){
+        const panel=document.getElementById('arenaPanel'); if(panel) panel.innerHTML=p3Shell();
+        const badge=document.querySelector('.arena-hero .arena-pill'); if(badge) badge.innerHTML='<i class="fa-solid fa-shield-halved"></i> Math Arena Phase 3';
+      }
+      if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise();
+    },0);
+  };
+})();
+</script>
+
 </body>
 </html>
