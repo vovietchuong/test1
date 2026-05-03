@@ -253,28 +253,6 @@
     .admin-pro-table{width:100%;font-size:.9rem}.admin-pro-table th{font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:950}.admin-pro-table th,.admin-pro-table td{padding:.82rem;border-bottom:1px solid var(--line);vertical-align:top}.admin-pro-split{display:grid;grid-template-columns:1.08fr .92fr;gap:1rem}
     @media(max-width:1100px){.admin-pro-shell{grid-template-columns:1fr}.admin-pro-sidebar{position:relative;top:auto;max-height:none}.admin-pro-filter{grid-template-columns:1fr 1fr}.admin-pro-filter button{grid-column:1/-1}.admin-pro-split{grid-template-columns:1fr}}@media(max-width:640px){.admin-pro-filter{grid-template-columns:1fr}.admin-pro-hero{padding:1rem}.admin-pro-command-grid{grid-template-columns:1fr}}
 
-
-    /* ===== ADMIN TAB GIÁM SÁT TRỰC TIẾP PRO ===== */
-    .admin-live-tab-title{display:flex;align-items:center;gap:.65rem;font-weight:950;text-transform:uppercase;letter-spacing:.02em}
-    .admin-live-table-wrap{border:1px solid var(--line);border-radius:1.25rem;overflow:auto;background:rgba(255,255,255,.50)}
-    html[data-theme="dark"] .admin-live-table-wrap{background:rgba(15,23,42,.48)}
-    .admin-live-table{width:100%;min-width:1050px;border-collapse:separate;border-spacing:0;font-size:.88rem}
-    .admin-live-table th{position:sticky;top:0;z-index:2;background:rgba(239,246,255,.96);color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:.04em;font-size:.72rem;font-weight:950}
-    html[data-theme="dark"] .admin-live-table th{background:rgba(15,23,42,.96)}
-    .admin-live-table th,.admin-live-table td{padding:.85rem;border-bottom:1px solid var(--line);vertical-align:middle}
-    .admin-live-table tr:hover td{background:rgba(37,99,235,.055)}
-    .admin-live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem}
-    .admin-live-class-card{border:1px solid var(--line);border-radius:1.15rem;padding:1rem;background:rgba(255,255,255,.58);text-align:left;transition:.16s ease}
-    html[data-theme="dark"] .admin-live-class-card{background:rgba(15,23,42,.50)}
-    .admin-live-class-card:hover{transform:translateY(-2px);box-shadow:0 18px 45px -34px rgba(2,6,23,.58);border-color:#60a5fa}
-    .admin-live-risk{display:flex;flex-wrap:wrap;gap:.35rem}
-    .admin-live-question-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.45rem,1fr));gap:.45rem}
-    .admin-live-qcell{height:2.35rem;border-radius:.75rem;border:1px solid var(--line);display:grid;place-items:center;font-weight:950;background:rgba(148,163,184,.12)}
-    .admin-live-qcell.done{background:rgba(22,163,74,.14);border-color:rgba(22,163,74,.35);color:#15803d}
-    .admin-live-qcell.current{background:linear-gradient(100deg,#2563eb,#06b6d4);color:white;border-color:transparent}
-    .admin-live-qcell.warn{background:rgba(217,119,6,.14);border-color:rgba(217,119,6,.35);color:#d97706}
-    .admin-live-main{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem}
-
     @media print{header,.no-print{display:none!important}body{background:white}.glass-card{box-shadow:none;border:1px solid #ddd}}
 
     /* ===== GIÁM SÁT THI TRỰC TIẾP CHO ADMIN/GIÁO VIÊN ===== */
@@ -832,26 +810,26 @@ function buildAnswerKeyForPublicExam(publicExam, fullExam){
   return key;
 }
 function progressKey(examId=selectedExam?.originalId||selectedExam?.id){if(!currentUser||currentUser.role!=='student'||!examId)return null;return `mathpro12_progress_${currentUser.id}_${examId}`}
-function progressPayload(){return {exam:safeExamForProgress(selectedExam),answers:examAnswers,remain:examRemain,warnings:examWarnings,tabWarnings:examWarnings,currentQuestionIndex:examCurrentIndex||0,startedAt:examStartedAt||new Date().toISOString(),sessionId:examSessionId,status:examSubmitted?'submitted':'in_progress',lastUpdate:new Date().toISOString(),savedAt:new Date().toISOString()}}
+function progressPayload(){return {exam:safeExamForProgress(selectedExam),answers:examAnswers,remain:examRemain,warnings:examWarnings,startedAt:examStartedAt||new Date().toISOString(),sessionId:examSessionId,status:examSubmitted?'submitted':'in_progress',savedAt:new Date().toISOString()}}
 function saveExamProgress(){const key=progressKey();if(!key||!selectedExam||examReview||examSubmitted)return;const payload=progressPayload();localStorage.setItem(key,JSON.stringify(payload));syncExamSession(false)}
 function clearExamProgress(){const key=progressKey();if(key)localStorage.removeItem(key)}
 async function createExamSession(exam){
   if(!firebaseReady||currentUser?.role!=='student'||!exam?.id) return null;
   const id=String(uid()); examSessionId=id;
   const dueAt=new Date(Date.now()+Number(examRemain||0)*1000).toISOString();
-  const session={id,studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',examId:String(exam.originalId||exam.id),examTitle:exam.title,examInstanceId:exam.instanceId||null,status:'in_progress',answers:{},warnings:0,startedAt:examStartedAt||new Date().toISOString(),dueAt,remain:examRemain,questionCount:(exam.questions||[]).length,currentQuestionIndex:examCurrentIndex||0,tabWarnings:0,lastUpdate:new Date().toISOString(),createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const session={id,studentId:currentUser.id,studentName:currentUser.fullname||currentUser.email,studentEmail:currentUser.email||currentUser.username,className:currentUser.className||'Chưa phân lớp',examId:String(exam.originalId||exam.id),examTitle:exam.title,examInstanceId:exam.instanceId||null,status:'in_progress',answers:{},warnings:0,startedAt:examStartedAt||new Date().toISOString(),dueAt,remain:examRemain,questionCount:(exam.questions||[]).length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{await db.collection('examSessions').doc(id).set(session,{merge:true}); lastSessionSyncAt=Date.now(); return id;}catch(err){toast('Chưa tạo được phiên thi Firestore: '+fbError(err),'bad'); return null;}
 }
 async function syncExamSession(force=false){
   if(!firebaseReady||currentUser?.role!=='student'||!examSessionId||!selectedExam) return;
   const now=Date.now(); if(!force&&now-lastSessionSyncAt<8000) return;
   lastSessionSyncAt=now;
-  const data={answers:examAnswers,warnings:examWarnings,tabWarnings:examWarnings,currentQuestionIndex:examCurrentIndex||0,remain:examRemain,status:examSubmitted?'submitted':'in_progress',lastUpdate:new Date().toISOString(),savedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const data={answers:examAnswers,warnings:examWarnings,remain:examRemain,status:examSubmitted?'submitted':'in_progress',savedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{await db.collection('examSessions').doc(examSessionId).set(data,{merge:true});}catch(err){console.warn('Không đồng bộ phiên thi:',err)}
 }
 async function finishExamSession(sub,auto=false){
   if(!firebaseReady||currentUser?.role!=='student'||!examSessionId) return;
-  try{await db.collection('examSessions').doc(examSessionId).set({status:'submitted',submittedAt:firebase.firestore.FieldValue.serverTimestamp(),autoSubmitted:!!auto,resultId:sub.id,score:sub.score,total:sub.total,percent:sub.percent,warnings:sub.warnings,tabWarnings:examWarnings,currentQuestionIndex:examCurrentIndex||0,answers:examAnswers,lastUpdate:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){console.warn('Không cập nhật trạng thái phiên thi:',err)}
+  try{await db.collection('examSessions').doc(examSessionId).set({status:'submitted',submittedAt:firebase.firestore.FieldValue.serverTimestamp(),autoSubmitted:!!auto,resultId:sub.id,score:sub.score,total:sub.total,percent:sub.percent,warnings:sub.warnings,answers:examAnswers,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(err){console.warn('Không cập nhật trạng thái phiên thi:',err)}
 }
 function enableAntiCheat(){examAntiCheatLocked=true;document.body.classList.add('exam-lock');try{document.documentElement.requestFullscreen?.()}catch(e){}}
 function disableAntiCheat(){examAntiCheatLocked=false;document.body.classList.remove('exam-lock');try{document.exitFullscreen?.()}catch(e){}}
@@ -881,7 +859,7 @@ function examCard(e){
   e=normalizeExamAccess(e); const av=getExamAvailability(e); const locked=currentUser?.role==='student'&&!av.ok;
   return `<article class="glass-card p-5 slide-up"><div class="flex justify-between gap-3"><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">${topicName(e.topicId)}</span><span class="text-xs" style="color:var(--muted)"><i class="fa-regular fa-clock"></i> ${e.duration||30} phút</span></div><h3 class="font-black text-xl mt-3 math-content">${safe(e.title)}</h3><p class="text-sm mt-2 min-h-10" style="color:var(--muted)">${safe(e.description||'Đề ôn tập')}</p><p class="text-xs mt-2" style="color:var(--muted)">${safe(examScheduleText(e))}</p><div class="flex gap-2 mt-3 text-xs flex-wrap"><span class="px-2 py-1 rounded-lg bg-slate-100">${isPdfExam(e)?pdfQuestionCount(e):((e.questions||[]).length||e.questionCount||0)} câu</span><span class="px-2 py-1 rounded-lg bg-slate-100">${safe(e.level||'Ôn tập')}</span>${isPdfExam(e)?'<span class="pdf-exam-badge"><i class="fa-solid fa-file-pdf"></i> PDF</span>':''}<span class="px-2 py-1 rounded-lg ${av.ok?'bg-green-100 text-green-700':'bg-amber-100 text-amber-700'}">${safe(av.label)}</span></div><button ${locked?'disabled':''} onclick="startExam('${e.id}')" class="mt-4 w-full ${locked?'bg-slate-300 text-slate-600 cursor-not-allowed':'btn-primary text-white'} py-3 rounded-2xl font-bold"><i class="fa-solid ${locked?'fa-lock':'fa-play'}"></i> ${locked?safe(av.reason):(currentUser?.role==='student'?'Làm bài':'Xem / làm thử')}</button></article>`
 }
-function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Đăng nhập bằng tài khoản đã được cấp trên hệ thống.</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
+function showLoginModal(){const m=document.createElement('div');m.className='fixed inset-0 bg-black/55 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in';m.innerHTML=`<div class="glass-card w-full max-w-md p-7 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-2xl">&times;</button><h2 class="text-2xl font-black text-center">Đăng nhập hệ thống</h2><p class="text-center text-sm mt-1" style="color:var(--muted)">Dùng email Firebase. Ví dụ: hs1@mathpro12.edu.vn / 123456</p><div class="space-y-3 mt-5"><input id="loginU" class="w-full px-4 py-3 rounded-2xl border" placeholder="Email đăng nhập"><input id="loginP" type="password" class="w-full px-4 py-3 rounded-2xl border" placeholder="Mật khẩu"><button onclick="doLogin()" class="w-full btn-primary text-white py-3 rounded-2xl font-bold">Đăng nhập</button><div class="grid grid-cols-2 gap-2"><button onclick="quickLogin('hs1@mathpro12.edu.vn','123456')" class="btn-soft py-2 rounded-xl">Học sinh mẫu</button><button onclick="quickLogin('giaovien@mathpro12.edu.vn','giaovien')" class="btn-soft py-2 rounded-xl">Giáo viên mẫu</button></div><button onclick="showRegister()" class="w-full text-blue-600 text-sm">Tạo tài khoản</button></div></div>`;document.body.appendChild(m)}
 async function doLogin(){
   const email=emailFromLogin($('loginU')?.value||''), password=$('loginP')?.value;
   if(!email||!password) return toast('Vui lòng nhập email và mật khẩu','bad');
@@ -5286,7 +5264,7 @@ function adminMenuGroup(title,items){
 function adminSidebarHTML(){
   const isAdmin=isAdminUser(currentUser);
   return `<aside class="admin-pro-sidebar glass-card no-print"><div class="flex items-center gap-3 mb-3"><div class="w-11 h-11 rounded-2xl btn-primary text-white grid place-items-center"><i class="fa-solid fa-crown"></i></div><div><b>${isAdmin?'Admin hệ thống':'Giáo viên'}</b><p class="text-xs" style="color:var(--muted)">${safe(currentUser?.fullname||currentUser?.email||'')}</p></div></div><div class="admin-pro-menu">
-    ${adminMenuGroup('Tổng quan',[{text:'Dashboard',icon:'fa-chart-pie',fn:'renderTeacherDashboard()'},{text:'GIÁM SÁT TRỰC TIẾP',icon:'fa-tower-broadcast',fn:'renderAdminLiveMonitorTab()'},{text:'Thành tích nổi bật',icon:'fa-trophy',fn:'renderAchievements()'},{text:'Xuất thống kê',icon:'fa-file-export',fn:'exportAnalyticsCSV()'}])}
+    ${adminMenuGroup('Tổng quan',[{text:'Dashboard',icon:'fa-chart-pie',fn:'renderTeacherDashboard()'},{text:'Thành tích nổi bật',icon:'fa-trophy',fn:'renderAchievements()'},{text:'Xuất thống kê',icon:'fa-file-export',fn:'exportAnalyticsCSV()'}])}
     ${adminMenuGroup('Người dùng & lớp',[{text:'Phân quyền người dùng',icon:'fa-user-shield',fn:'renderUserManager()'},{text:'Lớp học',icon:'fa-school',fn:'renderClassManager()'}])}
     ${adminMenuGroup('Học liệu & đề thi',[{text:'Ngân hàng câu hỏi',icon:'fa-database',fn:'renderQuestionBank()'},{text:'Tạo đề trong kho',icon:'fa-file-circle-plus',fn:'openQuestionBankExamWorkspace()'},{text:'Tạo đề tự động',icon:'fa-wand-magic-sparkles',fn:'openAutoExamBuilder()'},{text:'Tạo đề PDF',icon:'fa-file-pdf',fn:'openPdfExamEditor()'}])}
     ${adminMenuGroup('Import AI',[{text:'Nhập Word',icon:'fa-file-word',fn:'openWordImportModal()'},{text:'Nhập LaTeX',icon:'fa-square-root-variable',fn:"openLatexImportModal('bank')"},{text:'AI Vision PDF/Ảnh',icon:'fa-robot',fn:"openSmartImportModal('bank')"}])}
@@ -5314,7 +5292,6 @@ function adminCommandHTML(text,sub,icon,fn,cls=''){
 function adminCommandCenterHTML(){
   const admin=isAdminUser(currentUser);
   return `<section class="glass-card p-5 mb-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-table-cells text-blue-600"></i> Trung tâm thao tác nhanh</h3><span class="mini-badge">Theo nhóm chức năng</span></div><div class="admin-pro-command-grid">
-    ${adminCommandHTML('GIÁM SÁT TRỰC TIẾP','Bảng realtime, cảnh báo rời tab, xem bài đang làm','fa-tower-broadcast','renderAdminLiveMonitorTab()','ring-2 ring-blue-100')}
     ${adminCommandHTML('Phân quyền người dùng','Duyệt giáo viên, đổi vai trò','fa-user-shield','renderUserManager()')}
     ${adminCommandHTML('Quản lý lớp học','Lớp theo mã riêng, học sinh theo giáo viên','fa-school','renderClassManager()')}
     ${adminCommandHTML('Ngân hàng câu hỏi','Lọc, sửa, kiểm tra trùng, xuất Excel','fa-database','renderQuestionBank()')}
@@ -5378,11 +5355,11 @@ function liveRemainText(sec){
   return (h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
 }
 function liveSessionFreshness(s){
-  const d=liveDateValue(s.lastUpdate||s.updatedAt||s.savedAt||s.startedAt);
+  const d=liveDateValue(s.updatedAt||s.savedAt||s.startedAt);
   const diff=d?Date.now()-d.getTime():999999999;
   if(String(s.status)==='submitted') return {key:'submitted',label:'Đã nộp',cls:'bad',icon:'fa-circle-check'};
-  if(diff<=60000) return {key:'live',label:'Đang online',cls:'live',icon:'fa-signal'};
-  if(diff<=180000) return {key:'recent',label:'Không hoạt động > 60s',cls:'stale',icon:'fa-clock'};
+  if(diff<=45000) return {key:'live',label:'Đang online',cls:'live',icon:'fa-signal'};
+  if(diff<=180000) return {key:'recent',label:'Vừa hoạt động',cls:'stale',icon:'fa-clock'};
   return {key:'stale',label:'Mất tín hiệu',cls:'bad',icon:'fa-wifi'};
 }
 function liveAnsweredCount(s){
@@ -5409,7 +5386,7 @@ function liveScopedSessions(){
   if(liveMonitorState.examId!=='all') arr=arr.filter(s=>String(s.examId)===String(liveMonitorState.examId));
   if(liveMonitorState.status!=='all') arr=arr.filter(s=>String(s.status||'in_progress')===String(liveMonitorState.status));
   if(liveMonitorState.fresh!=='all') arr=arr.filter(s=>liveSessionFreshness(s).key===liveMonitorState.fresh);
-  return arr.sort((a,b)=>(liveDateValue(b.lastUpdate||b.updatedAt||b.savedAt||b.startedAt)?.getTime()||0)-(liveDateValue(a.lastUpdate||a.updatedAt||a.savedAt||a.startedAt)?.getTime()||0));
+  return arr.sort((a,b)=>(liveDateValue(b.updatedAt||b.savedAt||b.startedAt)?.getTime()||0)-(liveDateValue(a.updatedAt||a.savedAt||a.startedAt)?.getTime()||0));
 }
 function liveMonitorKPIsHTML(arr=liveScopedSessions()){
   const all=(realtimeExamSessions||[]).filter(liveCanSeeSession);
@@ -5443,8 +5420,6 @@ function renderLiveMonitorContent(){
   const body=$('liveMonitorBody'), kpi=$('liveMonitorKpis'), stamp=$('liveMonitorStamp');
   if(kpi) kpi.innerHTML=liveMonitorKPIsHTML();
   if(body) body.innerHTML=liveMonitorRowsHTML();
-  const table=$('adminLiveMonitorTable'); if(table) table.innerHTML=liveMonitorTableHTML();
-  const classMap=$('adminLiveClassMap'); if(classMap){const temp=document.createElement('div'); temp.innerHTML=liveClassMapHTML(); const next=temp.querySelector('#adminLiveClassMap'); if(next) classMap.innerHTML=next.innerHTML;}
   if(stamp) stamp.textContent='Cập nhật '+new Date().toLocaleTimeString('vi-VN');
 }
 function liveMonitorHTML(){
@@ -5494,47 +5469,10 @@ function stopLiveExamMonitor(){
 }
 function openLiveSessionDetail(id){
   const s=(realtimeExamSessions||[]).find(x=>String(x.id)===String(id)); if(!s)return;
-  const st=liveSessionFreshness(s), answers=s.answers||{}, currentQ=Number(s.currentQuestionIndex||0), totalQ=Number(s.questionCount||Object.keys(answers).length||0);
-  const answeredKeys=new Set(Object.entries(answers).filter(([k,v])=>Array.isArray(v)?v.some(x=>x===true||x===false):String(v??'').trim()!=='').map(([k])=>String(k)));
-  const qGrid=Array.from({length:Math.min(totalQ||0,120)},(_,i)=>`<span class="admin-live-qcell ${i===currentQ?'current':answeredKeys.size>i?'done':''}">${i+1}</span>`).join('');
-  const answerRows=Object.entries(answers).slice(0,80).map(([k,v],i)=>`<tr><td class="p-2 font-bold">${i+1}</td><td class="p-2">${safe(k)}</td><td class="p-2">${safe(Array.isArray(v)?v.map(x=>x===true?'Đúng':x===false?'Sai':'-').join(', '):String(v??''))}</td></tr>`).join('');
+  const st=liveSessionFreshness(s), answers=s.answers||{}, answerRows=Object.entries(answers).slice(0,80).map(([k,v],i)=>`<tr><td class="p-2 font-bold">${i+1}</td><td class="p-2">${safe(k)}</td><td class="p-2">${safe(Array.isArray(v)?v.map(x=>x===true?'Đúng':x===false?'Sai':'-').join(', '):String(v??''))}</td></tr>`).join('');
   const m=document.createElement('div'); m.className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] p-4 overflow-auto fade-in';
-  m.innerHTML=`<div class="glass-card max-w-4xl mx-auto p-6 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-3xl">&times;</button><div class="flex flex-wrap items-start justify-between gap-3"><div><span class="live-status-pill ${st.cls}"><i class="fa-solid ${st.icon}"></i> ${safe(st.label)}</span><h2 class="text-2xl font-black mt-3">${safe(s.studentName||'Học sinh')}</h2><p class="text-sm" style="color:var(--muted)">${safe(s.studentEmail||'')} • ${safe(s.className||'Chưa phân lớp')} • Phiên ${safe(s.id)}</p></div><div class="text-right"><b class="font-mono text-2xl">${liveRemainText(s.remain)}</b><p class="text-xs" style="color:var(--muted)">Còn lại</p></div></div><div class="grid md:grid-cols-4 gap-3 mt-4">${analyticsCard('Đề thi',safe(s.examTitle||''),'fa-file-lines','Mã '+safe(s.examId||''))}${analyticsCard('Đã trả lời',liveAnsweredCount(s)+'/'+(s.questionCount||'?'),'fa-pen','Tiến độ hiện tại')}${analyticsCard('Đang ở câu',Number(s.currentQuestionIndex||0)+1,'fa-location-crosshairs','Vị trí hiện tại')}${analyticsCard('Cảnh báo',Number(s.warnings||0),'fa-triangle-exclamation','Rời tab/toàn màn hình',Number(s.warnings||0)?'red':'green')}${analyticsCard('Cập nhật',liveTimeAgo(s.updatedAt||s.savedAt||s.startedAt),'fa-clock','Tín hiệu gần nhất')}</div><div class="mt-5"><h3 class="font-black text-xl mb-2"><i class="fa-solid fa-location-crosshairs text-blue-600"></i> Sơ đồ câu đang làm</h3><div class="admin-live-question-grid mb-5">${qGrid||'<span class="text-sm" style="color:var(--muted)">Chưa có dữ liệu số câu.</span>'}</div><h3 class="font-black text-xl mb-2"><i class="fa-solid fa-list-check text-blue-600"></i> Bài làm đang lưu</h3><div class="overflow-x-auto"><table class="admin-pro-table"><thead><tr><th>#</th><th>Mã câu</th><th>Đáp án học sinh</th></tr></thead><tbody>${answerRows||'<tr><td colspan="3" class="text-center text-slate-500">Chưa có đáp án nào được đồng bộ.</td></tr>'}</tbody></table></div></div></div>`;
+  m.innerHTML=`<div class="glass-card max-w-4xl mx-auto p-6 relative"><button onclick="this.closest('.fixed').remove()" class="absolute top-3 right-4 text-3xl">&times;</button><div class="flex flex-wrap items-start justify-between gap-3"><div><span class="live-status-pill ${st.cls}"><i class="fa-solid ${st.icon}"></i> ${safe(st.label)}</span><h2 class="text-2xl font-black mt-3">${safe(s.studentName||'Học sinh')}</h2><p class="text-sm" style="color:var(--muted)">${safe(s.studentEmail||'')} • ${safe(s.className||'Chưa phân lớp')} • Phiên ${safe(s.id)}</p></div><div class="text-right"><b class="font-mono text-2xl">${liveRemainText(s.remain)}</b><p class="text-xs" style="color:var(--muted)">Còn lại</p></div></div><div class="grid md:grid-cols-4 gap-3 mt-4">${analyticsCard('Đề thi',safe(s.examTitle||''),'fa-file-lines','Mã '+safe(s.examId||''))}${analyticsCard('Đã trả lời',liveAnsweredCount(s)+'/'+(s.questionCount||'?'),'fa-pen','Tiến độ hiện tại')}${analyticsCard('Cảnh báo',Number(s.warnings||0),'fa-triangle-exclamation','Rời tab/toàn màn hình',Number(s.warnings||0)?'red':'green')}${analyticsCard('Cập nhật',liveTimeAgo(s.updatedAt||s.savedAt||s.startedAt),'fa-clock','Tín hiệu gần nhất')}</div><div class="mt-5"><h3 class="font-black text-xl mb-2"><i class="fa-solid fa-list-check text-blue-600"></i> Bài làm đang lưu</h3><div class="overflow-x-auto"><table class="admin-pro-table"><thead><tr><th>#</th><th>Mã câu</th><th>Đáp án học sinh</th></tr></thead><tbody>${answerRows||'<tr><td colspan="3" class="text-center text-slate-500">Chưa có đáp án nào được đồng bộ.</td></tr>'}</tbody></table></div></div></div>`;
   document.body.appendChild(m); typeset();
-}
-
-function liveSessionRiskItems(s){
-  const st=liveSessionFreshness(s), risks=[];
-  if(st.key==='recent') risks.push({tone:'warn',text:'không hoạt động > 60s',icon:'fa-clock'});
-  if(st.key==='stale') risks.push({tone:'bad',text:'mất tín hiệu',icon:'fa-wifi'});
-  const tab=Number(s.tabWarnings||s.warnings||0);
-  if(tab>0) risks.push({tone:'bad',text:`đổi tab ${tab} lần`,icon:'fa-eye-slash'});
-  if(Number(s.remain||0)<=60 && String(s.status||'in_progress')==='in_progress') risks.push({tone:'warn',text:'sắp hết giờ',icon:'fa-hourglass-end'});
-  return risks;
-}
-function liveRiskBadgesHTML(s){
-  const risks=liveSessionRiskItems(s);
-  if(!risks.length) return '<span class="live-status-pill live"><i class="fa-solid fa-circle-check"></i> Bình thường</span>';
-  return `<div class="admin-live-risk">${risks.map(r=>`<span class="live-status-pill ${r.tone==='bad'?'bad':'stale'} warning-pulse"><i class="fa-solid ${r.icon}"></i> ${safe(r.text)}</span>`).join('')}</div>`;
-}
-function liveClassMapHTML(arr=liveScopedSessions()){
-  const map={};
-  arr.forEach(s=>{const c=String(s.className||'Chưa phân lớp'); if(!map[c])map[c]=[]; map[c].push(s);});
-  const rows=Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0],'vi'));
-  return `<section class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-grip text-blue-600"></i> Bản đồ lớp học realtime</h3><span class="mini-badge">Click để lọc lớp</span></div><div id="adminLiveClassMap" class="admin-live-grid">${rows.map(([c,list])=>{const online=list.filter(x=>liveSessionFreshness(x).key==='live').length; const warn=list.reduce((t,x)=>t+liveSessionRiskItems(x).length,0);return `<button onclick="liveMonitorState.className='${safe(c)}';renderAdminLiveMonitorTab()" class="admin-live-class-card"><div class="flex items-center justify-between gap-2"><b class="text-lg">${safe(c)}</b><span class="mini-badge">${list.length} ca</span></div><div class="grid grid-cols-3 gap-2 mt-3 text-center"><div><b class="text-green-600">${online}</b><p class="text-[11px]" style="color:var(--muted)">online</p></div><div><b>${list.length-online}</b><p class="text-[11px]" style="color:var(--muted)">khác</p></div><div><b class="${warn?'text-red-600':''}">${warn}</b><p class="text-[11px]" style="color:var(--muted)">cảnh báo</p></div></div></button>`;}).join('')||'<div class="live-monitor-empty">Chưa có lớp nào đang có phiên thi.</div>'}</div></section>`;
-}
-function liveMonitorTableHTML(arr=liveScopedSessions()){
-  if(!firebaseReady) return liveMonitorRowsHTML(arr);
-  if(!arr.length) return liveMonitorRowsHTML(arr);
-  return `<div class="admin-live-table-wrap"><table class="admin-live-table"><thead><tr><th>Học sinh</th><th>Lớp</th><th>Đề</th><th>Trạng thái</th><th>Tiến độ</th><th>Thời gian còn lại</th><th>Cảnh báo</th><th></th></tr></thead><tbody>${arr.map(s=>{const st=liveSessionFreshness(s), done=liveAnsweredCount(s), total=Number(s.questionCount||0), pctDone=total?Math.round(done*100/total):0;return `<tr><td><b>${safe(s.studentName||s.studentEmail||'Học sinh')}</b><p class="text-xs" style="color:var(--muted)">${safe(s.studentEmail||'')}</p></td><td><span class="class-chip">${safe(s.className||'Chưa phân lớp')}</span>${s.classCode?`<p class="text-xs mt-1" style="color:var(--muted)">${safe(s.classCode)}</p>`:''}</td><td><b class="block max-w-[250px] truncate">${safe(s.examTitle||'Đề thi')}</b><p class="text-xs" style="color:var(--muted)">Mã: ${safe(s.examId||'')}</p></td><td><span class="live-status-pill ${st.cls}"><i class="fa-solid ${st.icon}"></i> ${safe(st.label)}</span><p class="text-xs mt-1" style="color:var(--muted)">Cập nhật ${safe(liveTimeAgo(s.lastUpdate||s.updatedAt||s.savedAt||s.startedAt))}</p></td><td><div class="live-answer-mini"><b>${done}/${total||'?'}</b><div class="bar-track flex-1"><div class="bar-fill" style="width:${pctDone}%"></div></div></div><p class="text-xs mt-1" style="color:var(--muted)">Đang ở câu ${Number(s.currentQuestionIndex||0)+1}</p></td><td><b class="font-mono text-lg">${liveRemainText(s.remain)}</b></td><td>${liveRiskBadgesHTML(s)}</td><td><button onclick="openLiveSessionDetail('${safe(s.id)}')" class="exam-action-btn"><i class="fa-solid fa-eye"></i> Xem</button></td></tr>`;}).join('')}</tbody></table></div>`;
-}
-function renderAdminLiveMonitorTab(){
-  if(!requireRole('teacher'))return;
-  setExamFocusMode(false);
-  const html=`<div class="admin-pro-shell fade-in">${adminSidebarHTML()}<div class="admin-live-main min-w-0"><section class="live-monitor-hero"><div class="flex flex-wrap justify-between gap-3 items-start"><div><div class="flex items-center gap-2"><span class="live-monitor-dot"></span><span class="admin-pro-pill"><i class="fa-solid fa-tower-broadcast"></i> TAB MỚI</span></div><h2 class="text-3xl md:text-5xl font-black mt-3">GIÁM SÁT TRỰC TIẾP</h2><p class="text-blue-100 mt-2 max-w-3xl">Theo dõi realtime học sinh đang thi: online/offline theo lastUpdate, tiến độ, thời gian còn lại, đổi tab, không hoạt động quá 60 giây và xem chi tiết bài đang làm.</p></div><div class="flex flex-wrap gap-2"><button onclick="startLiveExamMonitor(true)" class="bg-white/15 border border-white/20 text-white px-4 py-2 rounded-2xl font-bold"><i class="fa-solid fa-rotate"></i> Làm mới</button><span id="liveMonitorStamp" class="admin-pro-pill">Đang kết nối...</span></div></div></section>${liveMonitorHTML()}${liveClassMapHTML()}<section class="glass-card p-5"><div class="admin-pro-section-title"><h3><i class="fa-solid fa-table-list text-blue-600"></i> Bảng giám sát trực tiếp</h3><span class="mini-badge">Auto refresh onSnapshot</span></div><div id="adminLiveMonitorTable">${liveMonitorTableHTML()}</div></section></div></div>`;
-  $('mainView').innerHTML=html;
-  startLiveExamMonitor();
-  typeset();
 }
 
 function adminAnalyticsBoardHTML(){
