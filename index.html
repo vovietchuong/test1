@@ -6723,8 +6723,9 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
       const ref=db.collection('arenaRooms').doc(id); const snap=await ref.get(); if(!snap.exists){toast('Phòng không còn tồn tại.','bad');return;}
       const r=snap.data(); const players=Array.from(new Set([...(r.players||[]),meId()]));
       if(players.length>2){toast('Phòng đã đủ người.','bad');return;}
-      await ref.set({players,playerNames:{...(r.playerNames||{}),[meId()]:meName()},status:players.length>=2?'playing':'waiting',updatedAt:serverNow()},{merge:true});
-      toast(players.length>=2?'Đã vào phòng, trận online đã sẵn sàng.':'Đã tham gia phòng, chờ đối thủ.','ok'); await loadOnlineArenaData(); window.renderArena();
+      await ref.set({players,playerNames:{...(r.playerNames||{}),[meId()]:meName()},readyMap:{...(r.readyMap||{}),[meId()]:false},status:'waiting',countdownUntilMs:0,updatedAt:serverNow()},{merge:true});
+      await ref.collection('players').doc(meId()).set({userId:meId(),name:meName(),className:currentUser?.className||'',ready:false,lastSeenAt:serverNow(),updatedAt:serverNow()},{merge:true}).catch(()=>{});
+      toast('Đã vào phòng, hãy bấm “Tôi đã sẵn sàng”.','ok'); await loadOnlineArenaData(); window.renderArena();
     }catch(err){toast('Chưa tham gia được phòng: '+(err.message||err),'bad');}
   }
   async function saveResultOnline(result, profile){
@@ -6930,7 +6931,35 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   }
   async function joinRoom(id){
     if(!fb()){toast('Cần đăng nhập để tham gia.','bad');return;}
-    try{const ref=db.collection('arenaRooms').doc(id); await db.runTransaction(async tx=>{const s=await tx.get(ref); if(!s.exists) throw new Error('Phòng không còn tồn tại'); const r=s.data(); let players=Array.from(new Set([...(r.players||[]),uid()])); if(players.length>2) throw new Error('Phòng đã đủ người'); tx.set(ref,{players,playerNames:{...(r.playerNames||{}),[uid()]:uname()},readyMap:{...(r.readyMap||{}),[uid()]:false},countdownUntilMs:0,updatedAt:nowServer()},{merge:true}); tx.set(ref.collection('players').doc(uid()),{userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,submitted:false,ready:false,joinedAt:nowServer(),updatedAt:nowServer()},{merge:true});}); toast('Đã tham gia phòng realtime.','ok'); openRoom(id);}catch(err){toast('Chưa tham gia được: '+(err.message||err),'bad');}
+    try{
+      const ref=db.collection('arenaRooms').doc(id);
+      await db.runTransaction(async tx=>{
+        const s=await tx.get(ref);
+        if(!s.exists) throw new Error('Phòng không còn tồn tại');
+        const r=s.data()||{};
+        if(!['waiting','countdown'].includes(r.status||'waiting')) throw new Error('Trận đã bắt đầu, không thể tham gia thêm');
+        const oldPlayers=Array.isArray(r.players)?r.players.filter(Boolean):[];
+        const players=Array.from(new Set([...oldPlayers,uid()]));
+        if(players.length>2) throw new Error('Phòng đã đủ người');
+        const readyMap={...(r.readyMap||{})};
+        players.forEach(pid=>{ if(readyMap[pid]!==true) readyMap[pid]=false; });
+        readyMap[uid()]=false;
+        tx.set(ref,{
+          players,
+          playerNames:{...(r.playerNames||{}),[uid()]:uname()},
+          readyMap,
+          status:'waiting',
+          countdownUntilMs:0,
+          updatedAt:nowServer()
+        },{merge:true});
+        tx.set(ref.collection('players').doc(uid()),{
+          userId:uid(),name:uname(),className:uclass(),answers:{},answered:0,score:0,percent:0,
+          submitted:false,ready:false,joinedAt:nowServer(),lastSeenAt:nowServer(),updatedAt:nowServer()
+        },{merge:true});
+      });
+      toast('Đã tham gia phòng realtime. Bấm “Tôi đã sẵn sàng” để vào trận.','ok');
+      openRoom(id);
+    }catch(err){toast('Chưa tham gia được: '+(err.message||err),'bad');}
   }
   function openRoom(id){
     if(!fb()){toast('Cần đăng nhập.','bad');return;} clearLive(); bindAntiCheat(); live.roomId=id; localStorage.setItem(P5_KEY,id);
@@ -6948,8 +6977,30 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     if(!fb()||!live.roomId||!live.room){toast('Cần đăng nhập và mở phòng trước.','bad');return;}
     const ref=db.collection('arenaRooms').doc(live.roomId);
     try{
-      await ref.set({readyMap:{...(live.room.readyMap||{}),[uid()]:!!flag},countdownUntilMs:0,status:'waiting',updatedAt:nowServer()},{merge:true});
-      await ref.collection('players').doc(uid()).set({ready:!!flag,updatedAt:nowServer(),lastSeenAt:nowServer()},{merge:true});
+      await db.runTransaction(async tx=>{
+        const s=await tx.get(ref);
+        if(!s.exists) throw new Error('Phòng không còn tồn tại');
+        const r=s.data()||{};
+        if(!['waiting','countdown'].includes(r.status||'waiting')) throw new Error('Trận đã bắt đầu');
+        const oldPlayers=Array.isArray(r.players)?r.players.filter(Boolean):[];
+        const inRoom=oldPlayers.includes(uid()) || !!live.players[uid()];
+        const players=inRoom ? Array.from(new Set([...oldPlayers,uid()])) : Array.from(new Set([...oldPlayers,uid()]));
+        if(players.length>2 && !oldPlayers.includes(uid())) throw new Error('Phòng đã đủ người');
+        const readyMap={...(r.readyMap||{})};
+        players.forEach(pid=>{ if(readyMap[pid]!==true) readyMap[pid]=false; });
+        readyMap[uid()]=!!flag;
+        tx.set(ref,{
+          players,
+          playerNames:{...(r.playerNames||{}),[uid()]:uname()},
+          readyMap,
+          status:'waiting',
+          countdownUntilMs:0,
+          updatedAt:nowServer()
+        },{merge:true});
+        tx.set(ref.collection('players').doc(uid()),{
+          userId:uid(),name:uname(),className:uclass(),ready:!!flag,lastSeenAt:nowServer(),updatedAt:nowServer()
+        },{merge:true});
+      });
       playArenaSound(flag?'submit':'click');
       setTimeout(()=>maybeStartCountdown(),250);
     }catch(err){toast('Chưa cập nhật trạng thái sẵn sàng: '+(err.message||err),'bad');}
@@ -6983,8 +7034,8 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
     if(!live.room) return; const r=live.room; if(r.status==='waiting'||r.status==='countdown') return renderLobby(r); if(r.status==='finished') return renderResult(r); removeCountdownOverlay(); return renderBattle(r);
   }
   function renderLobby(r){
-    const players=r.players||[]; const ready=r.readyMap||{}; const mineReady=ready[uid()]===true || live.players[uid()]?.ready===true; const allReady=players.length>=2 && players.every(id=>ready[id]===true || live.players[id]?.ready===true); const isHost=r.hostId===uid() || (window.isTeacherUser&&isTeacherUser()); handleCountdown(r); if(allReady && isHost && r.status==='waiting') setTimeout(()=>maybeStartCountdown(),120);
-    $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-hourglass-half"></i> Phòng chờ realtime + Ready</span><h2 class="text-3xl font-black mt-2">${esc(r.title)}</h2><p class="text-orange-100">Mã phòng: <b>${esc((r.id||live.roomId).slice(0,8))}</b> • ${r.status==='countdown'?'Đang đếm ngược':'Chờ đủ người và sẵn sàng'}</p></div><div class="text-right"><p class="text-sm text-orange-100 font-bold">Người chơi</p><p class="text-5xl font-black">${players.length}/2</p></div></div></section><section class="grid lg:grid-cols-[1.05fr_.95fr] gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-users text-orange-500"></i> Sảnh chờ thi đấu</h3><div class="arena-lobby-stage space-y-3">${[0,1].map(slot=>{const id=players[slot]; if(!id) return `<div class="arena-lobby-player"><div class="flex items-center gap-3"><div class="arena-avatar fire"><i class="fa-solid fa-user-plus"></i></div><div><b>Đang chờ đối thủ...</b><p class="text-xs" style="color:var(--muted)">Gửi mã phòng hoặc dùng Quick Match</p></div></div><span class="mini-badge">Trống</span></div>`; const p=live.players[id]||{}; const ok=ready[id]===true || p.ready===true; return `<div class="arena-lobby-player ${ok?'ready':''}"><div class="flex items-center gap-3 min-w-0"><div class="arena-avatar ${id===uid()?'':'fire'}">${id===uid()?'<i class="fa-solid fa-user-graduate"></i>':'<i class="fa-solid fa-dragon"></i>'}</div><div class="min-w-0"><b class="truncate block">${esc((r.playerNames||{})[id]||p.name||id)}</b><p class="text-xs" style="color:var(--muted)">${id===r.hostId?'Chủ phòng':'Người chơi'} • ${esc(p.className||'Chưa phân lớp')}</p></div></div><div class="flex items-center gap-2"><span class="arena-ready-dot"></span><span class="mini-badge">${ok?'Đã sẵn sàng':'Chưa ready'}</span></div></div>`;}).join('')}</div><div class="arena-lobby-tip mt-4"><i class="fa-solid fa-circle-info"></i> Khi cả hai người chơi bấm <b>Sẵn sàng</b>, chủ phòng sẽ tự kích hoạt đếm ngược 3-2-1 và trận bắt đầu realtime.</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-gamepad text-orange-500"></i> Điều khiển phòng</h3><button onclick="arenaP5JoinRoom('${esc(live.roomId)}')" class="w-full btn-soft py-3 rounded-2xl font-black mb-3" ${players.includes(uid())?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> Tham gia phòng này</button><button onclick="arenaP5Ready(${mineReady?'false':'true'})" class="w-full ${mineReady?'arena-unready-btn':'arena-ready-btn'} py-4 rounded-2xl font-black mb-3" ${!players.includes(uid())||r.status==='countdown'?'disabled':''}><i class="fa-solid ${mineReady?'fa-rotate-left':'fa-circle-check'}"></i> ${mineReady?'Hủy sẵn sàng':'Tôi đã sẵn sàng'}</button><button onclick="arenaP5StartCountdown()" class="w-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white py-4 rounded-2xl font-black" ${(!isHost||!allReady||r.status==='countdown')?'disabled':''}><i class="fa-solid fa-stopwatch"></i> Đếm ngược vào trận</button><button onclick="renderArena()" class="w-full mt-3 btn-soft py-3 rounded-2xl font-black"><i class="fa-solid fa-arrow-left"></i> Về Đấu Trường</button><div class="grid grid-cols-2 gap-2 mt-4"><div class="arena-live-score"><b>${players.filter(id=>ready[id]===true || live.players[id]?.ready===true).length}/2</b><span>đã ready</span></div><div class="arena-live-score"><b>${Math.round((r.durationMs||480000)/60000)}'</b><span>thời lượng</span></div></div></div></section></div>`;
+    const players=Array.from(new Set([...(r.players||[]),...Object.keys(live.players||{})])).slice(0,2); const ready=r.readyMap||{}; const iAmInRoom=players.includes(uid()) || !!live.players[uid()]; const mineReady=ready[uid()]===true || live.players[uid()]?.ready===true; const allReady=players.length>=2 && players.every(id=>ready[id]===true || live.players[id]?.ready===true); const isHost=r.hostId===uid() || (window.isTeacherUser&&isTeacherUser()); handleCountdown(r); if(allReady && isHost && r.status==='waiting') setTimeout(()=>maybeStartCountdown(),120);
+    $('mainView').innerHTML=`<div class="fade-in space-y-5"><section class="arena-p5-hero"><div class="flex flex-wrap justify-between gap-4"><div><span class="arena-pill"><i class="fa-solid fa-hourglass-half"></i> Phòng chờ realtime + Ready</span><h2 class="text-3xl font-black mt-2">${esc(r.title)}</h2><p class="text-orange-100">Mã phòng: <b>${esc((r.id||live.roomId).slice(0,8))}</b> • ${r.status==='countdown'?'Đang đếm ngược':'Chờ đủ người và sẵn sàng'}</p></div><div class="text-right"><p class="text-sm text-orange-100 font-bold">Người chơi</p><p class="text-5xl font-black">${players.length}/2</p></div></div></section><section class="grid lg:grid-cols-[1.05fr_.95fr] gap-5"><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-users text-orange-500"></i> Sảnh chờ thi đấu</h3><div class="arena-lobby-stage space-y-3">${[0,1].map(slot=>{const id=players[slot]; if(!id) return `<div class="arena-lobby-player"><div class="flex items-center gap-3"><div class="arena-avatar fire"><i class="fa-solid fa-user-plus"></i></div><div><b>Đang chờ đối thủ...</b><p class="text-xs" style="color:var(--muted)">Gửi mã phòng hoặc dùng Quick Match</p></div></div><span class="mini-badge">Trống</span></div>`; const p=live.players[id]||{}; const ok=ready[id]===true || p.ready===true; return `<div class="arena-lobby-player ${ok?'ready':''}"><div class="flex items-center gap-3 min-w-0"><div class="arena-avatar ${id===uid()?'':'fire'}">${id===uid()?'<i class="fa-solid fa-user-graduate"></i>':'<i class="fa-solid fa-dragon"></i>'}</div><div class="min-w-0"><b class="truncate block">${esc((r.playerNames||{})[id]||p.name||id)}</b><p class="text-xs" style="color:var(--muted)">${id===r.hostId?'Chủ phòng':'Người chơi'} • ${esc(p.className||'Chưa phân lớp')}</p></div></div><div class="flex items-center gap-2"><span class="arena-ready-dot"></span><span class="mini-badge">${ok?'Đã sẵn sàng':'Chưa ready'}</span></div></div>`;}).join('')}</div><div class="arena-lobby-tip mt-4"><i class="fa-solid fa-circle-info"></i> Khi cả hai người chơi bấm <b>Sẵn sàng</b>, chủ phòng sẽ tự kích hoạt đếm ngược 3-2-1 và trận bắt đầu realtime.</div></div><div class="glass-card p-5"><h3 class="text-xl font-black mb-3"><i class="fa-solid fa-gamepad text-orange-500"></i> Điều khiển phòng</h3><button onclick="arenaP5JoinRoom('${esc(live.roomId)}')" class="w-full btn-soft py-3 rounded-2xl font-black mb-3" ${players.includes(uid())?'disabled':''}><i class="fa-solid fa-right-to-bracket"></i> Tham gia phòng này</button><button onclick="arenaP5Ready(${mineReady?'false':'true'})" class="w-full ${mineReady?'arena-unready-btn':'arena-ready-btn'} py-4 rounded-2xl font-black mb-3" ${!iAmInRoom||r.status==='countdown'?'disabled':''}><i class="fa-solid ${mineReady?'fa-rotate-left':'fa-circle-check'}"></i> ${mineReady?'Hủy sẵn sàng':'Tôi đã sẵn sàng'}</button><button onclick="arenaP5StartCountdown()" class="w-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white py-4 rounded-2xl font-black" ${(!isHost||!allReady||r.status==='countdown')?'disabled':''}><i class="fa-solid fa-stopwatch"></i> Đếm ngược vào trận</button><button onclick="renderArena()" class="w-full mt-3 btn-soft py-3 rounded-2xl font-black"><i class="fa-solid fa-arrow-left"></i> Về Đấu Trường</button><div class="grid grid-cols-2 gap-2 mt-4"><div class="arena-live-score"><b>${players.filter(id=>ready[id]===true || live.players[id]?.ready===true).length}/2</b><span>đã ready</span></div><div class="arena-live-score"><b>${Math.round((r.durationMs||480000)/60000)}'</b><span>thời lượng</span></div></div></div></section></div>`;
   }
   function renderBattle(r){
     const qs=r.questions||[]; const mine=myProgress(); const opponent=(r.players||[]).find(x=>x!==uid()); const op=opponent?live.players[opponent]:null;
