@@ -321,7 +321,7 @@
         <button onclick="renderHome()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Tổng quan</button>
         <button onclick="renderLessons()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Bài giảng</button>
         <button onclick="renderExamsPublic()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Kho đề</button>
-        <button onclick="renderArena()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Đấu trường</button>
+        <button type="button" data-open-arena="1" onclick="event.preventDefault(); window.renderArena && window.renderArena(); return false;" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Đấu trường</button>
         <button onclick="renderAchievements()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Thành tích</button>
         <button onclick="renderStats()" class="nav-btn px-3 py-2 rounded-xl hover:bg-blue-50">Thống kê</button>
       </nav>
@@ -6404,7 +6404,7 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
 
   window.renderArena=renderArena; window.arenaSwitchTab=arenaSwitchTab; window.startQuickDuel=startQuickDuel; window.arenaChoose=arenaChoose; window.finishQuickDuel=finishQuickDuel; window.arenaState=arenaState;
   const oldRenderHome=window.renderHome||renderHome;
-  window.renderHome=function(){oldRenderHome(); const hero=document.querySelector('#mainView .glass-card .flex.flex-wrap.gap-3.mt-6'); if(hero&&!hero.dataset.arenaAdded){hero.dataset.arenaAdded='1'; hero.insertAdjacentHTML('beforeend','<button onclick="renderArena()" class="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Vào Đấu Trường</button>');}}
+  window.renderHome=function(){oldRenderHome(); const hero=document.querySelector('#mainView .glass-card .flex.flex-wrap.gap-3.mt-6'); if(hero&&!hero.dataset.arenaAdded){hero.dataset.arenaAdded='1'; hero.insertAdjacentHTML('beforeend','<button type="button" data-open-arena="1" onclick="event.preventDefault(); event.stopPropagation(); window.renderArena && window.renderArena(); return false;" class="relative z-20 bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 text-white px-5 py-3 rounded-2xl font-bold"><i class="fa-solid fa-shield-halved"></i> Vào Đấu Trường</button>');}}
 })();
 </script>
 
@@ -6822,6 +6822,18 @@ getUserProfile=async function(user){const profile=await __profileGetUserProfile(
   const prevSwitch=window.arenaSwitchTab; window.arenaSwitchTab=function(tab){ if(tab==='phase5'){ if(window.arenaState) window.arenaState.tab='phase5'; if(window.arenaForceOnlineSync){ window.arenaForceOnlineSync(); } else if(window.renderArena){ window.renderArena(); } return;} return prevSwitch?prevSwitch(tab):null; };
   const prevRender=window.renderArena; window.renderArena=function(){ prevRender&&prevRender(); setTimeout(()=>{const bar=document.querySelector('.arena-tabbar'); if(bar&&!bar.querySelector('[data-p5]')) bar.insertAdjacentHTML('beforeend',`<button data-p5 class="${window.arenaState&&window.arenaState.tab==='phase5'?'active':''}" onclick="arenaSwitchTab('phase5')"><i class="fa-solid fa-satellite-dish"></i> Realtime</button>`); if(window.arenaState&&window.arenaState.tab==='phase5'){const panel=document.getElementById('arenaPanel'); if(panel) panel.innerHTML=phase5PanelHTML(); const badge=document.querySelector('.arena-hero .arena-pill'); if(badge) badge.innerHTML='<i class="fa-solid fa-satellite-dish"></i> Math Arena Phase 5';} },0); };
 })();
+</script>
+
+<script>
+// FIX CLICK ĐẤU TRƯỜNG: bắt sự kiện bằng delegation để nút vẫn hoạt động dù renderHome được bọc nhiều lần.
+document.addEventListener('click', function(e){
+  const btn = e.target.closest && e.target.closest('[data-open-arena]');
+  if(!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if(typeof window.renderArena === 'function') window.renderArena();
+  else { console.error('renderArena chưa sẵn sàng'); alert('Chức năng Đấu trường chưa sẵn sàng, thầy tải lại trang giúp em.'); }
+}, true);
 </script>
 
 </body>
