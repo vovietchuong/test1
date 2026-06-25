@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quản lý lớp học - Kiên Năng | Giai đoạn 4.4 Online Firestore</title>
+    <title>Quản lý lớp học - Kiên Năng | Giai đoạn 4.5 Admin Dashboard</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f7fc;color:#1e293b;padding:24px;min-height:100vh}.app{max-width:1500px;margin:0 auto}
@@ -97,13 +97,20 @@
         .account-card b{color:#0b3b5c}.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.auth-note{background:#eef6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-bottom:12px}
         @media(max-width:768px){.auth-grid{grid-template-columns:1fr}.account-badge{max-width:100%;justify-content:center}}
 
+
+        /* ---------- ADMIN DASHBOARD UPGRADE ---------- */
+        .login-hero{background:linear-gradient(135deg,#0b3b5c,#2563eb);color:#fff;border-radius:20px;padding:20px;margin:12px 0 16px;box-shadow:0 12px 38px rgba(11,59,92,.22)}
+        .login-hero h3{font-size:22px;margin-bottom:6px}.login-hero p{opacity:.9;line-height:1.5}.login-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 16px}.login-tabs button{border:1px solid #e2e8f0;background:#f8fafc;color:#475569;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}.login-tabs button.active{background:#0b3b5c;color:#fff;border-color:#0b3b5c}
+        .role-pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;background:#e0f2fe;color:#075985;padding:5px 10px;font-size:12px;font-weight:900}.role-pill.admin{background:#fef3c7;color:#92400e}.role-pill.student{background:#f3e8ff;color:#6b21a8}
+        .admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px}.admin-card{background:#fff;border:1px solid #e9eef3;border-radius:18px;padding:18px;box-shadow:0 4px 16px rgba(0,0,0,.05)}.admin-card .big{font-size:30px;font-weight:900;color:#0b3b5c}.admin-card .cap{font-size:13px;color:#64748b;margin-top:4px}.admin-section{background:#fff;border:1px solid #e9eef3;border-radius:20px;padding:20px;box-shadow:0 4px 16px rgba(0,0,0,.05);margin-bottom:16px}.admin-section h2{color:#0b3b5c;margin-bottom:12px}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.risk-box{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:14px;padding:12px 14px;font-weight:700;line-height:1.45}
+
         @media print{body{background:#fff;padding:0}.header,.toolbar,.actions,.btn,.modal-overlay,.toast-container{display:none!important}.app{max-width:none}.detail-view,.panel,.class-card{box-shadow:none;border:none}.print-only{display:block}.data-table th{position:static}}
     </style>
 </head>
 <body>
 <div class="app" id="app">
     <header class="header">
-        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 4.4 · Online Firestore</small></h1>
+        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 4.5 · Online Firestore · Admin Dashboard</small></h1>
         <div class="header-actions">
             <button class="btn-primary" onclick="openCreateClassModal()">➕ Tạo lớp</button>
             <button onclick="downloadStudentTemplate()">⬇️ Mẫu HS Excel</button>
@@ -128,6 +135,7 @@
             <button class="btn tab active" id="tabDashboard" onclick="setView('dashboard')">🏠 Tổng quan</button>
             <button class="btn tab" id="tabDebts" onclick="setView('debts')">💰 Công nợ</button>
             <button class="btn tab" id="tabSchedule" onclick="setView('schedule')">🗓️ Lịch học</button>
+            <button class="btn tab admin-only" id="tabAdmin" onclick="setView('admin')" style="display:none">🛡️ Quản trị</button>
         </div>
     </div>
 
@@ -191,22 +199,17 @@
 
 
     <div class="modal-overlay" id="authModal"><div class="modal">
-        <h2>👤 Tài khoản giáo viên</h2><p class="sub">Tạo tài khoản, đăng nhập và làm việc trực tiếp với Firestore. Bản này chỉ chạy dữ liệu online, không đọc/ghi dữ liệu local.</p>
+        <div class="login-hero"><h3>🔐 Đăng nhập hệ thống Kiên Năng</h3><p>Làm việc trực tiếp với Firestore online. Tài khoản admin sẽ tự có thêm tab Quản trị, tài khoản giáo viên dùng các chức năng lớp học thường ngày.</p></div>
         <div id="authCurrentBox" class="account-card"></div>
-        <div class="auth-note">Lần đầu sử dụng: vào Firebase Console → Authentication → Sign-in method → bật <b>Email/Password</b>. Bản online-only không dùng đăng nhập ẩn danh.</div>
-        <div class="auth-grid">
-            <div>
-                <label>Họ tên</label><input id="authNameInput" placeholder="Ví dụ: Thầy Võ Viết Chương" />
-            </div>
-            <div>
-                <label>Vai trò</label><select id="authRoleInput"><option value="teacher">Giáo viên</option><option value="admin">Quản trị viên</option><option value="student">Học sinh</option></select>
-            </div>
-        </div>
+        <div class="auth-note">Tài khoản mới mặc định là <b>Giáo viên</b>. Muốn cấp quyền admin: tài khoản admin hiện có vào tab <b>Quản trị</b> để đổi vai trò, hoặc thầy đặt role=<b>admin</b> trực tiếp cho tài khoản đầu tiên trong Firestore.</div>
+        <div class="login-tabs"><button id="loginModeBtn" class="active" onclick="setAuthMode('login')">Đăng nhập</button><button id="registerModeBtn" onclick="setAuthMode('register')">Tạo tài khoản</button></div>
+        <div id="registerNameBox" style="display:none"><label>Họ tên</label><input id="authNameInput" placeholder="Ví dụ: Thầy Võ Viết Chương" /></div>
+        <input id="authRoleInput" type="hidden" value="teacher" />
         <label>Email đăng nhập</label><input id="authEmailInput" type="email" placeholder="email@gmail.com" autocomplete="email" />
         <label>Mật khẩu</label><input id="authPasswordInput" type="password" placeholder="Tối thiểu 6 ký tự" autocomplete="current-password" />
         <div class="modal-actions" style="justify-content:space-between;flex-wrap:wrap">
             <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-danger" onclick="logoutAccount()">Đăng xuất</button><button class="btn btn-soft" onclick="sendResetPassword()">Quên mật khẩu</button></span>
-            <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-gray" onclick="closeModal('authModal')">Đóng</button><button class="btn btn-green" onclick="registerAccount()">Tạo tài khoản</button><button class="btn btn-blue" onclick="loginAccount()">Đăng nhập</button></span>
+            <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-gray" onclick="closeModal('authModal')">Đóng</button><button class="btn btn-green" id="registerActionBtn" onclick="registerAccount()" style="display:none">Tạo tài khoản</button><button class="btn btn-blue" id="loginActionBtn" onclick="loginAccount()">Đăng nhập</button></span>
         </div>
     </div></div>
 
@@ -250,7 +253,7 @@ const DEFAULT_FIREBASE_CONFIG={
     appId: "1:798882238835:web:0ca9e033ae3a6b9d55b506",
     measurementId: "G-18BKNWVMDL"
 };
-let data={classes:{},meta:{version:4.3,mode:'auth-firestore-ready',updatedAt:new Date().toISOString()}};let nextStudentId=1;let currentView='dashboard';let currentClass=null;let editingClassName=null;let addingToClass=null;let editingStudentId=null;let confirmCallback=null;let editingSessionClass='',editingSessionIndex=-1;let paymentClass='',paymentStudentId=null;let calendarDate=new Date(),calendarMode='month',calendarClassFilter='all';
+let data={classes:{},meta:{version:4.5,mode:'online-firestore-admin',updatedAt:new Date().toISOString()}};let nextStudentId=1;let currentView='dashboard';let currentClass=null;let editingClassName=null;let addingToClass=null;let editingStudentId=null;let confirmCallback=null;let editingSessionClass='',editingSessionIndex=-1;let paymentClass='',paymentStudentId=null;let calendarDate=new Date(),calendarMode='month',calendarClassFilter='all';
 let firestoreDb=null, firestoreDocRef=null, firestoreUnsub=null, firestoreSaveTimer=null, firestoreReady=false, firestoreLoading=false, firestoreRemoteAt='', suppressRemoteSave=false;
 let firebaseAuth=null, firebaseUser=null, currentUserProfile=null, authReady=false;
 function money(n){return (Number(n)||0).toLocaleString('vi-VN')+'đ'}function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}function q(){return document.getElementById('searchInput')?.value.trim().toLowerCase()||''}
@@ -275,14 +278,14 @@ async function init(){
 }function normalize(){if(!data.classes)data.classes={};if(!data.meta)data.meta={};data.meta.version=4;data.meta.mode='firestore-ready';data.meta.updatedAt=data.meta.updatedAt||new Date().toISOString();let maxId=0;for(const [name,cls] of Object.entries(data.classes)){cls.id=cls.id||makeId('class',name);cls.name=cls.name||name;cls.teacherId=cls.teacherId||getActiveUserId();cls.centerId=cls.centerId||getFirestoreCenterId();cls.createdAt=cls.createdAt||new Date().toISOString();cls.updatedAt=cls.updatedAt||new Date().toISOString();cls.sessions=Number(cls.sessions)||10;cls.sessionDates=Array.isArray(cls.sessionDates)?cls.sessionDates:[];while(cls.sessionDates.length<cls.sessions)cls.sessionDates.push('');cls.sessionDates=cls.sessionDates.slice(0,cls.sessions);cls.schedule=cls.schedule||'';cls.defaultFee=Number(cls.defaultFee||0);cls.calendarEvents=Array.isArray(cls.calendarEvents)?cls.calendarEvents:[];cls.calendarEvents=cls.calendarEvents.map(ev=>({...ev,id:ev.id||makeId('event',name+'-'+(ev.date||'')+'-'+(ev.title||'')),classId:cls.id,className:name,centerId:cls.centerId,updatedAt:ev.updatedAt||new Date().toISOString()}));cls.students=Array.isArray(cls.students)?cls.students:[];for(const s of cls.students){s.id=Number(s.id)||(++maxId);if(s.id>maxId)maxId=s.id;s.firestoreId=s.firestoreId||makeId('student',name+'-'+s.id+'-'+(s.name||''));s.classId=cls.id;s.centerId=cls.centerId;s.teacherId=s.teacherId||cls.teacherId||getActiveUserId();s.phone=s.phone||'';s.parentPhone=s.parentPhone||'';s.grade=s.grade||'';s.school=s.school||'';s.note=s.note||'';s.status=s.status||'active';s.tuition=Number(s.tuition ?? cls.defaultFee ?? 0);s.paid=Number(s.paid||0);s.paymentNote=s.paymentNote||'';s.createdAt=s.createdAt||new Date().toISOString();s.updatedAt=s.updatedAt||new Date().toISOString();s.attendance=s.attendance||{};for(let i=1;i<=cls.sessions;i++){const k='B'+i;if(!(k in s.attendance))s.attendance[k]=false}}}nextStudentId=maxId+1}
 function loadData(){
     // Online-only: không đọc dữ liệu lớp/học sinh từ localStorage.
-    data={classes:{},meta:{version:4.4,mode:'online-firestore-only',updatedAt:new Date().toISOString()}};
+    data={classes:{},meta:{version:4.5,mode:'online-firestore-admin',updatedAt:new Date().toISOString()}};
     normalize();
 }
 function saveData(){
     try{
         if(ONLINE_ONLY && (!firebaseUser || firebaseUser.isAnonymous)){showToast('Cần đăng nhập tài khoản trước khi lưu dữ liệu online','error');renderLoginRequired();return}
         if(ONLINE_ONLY && !firestoreReady){showToast('Chưa kết nối Firestore, dữ liệu chưa được lưu','error');setSyncBadge('error','Chưa kết nối');return}
-        data.meta={...(data.meta||{}),version:4.4,mode:'online-firestore-only',updatedAt:new Date().toISOString()};
+        data.meta={...(data.meta||{}),version:4.5,mode:'online-firestore-admin',updatedAt:new Date().toISOString()};
         scheduleFirestoreSave();
     }catch(e){showToast('Lưu dữ liệu online thất bại','error')}
 }
@@ -346,6 +349,10 @@ function getActiveUserId(){return firebaseUser?.uid||'online-user'}
 function getActiveUserEmail(){return firebaseUser?.email||''}
 function getActiveUserName(){return currentUserProfile?.name||firebaseUser?.displayName||firebaseUser?.email||'Chưa đăng nhập'}
 function getActiveUserRole(){return currentUserProfile?.role||'teacher'}
+function isAdmin(){return getActiveUserRole()==='admin'}
+function roleLabel(role){return role==='admin'?'Quản trị viên':role==='student'?'Học sinh':'Giáo viên'}
+function rolePill(role){return `<span class="role-pill ${role==='admin'?'admin':role==='student'?'student':''}">${role==='admin'?'🛡️':role==='student'?'🎓':'👨‍🏫'} ${roleLabel(role)}</span>`}
+function updateAdminVisibility(){const show=isAdmin();document.querySelectorAll('.admin-only').forEach(el=>el.style.display=show?'':'none');if(!show&&currentView==='admin'){currentView='dashboard'}}
 async function ensureFirebaseAuth(){
     const auth=ensureFirebaseApp();
     if(auth.currentUser && !auth.currentUser.isAnonymous){firebaseUser=auth.currentUser;currentUserProfile=await loadUserProfile(firebaseUser);return firebaseUser}
@@ -353,14 +360,14 @@ async function ensureFirebaseAuth(){
 }
 async function loadUserProfile(user){
     if(!user)return null;
-    const fallback={uid:user.uid,name:user.displayName||user.email||'Người dùng',email:user.email||'',role:'teacher',anonymous:user.isAnonymous};
+    const fallback={uid:user.uid,name:user.displayName||user.email||'Người dùng',email:user.email||'',role:'teacher',anonymous:user.isAnonymous,centerId:getFirestoreCenterId()};
     try{
         ensureFirebaseApp();
         const db=firebase.firestore();
         const ref=db.collection('centers').doc(getFirestoreCenterId()).collection('users').doc(user.uid);
         const snap=await ref.get();
         if(snap.exists)return {...fallback,...snap.data()};
-        if(!user.isAnonymous){await ref.set({...fallback,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true})}
+        if(!user.isAnonymous){await ref.set({...fallback,role:'teacher',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true})}
     }catch(err){console.warn('Không tải được hồ sơ người dùng:',err.message)}
     return fallback;
 }
@@ -387,24 +394,34 @@ function updateAccountBadge(){
     }else{
         txt.textContent='Chưa đăng nhập'; if(av)av.textContent='?'; badge.title='Bấm để đăng nhập hoặc tạo tài khoản';
     }
+    updateAdminVisibility();
+}
+function setAuthMode(mode){
+    const login=mode!=='register';
+    document.getElementById('loginModeBtn')?.classList.toggle('active',login);
+    document.getElementById('registerModeBtn')?.classList.toggle('active',!login);
+    const nameBox=document.getElementById('registerNameBox'); if(nameBox)nameBox.style.display=login?'none':'block';
+    const loginBtn=document.getElementById('loginActionBtn'); if(loginBtn)loginBtn.style.display=login?'':'none';
+    const regBtn=document.getElementById('registerActionBtn'); if(regBtn)regBtn.style.display=login?'none':'';
 }
 function openAuthModal(){
     const box=document.getElementById('authCurrentBox');
     if(box){
-        if(firebaseUser&&!firebaseUser.isAnonymous)box.innerHTML=`<b>Đang đăng nhập</b><br>${esc(getActiveUserName())}<div class="subtext">${esc(firebaseUser.email||'')} · Vai trò: ${esc(getActiveUserRole())}</div>`;
+        if(firebaseUser&&!firebaseUser.isAnonymous)box.innerHTML=`<b>Đang đăng nhập</b><br>${esc(getActiveUserName())} ${rolePill(getActiveUserRole())}<div class="subtext">${esc(firebaseUser.email||'')} · UID: ${esc(firebaseUser.uid)}</div>`;
         else if(firebaseUser&&firebaseUser.isAnonymous)box.innerHTML='<b>Đang dùng tài khoản ẩn danh</b><div class="subtext">Có thể tạo tài khoản email để quản lý chính thức và phân quyền sau này.</div>';
         else box.innerHTML='<b>Chưa đăng nhập</b><div class="subtext">Thầy có thể tạo tài khoản giáo viên hoặc đăng nhập bằng email đã tạo.</div>';
     }
     authNameInput.value=currentUserProfile?.name||'';
-    authRoleInput.value=currentUserProfile?.role||'teacher';
+    authRoleInput.value='teacher';
     authEmailInput.value=firebaseUser?.email||'';
     authPasswordInput.value='';
+    setAuthMode(firebaseUser&&!firebaseUser.isAnonymous?'login':'login');
     openModal('authModal');
 }
 async function registerAccount(){
     try{
         const auth=ensureFirebaseApp();
-        const email=authEmailInput.value.trim();const pass=authPasswordInput.value;const name=authNameInput.value.trim()||email;const role=authRoleInput.value||'teacher';
+        const email=authEmailInput.value.trim();const pass=authPasswordInput.value;const name=authNameInput.value.trim()||email;const role='teacher';
         if(!email||!pass)throw new Error('Cần nhập email và mật khẩu');
         if(pass.length<6)throw new Error('Mật khẩu tối thiểu 6 ký tự');
         const cred=await auth.createUserWithEmailAndPassword(email,pass);
@@ -480,7 +497,7 @@ async function loadFromFirestoreOnce(){
         suppressRemoteSave=false;
         showToast('Đã tải dữ liệu online từ Firestore');
     }else{
-        data={classes:{},meta:{version:4.4,mode:'online-firestore-only',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}};
+        data={classes:{},meta:{version:4.5,mode:'online-firestore-admin',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}};
         normalize();
         setSyncBadge('online','Online · dữ liệu mới');
     }
@@ -488,12 +505,12 @@ async function loadFromFirestoreOnce(){
 }
 function listenFirestoreRealtime(){if(!firestoreDocRef)return;if(firestoreUnsub)firestoreUnsub();firestoreUnsub=firestoreDocRef.onSnapshot(snap=>{if(!snap.exists||firestoreLoading)return;const remote=snap.data();if(!remote||!remote.data||remote.updatedAt===firestoreRemoteAt)return;firestoreRemoteAt=remote.updatedAt;suppressRemoteSave=true;data=remote.data;normalize();suppressRemoteSave=false;render();setSyncBadge('online','Đã đồng bộ online')},err=>{setSyncBadge('error','Mất đồng bộ');renderOnlineGate('Mất kết nối Firestore: '+err.message);console.error(err)})}
 function scheduleFirestoreSave(){if(!firestoreReady||!firestoreDocRef||suppressRemoteSave)return;clearTimeout(firestoreSaveTimer);setSyncBadge('syncing','Đang lưu');firestoreSaveTimer=setTimeout(pushOnlineToFirestore,900)}
-async function pushOnlineToFirestore(){try{if(!firestoreReady){await initFirestoreIfEnabled()}if(!firebaseUser || firebaseUser.isAnonymous)throw new Error('Cần đăng nhập Email/Password');if(!firestoreDocRef)throw new Error('Chưa kết nối Firestore hoặc thiếu cấu hình');normalize();const payload={data,updatedAt:new Date().toISOString(),schemaVersion:4.4,centerId:getFirestoreCenterId(),source:'kienang-attendance-html-online-only',updatedBy:{uid:getActiveUserId(),email:getActiveUserEmail(),name:getActiveUserName(),role:getActiveUserRole()}};firestoreRemoteAt=payload.updatedAt;await firestoreDocRef.set(payload,{merge:true});setSyncBadge('online','Đã lưu Firestore');showToast('Đã lưu dữ liệu online lên Firestore')}catch(err){setSyncBadge('error','Lỗi lưu');showToast('Chưa lưu được Firestore: '+err.message,'error')}}
+async function pushOnlineToFirestore(){try{if(!firestoreReady){await initFirestoreIfEnabled()}if(!firebaseUser || firebaseUser.isAnonymous)throw new Error('Cần đăng nhập Email/Password');if(!firestoreDocRef)throw new Error('Chưa kết nối Firestore hoặc thiếu cấu hình');normalize();const payload={data,updatedAt:new Date().toISOString(),schemaVersion:4.5,centerId:getFirestoreCenterId(),source:'kienang-attendance-html-online-admin',updatedBy:{uid:getActiveUserId(),email:getActiveUserEmail(),name:getActiveUserName(),role:getActiveUserRole()}};firestoreRemoteAt=payload.updatedAt;await firestoreDocRef.set(payload,{merge:true});setSyncBadge('online','Đã lưu Firestore');showToast('Đã lưu dữ liệu online lên Firestore')}catch(err){setSyncBadge('error','Lỗi lưu');showToast('Chưa lưu được Firestore: '+err.message,'error')}}
 function openFirestoreModal(){const st=getFirestoreSettings();firestoreStatusInput.value=firestoreReady?'Đang kết nối Firestore online':'Chưa kết nối Firestore online';firestoreCenterInput.value=st.centerId||'kien-nang';firebaseConfigInput.value=JSON.stringify(st.firebaseConfig||DEFAULT_FIREBASE_CONFIG,null,2);openModal('firestoreModal')}
 async function saveFirestoreSettings(){try{const cfgText=firebaseConfigInput.value.trim();const firebaseConfig=parseFirebaseConfigText(cfgText);const centerId=firestoreCenterInput.value.trim()||'kien-nang';localStorage.setItem(FIRESTORE_SETTINGS_KEY,JSON.stringify({centerId,firebaseConfig}));localStorage.setItem(FIRESTORE_ENABLED_KEY,'1');if(firestoreUnsub)firestoreUnsub();firestoreReady=false;await initFirestoreIfEnabled();closeModal('firestoreModal');showToast('Đã lưu cấu hình online và kết nối Firestore');render()}catch(err){showToast('Cấu hình Firebase chưa đúng định dạng: '+err.message,'error')}}
 function disableFirestoreSync(){showToast('Bản này là online-only nên không thể tắt Firestore','warn')}
 function showToast(msg,type='success'){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast '+type;t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(35px)';setTimeout(()=>t.remove(),250)},2800)}function openModal(id){document.getElementById(id).classList.add('active')}function closeModal(id){document.getElementById(id).classList.remove('active')}function closeAllModals(){document.querySelectorAll('.modal-overlay').forEach(x=>x.classList.remove('active'))}
-function setView(v){currentView=v;currentClass=null;render()}function markTabs(){['Dashboard','Debts','Schedule'].forEach(x=>document.getElementById('tab'+x).classList.remove('active'));if(currentView==='dashboard')tabDashboard.classList.add('active');if(currentView==='debts')tabDebts.classList.add('active');if(currentView==='schedule')tabSchedule.classList.add('active')}
+function setView(v){if(v==='admin'&&!isAdmin()){showToast('Chỉ tài khoản admin mới mở được khu quản trị','warn');v='dashboard'}currentView=v;currentClass=null;render()}function markTabs(){['Dashboard','Debts','Schedule','Admin'].forEach(x=>{const el=document.getElementById('tab'+x);if(el)el.classList.remove('active')});updateAdminVisibility();if(currentView==='dashboard')tabDashboard.classList.add('active');if(currentView==='debts')tabDebts.classList.add('active');if(currentView==='schedule')tabSchedule.classList.add('active');if(currentView==='admin'&&document.getElementById('tabAdmin'))tabAdmin.classList.add('active')}
 function getAllStudents(){let arr=[];for(const [className,cls] of Object.entries(data.classes)){for(const s of cls.students)arr.push({className,cls,s})}return arr}function debtOf(s){return Math.max(0,(Number(s.tuition)||0)-(Number(s.paid)||0))}
 function renderOnlineGate(message){
     updateStats();
@@ -502,7 +519,7 @@ function renderOnlineGate(message){
 function renderLoginRequired(){
     renderOnlineGate('Thầy cần đăng nhập Email/Password. Trang sẽ không đọc hoặc lưu dữ liệu local.');
 }
-function render(){markTabs();updateStats();if(currentView==='detail'&&currentClass&&data.classes[currentClass])renderDetailView(currentClass);else if(currentView==='debts')renderDebts();else if(currentView==='schedule')renderSchedule();else renderDashboard()}
+function render(){markTabs();updateStats();if(currentView==='detail'&&currentClass&&data.classes[currentClass])renderDetailView(currentClass);else if(currentView==='debts')renderDebts();else if(currentView==='schedule')renderSchedule();else if(currentView==='admin')renderAdminDashboard();else renderDashboard()}
 function updateStats(){const classes=Object.values(data.classes);const students=getAllStudents();const revenue=students.reduce((a,x)=>a+(Number(x.s.paid)||0),0);const debt=students.reduce((a,x)=>a+debtOf(x.s),0);const sessions=classes.reduce((a,c)=>a+(Number(c.sessions)||0),0);statsGrid.innerHTML=`<div class="stat-card"><div class="num">${classes.length}</div><div class="label">Tổng số lớp</div></div><div class="stat-card"><div class="num">${students.length}</div><div class="label">Tổng học sinh</div></div><div class="stat-card"><div class="num">${sessions}</div><div class="label">Tổng buổi học</div></div><div class="stat-card"><div class="num money">${money(revenue)}</div><div class="label">Đã thu học phí</div></div><div class="stat-card"><div class="num debt">${money(debt)}</div><div class="label">Còn nợ</div></div>`}
 function classMatches(name,cls){const query=q();if(!query)return true;let text=name+' '+cls.schedule+' '+cls.students.map(s=>[s.name,s.phone,s.parentPhone,s.school,s.grade,s.note].join(' ')).join(' ');return text.toLowerCase().includes(query)}
 function getAttendedSessions(cls){let n=0;if(!cls.students.length)return 0;for(let i=1;i<=cls.sessions;i++){const k='B'+i;if(cls.students.some(s=>s.attendance[k]))n++}return n}
@@ -534,6 +551,54 @@ function sortDashboardClasses(names){
         return (bb/Math.max(1,cb.sessions))-(aa/Math.max(1,ca.sessions));
     });
 }
+
+async function fetchUsersForAdmin(){
+    if(!isAdmin())return [];
+    try{
+        const snap=await firebase.firestore().collection('centers').doc(getFirestoreCenterId()).collection('users').orderBy('updatedAt','desc').get();
+        return snap.docs.map(d=>({id:d.id,...d.data()}));
+    }catch(err){showToast('Chưa đọc được danh sách tài khoản: '+err.message,'error');return []}
+}
+async function renderAdminDashboard(){
+    if(!isAdmin()){renderOnlineGate('Chỉ tài khoản admin mới xem được khu quản trị.');return}
+    const classes=Object.entries(data.classes||{});
+    const students=getAllStudents();
+    const revenue=students.reduce((a,x)=>a+(Number(x.s.paid)||0),0);
+    const debt=students.reduce((a,x)=>a+debtOf(x.s),0);
+    const active=students.filter(x=>x.s.status==='active').length;
+    const paused=students.filter(x=>x.s.status==='paused').length;
+    const left=students.filter(x=>x.s.status==='left').length;
+    mainContent.innerHTML=`<div class="admin-grid">
+        <div class="admin-card"><div class="big">${classes.length}</div><div class="cap">Tổng lớp toàn trung tâm</div></div>
+        <div class="admin-card"><div class="big">${students.length}</div><div class="cap">Tổng học sinh</div></div>
+        <div class="admin-card"><div class="big money">${money(revenue)}</div><div class="cap">Doanh thu đã thu</div></div>
+        <div class="admin-card"><div class="big debt">${money(debt)}</div><div class="cap">Công nợ còn lại</div></div>
+    </div>
+    <div class="admin-section"><div class="admin-toolbar"><h2>🛡️ Dashboard quản trị</h2><div class="admin-actions"><button class="btn btn-blue" onclick="refreshAdminUsers()">↻ Tải tài khoản</button><button class="btn btn-green" onclick="pushOnlineToFirestore()">☁️ Lưu ngay Firestore</button><button class="btn btn-soft" onclick="exportJSON()">💾 Sao lưu JSON</button></div></div>
+    <div class="risk-box">Admin có quyền xem tổng quan toàn trung tâm, quản lý vai trò tài khoản và kiểm tra trạng thái đồng bộ. Dữ liệu vẫn chạy online-only, không dùng dữ liệu local.</div></div>
+    <div class="admin-section"><h2>📊 Phân bố học sinh</h2><div class="mini-grid"><div class="mini-card"><b>Đang học</b><div class="num money">${active}</div></div><div class="mini-card"><b>Tạm nghỉ</b><div class="num">${paused}</div></div><div class="mini-card"><b>Đã nghỉ</b><div class="num debt">${left}</div></div><div class="mini-card"><b>Firestore</b><div class="subtext">${firestoreReady?'Đang online':'Chưa kết nối'} · ${esc(getFirestoreCenterId())}</div></div></div></div>
+    <div class="admin-section"><h2>🏫 Danh sách lớp</h2><div class="table-scroll"><table class="data-table"><thead><tr><th>Lớp</th><th>Học sinh</th><th>Tiến độ</th><th>Đã thu</th><th>Công nợ</th><th>Thao tác</th></tr></thead><tbody>${classes.map(([name,cls])=>{const st=cls.students||[];const paid=st.reduce((a,s)=>a+(+s.paid||0),0);const d=st.reduce((a,s)=>a+debtOf(s),0);const at=getAttendedSessions(cls);return `<tr><td><b>${esc(name)}</b><div class="subtext">${esc(cls.schedule||'Chưa có lịch')}</div></td><td>${st.length}</td><td>${at}/${cls.sessions||0} buổi</td><td class="money"><b>${money(paid)}</b></td><td class="debt"><b>${money(d)}</b></td><td><button class="btn btn-blue" onclick="viewClass('${esc(name)}')">Mở lớp</button></td></tr>`}).join('')||'<tr class="empty-row"><td colspan="6">Chưa có lớp.</td></tr>'}</tbody></table></div></div>
+    <div class="admin-section"><div class="admin-toolbar"><h2>👥 Tài khoản hệ thống</h2><span class="subtext" id="adminUserStatus">Đang tải...</span></div><div id="adminUsersBox"><div class="empty-state"><div class="icon">⏳</div><p>Đang tải danh sách tài khoản...</p></div></div></div>`;
+    refreshAdminUsers();
+}
+async function refreshAdminUsers(){
+    const box=document.getElementById('adminUsersBox'); const status=document.getElementById('adminUserStatus');
+    if(!box)return;
+    const users=await fetchUsersForAdmin();
+    if(status)status.textContent=users.length+' tài khoản';
+    box.innerHTML=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Người dùng</th><th>Email</th><th>Vai trò</th><th>Cập nhật</th><th>Thao tác</th></tr></thead><tbody>${users.map(u=>`<tr><td><b>${esc(u.name||'Chưa có tên')}</b><div class="subtext">UID: ${esc(u.uid||u.id)}</div></td><td>${esc(u.email||'—')}</td><td>${rolePill(u.role||'teacher')}</td><td>${esc((u.updatedAt||'').slice(0,19).replace('T',' ')||'—')}</td><td><select id="role_${esc(u.id)}"><option value="teacher" ${(u.role||'teacher')==='teacher'?'selected':''}>Giáo viên</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option><option value="student" ${u.role==='student'?'selected':''}>Học sinh</option></select> <button class="btn btn-blue" onclick="adminUpdateUserRole('${esc(u.id)}')">Lưu quyền</button></td></tr>`).join('')||'<tr class="empty-row"><td colspan="5">Chưa có tài khoản.</td></tr>'}</tbody></table></div>`;
+}
+async function adminUpdateUserRole(uid){
+    if(!isAdmin()){showToast('Chỉ admin được đổi quyền','error');return}
+    const sel=document.getElementById('role_'+uid); const role=sel?.value||'teacher';
+    try{
+        await firebase.firestore().collection('centers').doc(getFirestoreCenterId()).collection('users').doc(uid).set({role,updatedAt:new Date().toISOString(),updatedBy:getActiveUserId()},{merge:true});
+        showToast('Đã cập nhật quyền: '+roleLabel(role));
+        if(uid===firebaseUser?.uid){currentUserProfile=await loadUserProfile(firebaseUser);updateAccountBadge()}
+        refreshAdminUsers();
+    }catch(err){showToast('Không cập nhật được quyền: '+err.message,'error')}
+}
+
 function renderDashboard(){
     let names=Object.keys(data.classes).filter(n=>classMatches(n,data.classes[n]));
     names=sortDashboardClasses(names);
@@ -710,7 +775,7 @@ function handleStudentExcelImport(e){
 }
 function exportJSON(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});download(blob,'quan_ly_lop_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON')}function csvCell(v){v=String(v??'');return '"'+v.replace(/"/g,'""')+'"'}function exportCSV(){let rows=[['Lớp','Lịch học','Họ tên','Khối','Trường','SĐT','SĐT phụ huynh','Học phí','Đã đóng','Còn nợ','Trạng thái','Ghi chú']];for(const x of getAllStudents())rows.push([x.className,x.cls.schedule,x.s.name,x.s.grade,x.s.school,x.s.phone,x.s.parentPhone,x.s.tuition,x.s.paid,debtOf(x.s),x.s.status,x.s.note]);const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'danh_sach_hoc_sinh_hoc_phi.csv');showToast('Đã xuất CSV mở bằng Excel')}function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
-function toFirestoreCollectionsSnapshot(){normalize();const centerId=getFirestoreCenterId();const classes=[];const students=[];const calendarEvents=[];const attendance=[];for(const [className,cls] of Object.entries(data.classes)){classes.push({id:cls.id,centerId,className,teacherId:cls.teacherId||getActiveUserId(),sessions:cls.sessions,sessionDates:cls.sessionDates,schedule:cls.schedule,defaultFee:cls.defaultFee,createdAt:cls.createdAt,updatedAt:cls.updatedAt});for(const s of cls.students){students.push({id:s.firestoreId,centerId,classId:cls.id,teacherId:s.teacherId||cls.teacherId||getActiveUserId(),name:s.name,grade:s.grade,school:s.school,phone:s.phone,parentPhone:s.parentPhone,status:s.status,tuition:s.tuition,paid:s.paid,paymentNote:s.paymentNote,note:s.note,createdAt:s.createdAt,updatedAt:s.updatedAt});attendance.push({id:'att_'+s.firestoreId,centerId,classId:cls.id,studentId:s.firestoreId,attendance:s.attendance,updatedAt:new Date().toISOString()})}for(const ev of cls.calendarEvents||[]){calendarEvents.push({...ev,centerId,classId:cls.id,className})}}return {center:{id:centerId,name:'Kiên Năng',schemaVersion:4.4,updatedBy:getActiveUserId()},classes,students,calendarEvents,attendance}}
+function toFirestoreCollectionsSnapshot(){normalize();const centerId=getFirestoreCenterId();const classes=[];const students=[];const calendarEvents=[];const attendance=[];for(const [className,cls] of Object.entries(data.classes)){classes.push({id:cls.id,centerId,className,teacherId:cls.teacherId||getActiveUserId(),sessions:cls.sessions,sessionDates:cls.sessionDates,schedule:cls.schedule,defaultFee:cls.defaultFee,createdAt:cls.createdAt,updatedAt:cls.updatedAt});for(const s of cls.students){students.push({id:s.firestoreId,centerId,classId:cls.id,teacherId:s.teacherId||cls.teacherId||getActiveUserId(),name:s.name,grade:s.grade,school:s.school,phone:s.phone,parentPhone:s.parentPhone,status:s.status,tuition:s.tuition,paid:s.paid,paymentNote:s.paymentNote,note:s.note,createdAt:s.createdAt,updatedAt:s.updatedAt});attendance.push({id:'att_'+s.firestoreId,centerId,classId:cls.id,studentId:s.firestoreId,attendance:s.attendance,updatedAt:new Date().toISOString()})}for(const ev of cls.calendarEvents||[]){calendarEvents.push({...ev,centerId,classId:cls.id,className})}}return {center:{id:centerId,name:'Kiên Năng',schemaVersion:4.5,updatedBy:getActiveUserId()},classes,students,calendarEvents,attendance}}
 function exportFirestoreSchemaJSON(){const blob=new Blob([JSON.stringify(toFirestoreCollectionsSnapshot(),null,2)],{type:'application/json'});download(blob,'firestore_schema_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON theo schema Firestore')}
 function importData(){fileInput.click()}function handleImport(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const imported=JSON.parse(ev.target.result);if(!imported.classes)throw new Error('File không đúng cấu trúc');if(Object.keys(data.classes).length&&!confirm('Dữ liệu hiện tại sẽ bị thay thế. Tiếp tục?'))return;data=imported;normalize();saveData();showToast('Đã phục hồi JSON và lưu lên Firestore online');render()}catch(err){showToast('Lỗi nhập file: '+err.message,'error')}};r.readAsText(file);e.target.value=''}function printCurrent(){window.print()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllModals()});init();
