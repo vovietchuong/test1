@@ -163,7 +163,7 @@
 
 
     <div class="modal-overlay" id="firestoreModal"><div class="modal">
-        <h2>🔥 Chuẩn bị kết nối Firestore</h2><p class="sub">Trang đã được cấy sẵn cấu hình Firebase project thionline2027. Thầy chỉ cần chọn Lưu & bật để đồng bộ Firestore, vẫn có thể sửa cấu hình khi cần.</p>
+        <h2>🔥 Chuẩn bị kết nối Firestore</h2><p class="sub">Trang đã được cấy sẵn cấu hình Firebase project thionline2027. Bản này có Firebase Auth ẩn danh để tránh lỗi quyền Firestore; thầy cần bật Anonymous Authentication và dùng rules đi kèm.</p>
         <div class="firestore-panel">
             <b>Schema đề xuất khi lên Firestore</b>
             <ul>
@@ -177,7 +177,7 @@
         <label>Trạng thái</label><input id="firestoreStatusInput" class="mono" readonly />
         <label>centerId</label><input id="firestoreCenterInput" class="mono" value="kien-nang" />
         <label>Cấu hình Firebase</label><textarea id="firebaseConfigInput" class="mono" placeholder='Đã có cấu hình mặc định thionline2027; chỉ sửa khi đổi Firebase project.'></textarea>
-        <div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('firestoreModal')">Đóng</button><button class="btn btn-warn" onclick="disableFirestoreSync()">Tắt Firestore</button><button class="btn btn-green" onclick="pushLocalToFirestore()">Đẩy local lên Firestore</button><button class="btn btn-blue" onclick="saveFirestoreSettings()">Lưu & bật</button></div>
+        <div class="mini-card" style="margin-bottom:14px"><b>Ghi chú sửa lỗi quyền</b><div class="subtext">Nếu báo Missing or insufficient permissions: vào Firebase Console → Firestore Database → Rules → dán file rules_dev đi kèm → Publish. Nếu báo auth/operation-not-allowed: vào Authentication → Sign-in method → bật Anonymous.</div></div><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('firestoreModal')">Đóng</button><button class="btn btn-warn" onclick="disableFirestoreSync()">Tắt Firestore</button><button class="btn btn-green" onclick="pushLocalToFirestore()">Đẩy local lên Firestore</button><button class="btn btn-blue" onclick="saveFirestoreSettings()">Lưu & bật</button></div>
     </div></div>
     <div class="modal-overlay" id="editDateModal"><div class="modal"><h2>Sửa ngày buổi học</h2><p class="sub" id="editDateSessionLabel"></p><label>Ngày</label><input id="editDateInput" placeholder="Ví dụ: 24/06/2026" /><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('editDateModal')">Huỷ</button><button class="btn btn-blue" id="editDateConfirm">Lưu</button></div></div></div>
     <div class="modal-overlay" id="confirmModal"><div class="modal"><h2>Xác nhận xoá</h2><p class="sub" id="confirmModalMsg"></p><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('confirmModal')">Huỷ</button><button class="btn btn-danger" id="confirmModalConfirm">Xoá</button></div></div></div>
@@ -185,6 +185,7 @@
 <div class="toast-container" id="toastContainer"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script>
 const STORAGE_KEY='kienang_attendance_data_gd1';
 const OLD_KEY='kienang_attendance_data';
@@ -223,7 +224,15 @@ function parseFirebaseConfigText(text){
         .replace(/'/g,'"');
     return JSON.parse(cleaned);
 }
-async function initFirestoreIfEnabled(){if(localStorage.getItem(FIRESTORE_ENABLED_KEY)!=='1'){setSyncBadge('local','Local');return}const cfg=getFirestoreConfig();if(!cfg||!cfg.projectId){setSyncBadge('error','Thiếu config');return}try{setSyncBadge('syncing','Đang nối Firestore');if(!window.firebase)throw new Error('Chưa tải được Firebase SDK');if(!firebase.apps.length)firebase.initializeApp(cfg);firestoreDb=firebase.firestore();firestoreDocRef=firestoreDb.collection('centers').doc(getFirestoreCenterId()).collection('appState').doc('main');firestoreReady=true;await loadFromFirestoreOnce();listenFirestoreRealtime();setSyncBadge('online','Firestore online')}catch(err){firestoreReady=false;setSyncBadge('error','Firestore lỗi');console.error(err);showToast('Không kết nối được Firestore, vẫn dùng local: '+err.message,'warn')}}
+async function ensureFirebaseAuth(){
+    if(!firebase.auth)throw new Error('Chưa tải được Firebase Auth SDK');
+    firebaseAuth=firebase.auth();
+    if(firebaseAuth.currentUser){firebaseUser=firebaseAuth.currentUser;return firebaseUser}
+    const cred=await firebaseAuth.signInAnonymously();
+    firebaseUser=cred.user;
+    return firebaseUser;
+}
+async function initFirestoreIfEnabled(){if(localStorage.getItem(FIRESTORE_ENABLED_KEY)!=='1'){setSyncBadge('local','Local');return}const cfg=getFirestoreConfig();if(!cfg||!cfg.projectId){setSyncBadge('error','Thiếu config');return}try{setSyncBadge('syncing','Đang nối Firestore');if(!window.firebase)throw new Error('Chưa tải được Firebase SDK');if(!firebase.apps.length)firebase.initializeApp(cfg);const user=await ensureFirebaseAuth();firestoreDb=firebase.firestore();firestoreDocRef=firestoreDb.collection('centers').doc(getFirestoreCenterId()).collection('appState').doc('main');firestoreReady=true;await loadFromFirestoreOnce();listenFirestoreRealtime();setSyncBadge('online','Firestore online · '+(user?.uid||'auth'))}catch(err){firestoreReady=false;setSyncBadge('error','Firestore lỗi');console.error(err);let more='';if(String(err.message||'').includes('auth/operation-not-allowed'))more=' — Thầy cần bật Anonymous trong Firebase Authentication.';if(String(err.message||'').includes('Missing or insufficient permissions'))more=' — Thầy cần cập nhật Firestore Rules theo file rules đi kèm.';showToast('Không kết nối được Firestore, vẫn dùng local: '+err.message+more,'warn')}}
 async function loadFromFirestoreOnce(){if(!firestoreDocRef)return;firestoreLoading=true;const snap=await firestoreDocRef.get();if(snap.exists&&snap.data().data){const remote=snap.data();if(confirm('Đã thấy dữ liệu trên Firestore. Tải dữ liệu Firestore về máy này?')){suppressRemoteSave=true;data=remote.data;normalize();localStorage.setItem(STORAGE_KEY,JSON.stringify(data));suppressRemoteSave=false;showToast('Đã tải dữ liệu từ Firestore')}}firestoreLoading=false}
 function listenFirestoreRealtime(){if(!firestoreDocRef)return;if(firestoreUnsub)firestoreUnsub();firestoreUnsub=firestoreDocRef.onSnapshot(snap=>{if(!snap.exists||firestoreLoading)return;const remote=snap.data();if(!remote||!remote.data||remote.updatedAt===firestoreRemoteAt)return;firestoreRemoteAt=remote.updatedAt;suppressRemoteSave=true;data=remote.data;normalize();localStorage.setItem(STORAGE_KEY,JSON.stringify(data));suppressRemoteSave=false;render();setSyncBadge('online','Đã đồng bộ')},err=>{setSyncBadge('error','Mất đồng bộ');console.error(err)})}
 function scheduleFirestoreSave(){if(!firestoreReady||!firestoreDocRef||suppressRemoteSave)return;clearTimeout(firestoreSaveTimer);setSyncBadge('syncing','Đang lưu');firestoreSaveTimer=setTimeout(pushLocalToFirestore,900)}
