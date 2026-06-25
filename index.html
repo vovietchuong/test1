@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quản lý lớp học - Kiên Năng | Giai đoạn 4.3 Tài khoản & Firestore</title>
+    <title>Quản lý lớp học - Kiên Năng | Giai đoạn 4.4 Online Firestore</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f7fc;color:#1e293b;padding:24px;min-height:100vh}.app{max-width:1500px;margin:0 auto}
@@ -92,6 +92,7 @@
         .account-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:13px;max-width:260px}
         .account-badge .avatar{width:24px;height:24px;border-radius:50%;background:#facc15;color:#0b3b5c;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
         .account-badge .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .sync-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;font-weight:900;font-size:13px}.sync-dot{width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.18)}.sync-badge.syncing .sync-dot{background:#facc15}.sync-badge.error .sync-dot{background:#ef4444}.sync-badge.online .sync-dot{background:#22c55e}
         .account-card{background:#f8fafc;border:1px solid #eef2f7;border-radius:16px;padding:14px;margin:12px 0;color:#334155}
         .account-card b{color:#0b3b5c}.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.auth-note{background:#eef6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-bottom:12px}
         @media(max-width:768px){.auth-grid{grid-template-columns:1fr}.account-badge{max-width:100%;justify-content:center}}
@@ -102,20 +103,20 @@
 <body>
 <div class="app" id="app">
     <header class="header">
-        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 4.3 · Tài khoản & Firestore</small></h1>
+        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 4.4 · Online Firestore</small></h1>
         <div class="header-actions">
             <button class="btn-primary" onclick="openCreateClassModal()">➕ Tạo lớp</button>
             <button onclick="downloadStudentTemplate()">⬇️ Mẫu HS Excel</button>
             <button onclick="openImportStudentsModal()">📥 Nhập HS Excel</button>
-            <button onclick="exportJSON()">💾 Xuất JSON</button>
+            <button onclick="exportJSON()">💾 Sao lưu JSON</button>
             <button onclick="exportFirestoreSchemaJSON()">🧩 Schema Firestore</button>
             <button onclick="exportCSV()">📊 Xuất Excel/CSV</button>
-            <button onclick="importData()">📤 Nhập JSON</button>
+            <button onclick="importData()">📤 Phục hồi JSON lên Online</button>
             <button onclick="printCurrent()">🖨️ In báo cáo</button>
             <button onclick="openFirestoreModal()">🔥 Firestore</button>
             <button onclick="openAuthModal()">👤 Tài khoản</button>
             <span class="account-badge" id="accountBadge" onclick="openAuthModal()" style="cursor:pointer"><span class="avatar">?</span><span class="txt" id="accountText">Chưa đăng nhập</span></span>
-            <span class="sync-badge local" id="syncBadge"><i class="sync-dot"></i><span id="syncText">Local</span></span>
+            <span class="sync-badge online" id="syncBadge"><i class="sync-dot"></i><span id="syncText">Online</span></span>
         </div>
     </header>
 
@@ -190,9 +191,9 @@
 
 
     <div class="modal-overlay" id="authModal"><div class="modal">
-        <h2>👤 Tài khoản giáo viên</h2><p class="sub">Tạo tài khoản, đăng nhập và gắn dữ liệu với Firebase Auth. Giai đoạn này vẫn giữ dữ liệu local an toàn; khi bật Firestore, dữ liệu sẽ đồng bộ theo tài khoản đang đăng nhập.</p>
+        <h2>👤 Tài khoản giáo viên</h2><p class="sub">Tạo tài khoản, đăng nhập và làm việc trực tiếp với Firestore. Bản này chỉ chạy dữ liệu online, không đọc/ghi dữ liệu local.</p>
         <div id="authCurrentBox" class="account-card"></div>
-        <div class="auth-note">Lần đầu sử dụng: vào Firebase Console → Authentication → Sign-in method → bật <b>Email/Password</b>. Nếu vẫn dùng thử nhanh, có thể bật Anonymous như bản trước.</div>
+        <div class="auth-note">Lần đầu sử dụng: vào Firebase Console → Authentication → Sign-in method → bật <b>Email/Password</b>. Bản online-only không dùng đăng nhập ẩn danh.</div>
         <div class="auth-grid">
             <div>
                 <label>Họ tên</label><input id="authNameInput" placeholder="Ví dụ: Thầy Võ Viết Chương" />
@@ -210,7 +211,7 @@
     </div></div>
 
     <div class="modal-overlay" id="firestoreModal"><div class="modal">
-        <h2>🔥 Chuẩn bị kết nối Firestore</h2><p class="sub">Trang đã được cấy sẵn cấu hình Firebase project thionline2027. Bản này có Firebase Auth ẩn danh để tránh lỗi quyền Firestore; thầy cần bật Anonymous Authentication và dùng rules đi kèm.</p>
+        <h2>🔥 Chuẩn bị kết nối Firestore</h2><p class="sub">Trang đã được cấy sẵn cấu hình Firebase project thionline2027. Bản này chỉ dùng dữ liệu Firestore online; cần đăng nhập Email/Password trước khi đọc/ghi dữ liệu.</p>
         <div class="firestore-panel">
             <b>Schema đề xuất khi lên Firestore</b>
             <ul>
@@ -218,13 +219,13 @@
                 <li><code>centers/{centerId}/classes/{classId}</code>: lớp học</li>
                 <li><code>centers/{centerId}/classes/{classId}/students/{studentId}</code>: học sinh</li>
                 <li><code>centers/{centerId}/classes/{classId}/calendarEvents/{eventId}</code>: lịch học</li>
-                <li><code>centers/{centerId}/appState/main</code>: bản dữ liệu tổng hợp để migrate nhanh từ file local</li>
+                <li><code>centers/{centerId}/appState/main</code>: dữ liệu tổng hợp online của trung tâm</li>
             </ul>
         </div>
         <label>Trạng thái</label><input id="firestoreStatusInput" class="mono" readonly />
         <label>centerId</label><input id="firestoreCenterInput" class="mono" value="kien-nang" />
         <label>Cấu hình Firebase</label><textarea id="firebaseConfigInput" class="mono" placeholder='Đã có cấu hình mặc định thionline2027; chỉ sửa khi đổi Firebase project.'></textarea>
-        <div class="mini-card" style="margin-bottom:14px"><b>Ghi chú sửa lỗi quyền</b><div class="subtext">Nếu báo Missing or insufficient permissions: vào Firebase Console → Firestore Database → Rules → dán file rules_dev đi kèm → Publish. Nếu báo auth/operation-not-allowed: vào Authentication → Sign-in method → bật Anonymous.</div></div><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('firestoreModal')">Đóng</button><button class="btn btn-warn" onclick="disableFirestoreSync()">Tắt Firestore</button><button class="btn btn-green" onclick="pushLocalToFirestore()">Đẩy local lên Firestore</button><button class="btn btn-blue" onclick="saveFirestoreSettings()">Lưu & bật</button></div>
+        <div class="mini-card" style="margin-bottom:14px"><b>Ghi chú sửa lỗi quyền</b><div class="subtext">Nếu báo Missing or insufficient permissions: vào Firebase Console → Firestore Database → Rules → dán file rules online-only đi kèm → Publish. Nếu báo auth/operation-not-allowed: vào Authentication → Sign-in method → bật Email/Password.</div></div><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('firestoreModal')">Đóng</button><button class="btn btn-green" onclick="pushOnlineToFirestore()">Lưu ngay lên Firestore</button><button class="btn btn-blue" onclick="saveFirestoreSettings()">Lưu cấu hình online</button></div>
     </div></div>
     <div class="modal-overlay" id="editDateModal"><div class="modal"><h2>Sửa ngày buổi học</h2><p class="sub" id="editDateSessionLabel"></p><label>Ngày</label><input id="editDateInput" placeholder="Ví dụ: 24/06/2026" /><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('editDateModal')">Huỷ</button><button class="btn btn-blue" id="editDateConfirm">Lưu</button></div></div></div>
     <div class="modal-overlay" id="confirmModal"><div class="modal"><h2>Xác nhận xoá</h2><p class="sub" id="confirmModalMsg"></p><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('confirmModal')">Huỷ</button><button class="btn btn-danger" id="confirmModalConfirm">Xoá</button></div></div></div>
@@ -239,6 +240,7 @@ const STORAGE_KEY='kienang_attendance_data_gd1';
 const OLD_KEY='kienang_attendance_data';
 const FIRESTORE_SETTINGS_KEY='kienang_firestore_settings_v1';
 const FIRESTORE_ENABLED_KEY='kienang_firestore_enabled_v1';
+const ONLINE_ONLY=true;
 const DEFAULT_FIREBASE_CONFIG={
     apiKey: "AIzaSyDlUDLFCbrt9Fgm7_j9czKofsluwz2QX9Y",
     authDomain: "thionline2027.firebaseapp.com",
@@ -252,9 +254,38 @@ let data={classes:{},meta:{version:4.3,mode:'auth-firestore-ready',updatedAt:new
 let firestoreDb=null, firestoreDocRef=null, firestoreUnsub=null, firestoreSaveTimer=null, firestoreReady=false, firestoreLoading=false, firestoreRemoteAt='', suppressRemoteSave=false;
 let firebaseAuth=null, firebaseUser=null, currentUserProfile=null, authReady=false;
 function money(n){return (Number(n)||0).toLocaleString('vi-VN')+'đ'}function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}function q(){return document.getElementById('searchInput')?.value.trim().toLowerCase()||''}
-async function init(){loadData();render();await initFirebaseAuthState();await initFirestoreIfEnabled();render();updateAccountBadge()}function normalize(){if(!data.classes)data.classes={};if(!data.meta)data.meta={};data.meta.version=4;data.meta.mode='firestore-ready';data.meta.updatedAt=data.meta.updatedAt||new Date().toISOString();let maxId=0;for(const [name,cls] of Object.entries(data.classes)){cls.id=cls.id||makeId('class',name);cls.name=cls.name||name;cls.teacherId=cls.teacherId||getActiveUserId();cls.centerId=cls.centerId||getFirestoreCenterId();cls.createdAt=cls.createdAt||new Date().toISOString();cls.updatedAt=cls.updatedAt||new Date().toISOString();cls.sessions=Number(cls.sessions)||10;cls.sessionDates=Array.isArray(cls.sessionDates)?cls.sessionDates:[];while(cls.sessionDates.length<cls.sessions)cls.sessionDates.push('');cls.sessionDates=cls.sessionDates.slice(0,cls.sessions);cls.schedule=cls.schedule||'';cls.defaultFee=Number(cls.defaultFee||0);cls.calendarEvents=Array.isArray(cls.calendarEvents)?cls.calendarEvents:[];cls.calendarEvents=cls.calendarEvents.map(ev=>({...ev,id:ev.id||makeId('event',name+'-'+(ev.date||'')+'-'+(ev.title||'')),classId:cls.id,className:name,centerId:cls.centerId,updatedAt:ev.updatedAt||new Date().toISOString()}));cls.students=Array.isArray(cls.students)?cls.students:[];for(const s of cls.students){s.id=Number(s.id)||(++maxId);if(s.id>maxId)maxId=s.id;s.firestoreId=s.firestoreId||makeId('student',name+'-'+s.id+'-'+(s.name||''));s.classId=cls.id;s.centerId=cls.centerId;s.teacherId=s.teacherId||cls.teacherId||getActiveUserId();s.phone=s.phone||'';s.parentPhone=s.parentPhone||'';s.grade=s.grade||'';s.school=s.school||'';s.note=s.note||'';s.status=s.status||'active';s.tuition=Number(s.tuition ?? cls.defaultFee ?? 0);s.paid=Number(s.paid||0);s.paymentNote=s.paymentNote||'';s.createdAt=s.createdAt||new Date().toISOString();s.updatedAt=s.updatedAt||new Date().toISOString();s.attendance=s.attendance||{};for(let i=1;i<=cls.sessions;i++){const k='B'+i;if(!(k in s.attendance))s.attendance[k]=false}}}nextStudentId=maxId+1}
-function loadData(){try{const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem(OLD_KEY);if(raw)data=JSON.parse(raw);normalize();localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){data={classes:{},meta:{version:4.3,mode:'auth-firestore-ready'}};normalize()}}
-function saveData(){try{data.meta={...(data.meta||{}),version:4.3,mode:'auth-firestore-ready',updatedAt:new Date().toISOString()};localStorage.setItem(STORAGE_KEY,JSON.stringify(data));scheduleFirestoreSave()}catch(e){showToast('Lưu dữ liệu thất bại','error')}}
+async function init(){
+    loadData();
+    setSyncBadge('syncing','Đang kiểm tra tài khoản');
+    renderOnlineGate('Đang kiểm tra đăng nhập Firebase...');
+    await initFirebaseAuthState();
+    await waitForAuthState();
+    localStorage.setItem(FIRESTORE_ENABLED_KEY,'1');
+    if(!firebaseUser || firebaseUser.isAnonymous){
+        firestoreReady=false;
+        setSyncBadge('error','Cần đăng nhập');
+        renderLoginRequired();
+        updateAccountBadge();
+        setTimeout(openAuthModal,250);
+        return;
+    }
+    await initFirestoreIfEnabled();
+    render();
+    updateAccountBadge();
+}function normalize(){if(!data.classes)data.classes={};if(!data.meta)data.meta={};data.meta.version=4;data.meta.mode='firestore-ready';data.meta.updatedAt=data.meta.updatedAt||new Date().toISOString();let maxId=0;for(const [name,cls] of Object.entries(data.classes)){cls.id=cls.id||makeId('class',name);cls.name=cls.name||name;cls.teacherId=cls.teacherId||getActiveUserId();cls.centerId=cls.centerId||getFirestoreCenterId();cls.createdAt=cls.createdAt||new Date().toISOString();cls.updatedAt=cls.updatedAt||new Date().toISOString();cls.sessions=Number(cls.sessions)||10;cls.sessionDates=Array.isArray(cls.sessionDates)?cls.sessionDates:[];while(cls.sessionDates.length<cls.sessions)cls.sessionDates.push('');cls.sessionDates=cls.sessionDates.slice(0,cls.sessions);cls.schedule=cls.schedule||'';cls.defaultFee=Number(cls.defaultFee||0);cls.calendarEvents=Array.isArray(cls.calendarEvents)?cls.calendarEvents:[];cls.calendarEvents=cls.calendarEvents.map(ev=>({...ev,id:ev.id||makeId('event',name+'-'+(ev.date||'')+'-'+(ev.title||'')),classId:cls.id,className:name,centerId:cls.centerId,updatedAt:ev.updatedAt||new Date().toISOString()}));cls.students=Array.isArray(cls.students)?cls.students:[];for(const s of cls.students){s.id=Number(s.id)||(++maxId);if(s.id>maxId)maxId=s.id;s.firestoreId=s.firestoreId||makeId('student',name+'-'+s.id+'-'+(s.name||''));s.classId=cls.id;s.centerId=cls.centerId;s.teacherId=s.teacherId||cls.teacherId||getActiveUserId();s.phone=s.phone||'';s.parentPhone=s.parentPhone||'';s.grade=s.grade||'';s.school=s.school||'';s.note=s.note||'';s.status=s.status||'active';s.tuition=Number(s.tuition ?? cls.defaultFee ?? 0);s.paid=Number(s.paid||0);s.paymentNote=s.paymentNote||'';s.createdAt=s.createdAt||new Date().toISOString();s.updatedAt=s.updatedAt||new Date().toISOString();s.attendance=s.attendance||{};for(let i=1;i<=cls.sessions;i++){const k='B'+i;if(!(k in s.attendance))s.attendance[k]=false}}}nextStudentId=maxId+1}
+function loadData(){
+    // Online-only: không đọc dữ liệu lớp/học sinh từ localStorage.
+    data={classes:{},meta:{version:4.4,mode:'online-firestore-only',updatedAt:new Date().toISOString()}};
+    normalize();
+}
+function saveData(){
+    try{
+        if(ONLINE_ONLY && (!firebaseUser || firebaseUser.isAnonymous)){showToast('Cần đăng nhập tài khoản trước khi lưu dữ liệu online','error');renderLoginRequired();return}
+        if(ONLINE_ONLY && !firestoreReady){showToast('Chưa kết nối Firestore, dữ liệu chưa được lưu','error');setSyncBadge('error','Chưa kết nối');return}
+        data.meta={...(data.meta||{}),version:4.4,mode:'online-firestore-only',updatedAt:new Date().toISOString()};
+        scheduleFirestoreSave();
+    }catch(e){showToast('Lưu dữ liệu online thất bại','error')}
+}
 function makeId(prefix,text){return prefix+'_'+String(text||Date.now()).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80)+'_'+Math.random().toString(36).slice(2,7)}
 function getFirestoreSettings(){try{return JSON.parse(localStorage.getItem(FIRESTORE_SETTINGS_KEY)||'{}')}catch(e){return {}}}
 function getFirestoreCenterId(){return getFirestoreSettings().centerId||'kien-nang'}
@@ -296,18 +327,29 @@ async function initFirebaseAuthState(){
         });
     }catch(err){console.warn('Auth init:',err.message);updateAccountBadge()}
 }
-function getActiveUserId(){return firebaseUser?.uid||'local-teacher'}
+function waitForAuthState(){
+    return new Promise(resolve=>{
+        try{
+            const auth=ensureFirebaseApp();
+            const unsub=auth.onAuthStateChanged(async user=>{
+                firebaseUser=user||null;
+                currentUserProfile=user?await loadUserProfile(user):null;
+                updateAccountBadge();
+                normalize();
+                if(typeof unsub==='function')unsub();
+                resolve(firebaseUser);
+            });
+        }catch(err){console.warn('Auth wait:',err.message);resolve(null)}
+    });
+}
+function getActiveUserId(){return firebaseUser?.uid||'online-user'}
 function getActiveUserEmail(){return firebaseUser?.email||''}
 function getActiveUserName(){return currentUserProfile?.name||firebaseUser?.displayName||firebaseUser?.email||'Chưa đăng nhập'}
 function getActiveUserRole(){return currentUserProfile?.role||'teacher'}
 async function ensureFirebaseAuth(){
     const auth=ensureFirebaseApp();
-    if(auth.currentUser){firebaseUser=auth.currentUser;currentUserProfile=await loadUserProfile(firebaseUser);return firebaseUser}
-    const cred=await auth.signInAnonymously();
-    firebaseUser=cred.user;
-    currentUserProfile={uid:firebaseUser.uid,name:'Khách ẩn danh',email:'',role:'teacher',anonymous:true};
-    updateAccountBadge();
-    return firebaseUser;
+    if(auth.currentUser && !auth.currentUser.isAnonymous){firebaseUser=auth.currentUser;currentUserProfile=await loadUserProfile(firebaseUser);return firebaseUser}
+    throw new Error('Cần đăng nhập Email/Password để dùng dữ liệu online.');
 }
 async function loadUserProfile(user){
     if(!user)return null;
@@ -369,8 +411,8 @@ async function registerAccount(){
         await cred.user.updateProfile({displayName:name});
         firebaseUser=cred.user;
         await saveUserProfile(cred.user,{name,role,createdAt:new Date().toISOString()});
-        normalize();saveData();updateAccountBadge();closeModal('authModal');showToast('Đã tạo tài khoản và đăng nhập: '+email);
-        if(localStorage.getItem(FIRESTORE_ENABLED_KEY)==='1')await initFirestoreIfEnabled();
+        normalize();updateAccountBadge();closeModal('authModal');showToast('Đã tạo tài khoản và đăng nhập: '+email);
+        await initFirestoreIfEnabled();render();
     }catch(err){showToast('Không tạo được tài khoản: '+friendlyAuthError(err),'error')}
 }
 async function loginAccount(){
@@ -381,11 +423,11 @@ async function loginAccount(){
         const cred=await auth.signInWithEmailAndPassword(email,pass);
         firebaseUser=cred.user;currentUserProfile=await loadUserProfile(cred.user);
         updateAccountBadge();closeModal('authModal');showToast('Đã đăng nhập: '+email);
-        if(localStorage.getItem(FIRESTORE_ENABLED_KEY)==='1')await initFirestoreIfEnabled();
+        await initFirestoreIfEnabled();render();
     }catch(err){showToast('Không đăng nhập được: '+friendlyAuthError(err),'error')}
 }
 async function logoutAccount(){
-    try{const auth=ensureFirebaseApp();await auth.signOut();firebaseUser=null;currentUserProfile=null;updateAccountBadge();closeModal('authModal');showToast('Đã đăng xuất','warn')}catch(err){showToast('Không đăng xuất được: '+err.message,'error')}
+    try{const auth=ensureFirebaseApp();await auth.signOut();firebaseUser=null;currentUserProfile=null;firestoreReady=false;if(firestoreUnsub)firestoreUnsub();updateAccountBadge();closeModal('authModal');renderLoginRequired();setSyncBadge('error','Cần đăng nhập');showToast('Đã đăng xuất','warn')}catch(err){showToast('Không đăng xuất được: '+err.message,'error')}
 }
 async function sendResetPassword(){
     try{const auth=ensureFirebaseApp();const email=authEmailInput.value.trim();if(!email)throw new Error('Nhập email cần đặt lại mật khẩu');await auth.sendPasswordResetEmail(email);showToast('Đã gửi email đặt lại mật khẩu')}catch(err){showToast('Không gửi được email: '+friendlyAuthError(err),'error')}
@@ -400,17 +442,66 @@ function friendlyAuthError(err){
     return m;
 }
 
-async function initFirestoreIfEnabled(){if(localStorage.getItem(FIRESTORE_ENABLED_KEY)!=='1'){setSyncBadge('local','Local');return}const cfg=getFirestoreConfig();if(!cfg||!cfg.projectId){setSyncBadge('error','Thiếu config');return}try{setSyncBadge('syncing','Đang nối Firestore');ensureFirebaseApp();const user=await ensureFirebaseAuth();firestoreDb=firebase.firestore();firestoreDocRef=firestoreDb.collection('centers').doc(getFirestoreCenterId()).collection('appState').doc('main');firestoreReady=true;await loadFromFirestoreOnce();listenFirestoreRealtime();setSyncBadge('online','Firestore online · '+(user?.uid||'auth'))}catch(err){firestoreReady=false;setSyncBadge('error','Firestore lỗi');console.error(err);let more='';if(String(err.message||'').includes('auth/operation-not-allowed'))more=' — Thầy cần bật Anonymous trong Firebase Authentication.';if(String(err.message||'').includes('Missing or insufficient permissions'))more=' — Thầy cần cập nhật Firestore Rules theo file rules đi kèm.';showToast('Không kết nối được Firestore, vẫn dùng local: '+err.message+more,'warn')}}
-async function loadFromFirestoreOnce(){if(!firestoreDocRef)return;firestoreLoading=true;const snap=await firestoreDocRef.get();if(snap.exists&&snap.data().data){const remote=snap.data();if(confirm('Đã thấy dữ liệu trên Firestore. Tải dữ liệu Firestore về máy này?')){suppressRemoteSave=true;data=remote.data;normalize();localStorage.setItem(STORAGE_KEY,JSON.stringify(data));suppressRemoteSave=false;showToast('Đã tải dữ liệu từ Firestore')}}firestoreLoading=false}
-function listenFirestoreRealtime(){if(!firestoreDocRef)return;if(firestoreUnsub)firestoreUnsub();firestoreUnsub=firestoreDocRef.onSnapshot(snap=>{if(!snap.exists||firestoreLoading)return;const remote=snap.data();if(!remote||!remote.data||remote.updatedAt===firestoreRemoteAt)return;firestoreRemoteAt=remote.updatedAt;suppressRemoteSave=true;data=remote.data;normalize();localStorage.setItem(STORAGE_KEY,JSON.stringify(data));suppressRemoteSave=false;render();setSyncBadge('online','Đã đồng bộ')},err=>{setSyncBadge('error','Mất đồng bộ');console.error(err)})}
-function scheduleFirestoreSave(){if(!firestoreReady||!firestoreDocRef||suppressRemoteSave)return;clearTimeout(firestoreSaveTimer);setSyncBadge('syncing','Đang lưu');firestoreSaveTimer=setTimeout(pushLocalToFirestore,900)}
-async function pushLocalToFirestore(){try{if(!firestoreReady){await initFirestoreIfEnabled()}if(!firestoreDocRef)throw new Error('Chưa bật Firestore hoặc thiếu cấu hình');normalize();const payload={data,updatedAt:new Date().toISOString(),schemaVersion:4.3,centerId:getFirestoreCenterId(),source:'kienang-attendance-html',updatedBy:{uid:getActiveUserId(),email:getActiveUserEmail(),name:getActiveUserName(),role:getActiveUserRole()}};firestoreRemoteAt=payload.updatedAt;await firestoreDocRef.set(payload,{merge:true});setSyncBadge('online','Đã lưu Firestore');showToast('Đã đồng bộ dữ liệu lên Firestore')}catch(err){setSyncBadge('error','Lỗi lưu');showToast('Chưa lưu được Firestore: '+err.message,'error')}}
-function openFirestoreModal(){const st=getFirestoreSettings();firestoreStatusInput.value=firestoreReady?'Đang kết nối Firestore':'Đang chạy local/offline';firestoreCenterInput.value=st.centerId||'kien-nang';firebaseConfigInput.value=JSON.stringify(st.firebaseConfig||DEFAULT_FIREBASE_CONFIG,null,2);openModal('firestoreModal')}
-async function saveFirestoreSettings(){try{const cfgText=firebaseConfigInput.value.trim();const firebaseConfig=parseFirebaseConfigText(cfgText);const centerId=firestoreCenterInput.value.trim()||'kien-nang';localStorage.setItem(FIRESTORE_SETTINGS_KEY,JSON.stringify({centerId,firebaseConfig}));localStorage.setItem(FIRESTORE_ENABLED_KEY,'1');if(firestoreUnsub)firestoreUnsub();firestoreReady=false;await initFirestoreIfEnabled();closeModal('firestoreModal');showToast('Đã lưu cấu hình Firebase thionline2027 và bật Firestore');render()}catch(err){showToast('Cấu hình Firebase chưa đúng định dạng: '+err.message,'error')}}
-function disableFirestoreSync(){localStorage.setItem(FIRESTORE_ENABLED_KEY,'0');if(firestoreUnsub)firestoreUnsub();firestoreReady=false;setSyncBadge('local','Local');showToast('Đã tắt Firestore, dữ liệu vẫn lưu local','warn');closeModal('firestoreModal')}
+async function initFirestoreIfEnabled(){
+    localStorage.setItem(FIRESTORE_ENABLED_KEY,'1');
+    const cfg=getFirestoreConfig();
+    if(!cfg||!cfg.projectId){setSyncBadge('error','Thiếu Firebase config');renderOnlineGate('Thiếu cấu hình Firebase. Mở nút Firestore để kiểm tra lại cấu hình.');return}
+    try{
+        setSyncBadge('syncing','Đang nối Firestore');
+        ensureFirebaseApp();
+        const user=await ensureFirebaseAuth();
+        firestoreDb=firebase.firestore();
+        firestoreDocRef=firestoreDb.collection('centers').doc(getFirestoreCenterId()).collection('appState').doc('main');
+        firestoreReady=true;
+        await loadFromFirestoreOnce();
+        listenFirestoreRealtime();
+        setSyncBadge('online','Online · Firestore');
+        return user;
+    }catch(err){
+        firestoreReady=false;
+        setSyncBadge('error','Chưa online');
+        console.error(err);
+        let more='';
+        if(String(err.message||'').includes('operation-not-allowed'))more=' Thầy cần bật Email/Password trong Firebase Authentication.';
+        if(String(err.message||'').includes('Missing or insufficient permissions'))more=' Thầy cần cập nhật Firestore Rules theo file online-only đi kèm.';
+        renderOnlineGate('Không kết nối được Firestore: '+err.message+more);
+        showToast('Không kết nối được Firestore: '+err.message+more,'error');
+    }
+}
+async function loadFromFirestoreOnce(){
+    if(!firestoreDocRef)return;
+    firestoreLoading=true;
+    const snap=await firestoreDocRef.get();
+    if(snap.exists&&snap.data().data){
+        const remote=snap.data();
+        suppressRemoteSave=true;
+        data=remote.data;
+        normalize();
+        suppressRemoteSave=false;
+        showToast('Đã tải dữ liệu online từ Firestore');
+    }else{
+        data={classes:{},meta:{version:4.4,mode:'online-firestore-only',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}};
+        normalize();
+        setSyncBadge('online','Online · dữ liệu mới');
+    }
+    firestoreLoading=false;
+}
+function listenFirestoreRealtime(){if(!firestoreDocRef)return;if(firestoreUnsub)firestoreUnsub();firestoreUnsub=firestoreDocRef.onSnapshot(snap=>{if(!snap.exists||firestoreLoading)return;const remote=snap.data();if(!remote||!remote.data||remote.updatedAt===firestoreRemoteAt)return;firestoreRemoteAt=remote.updatedAt;suppressRemoteSave=true;data=remote.data;normalize();suppressRemoteSave=false;render();setSyncBadge('online','Đã đồng bộ online')},err=>{setSyncBadge('error','Mất đồng bộ');renderOnlineGate('Mất kết nối Firestore: '+err.message);console.error(err)})}
+function scheduleFirestoreSave(){if(!firestoreReady||!firestoreDocRef||suppressRemoteSave)return;clearTimeout(firestoreSaveTimer);setSyncBadge('syncing','Đang lưu');firestoreSaveTimer=setTimeout(pushOnlineToFirestore,900)}
+async function pushOnlineToFirestore(){try{if(!firestoreReady){await initFirestoreIfEnabled()}if(!firebaseUser || firebaseUser.isAnonymous)throw new Error('Cần đăng nhập Email/Password');if(!firestoreDocRef)throw new Error('Chưa kết nối Firestore hoặc thiếu cấu hình');normalize();const payload={data,updatedAt:new Date().toISOString(),schemaVersion:4.4,centerId:getFirestoreCenterId(),source:'kienang-attendance-html-online-only',updatedBy:{uid:getActiveUserId(),email:getActiveUserEmail(),name:getActiveUserName(),role:getActiveUserRole()}};firestoreRemoteAt=payload.updatedAt;await firestoreDocRef.set(payload,{merge:true});setSyncBadge('online','Đã lưu Firestore');showToast('Đã lưu dữ liệu online lên Firestore')}catch(err){setSyncBadge('error','Lỗi lưu');showToast('Chưa lưu được Firestore: '+err.message,'error')}}
+function openFirestoreModal(){const st=getFirestoreSettings();firestoreStatusInput.value=firestoreReady?'Đang kết nối Firestore online':'Chưa kết nối Firestore online';firestoreCenterInput.value=st.centerId||'kien-nang';firebaseConfigInput.value=JSON.stringify(st.firebaseConfig||DEFAULT_FIREBASE_CONFIG,null,2);openModal('firestoreModal')}
+async function saveFirestoreSettings(){try{const cfgText=firebaseConfigInput.value.trim();const firebaseConfig=parseFirebaseConfigText(cfgText);const centerId=firestoreCenterInput.value.trim()||'kien-nang';localStorage.setItem(FIRESTORE_SETTINGS_KEY,JSON.stringify({centerId,firebaseConfig}));localStorage.setItem(FIRESTORE_ENABLED_KEY,'1');if(firestoreUnsub)firestoreUnsub();firestoreReady=false;await initFirestoreIfEnabled();closeModal('firestoreModal');showToast('Đã lưu cấu hình online và kết nối Firestore');render()}catch(err){showToast('Cấu hình Firebase chưa đúng định dạng: '+err.message,'error')}}
+function disableFirestoreSync(){showToast('Bản này là online-only nên không thể tắt Firestore','warn')}
 function showToast(msg,type='success'){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast '+type;t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(35px)';setTimeout(()=>t.remove(),250)},2800)}function openModal(id){document.getElementById(id).classList.add('active')}function closeModal(id){document.getElementById(id).classList.remove('active')}function closeAllModals(){document.querySelectorAll('.modal-overlay').forEach(x=>x.classList.remove('active'))}
 function setView(v){currentView=v;currentClass=null;render()}function markTabs(){['Dashboard','Debts','Schedule'].forEach(x=>document.getElementById('tab'+x).classList.remove('active'));if(currentView==='dashboard')tabDashboard.classList.add('active');if(currentView==='debts')tabDebts.classList.add('active');if(currentView==='schedule')tabSchedule.classList.add('active')}
 function getAllStudents(){let arr=[];for(const [className,cls] of Object.entries(data.classes)){for(const s of cls.students)arr.push({className,cls,s})}return arr}function debtOf(s){return Math.max(0,(Number(s.tuition)||0)-(Number(s.paid)||0))}
+function renderOnlineGate(message){
+    updateStats();
+    mainContent.innerHTML=`<div class="empty-state"><div class="icon">☁️</div><h3>Dữ liệu online Firestore</h3><p>${esc(message||'Đang kết nối dữ liệu online...')}</p><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="btn btn-blue" onclick="openAuthModal()">👤 Đăng nhập</button><button class="btn btn-soft" onclick="openFirestoreModal()">🔥 Cấu hình Firestore</button></div></div>`;
+}
+function renderLoginRequired(){
+    renderOnlineGate('Thầy cần đăng nhập Email/Password. Trang sẽ không đọc hoặc lưu dữ liệu local.');
+}
 function render(){markTabs();updateStats();if(currentView==='detail'&&currentClass&&data.classes[currentClass])renderDetailView(currentClass);else if(currentView==='debts')renderDebts();else if(currentView==='schedule')renderSchedule();else renderDashboard()}
 function updateStats(){const classes=Object.values(data.classes);const students=getAllStudents();const revenue=students.reduce((a,x)=>a+(Number(x.s.paid)||0),0);const debt=students.reduce((a,x)=>a+debtOf(x.s),0);const sessions=classes.reduce((a,c)=>a+(Number(c.sessions)||0),0);statsGrid.innerHTML=`<div class="stat-card"><div class="num">${classes.length}</div><div class="label">Tổng số lớp</div></div><div class="stat-card"><div class="num">${students.length}</div><div class="label">Tổng học sinh</div></div><div class="stat-card"><div class="num">${sessions}</div><div class="label">Tổng buổi học</div></div><div class="stat-card"><div class="num money">${money(revenue)}</div><div class="label">Đã thu học phí</div></div><div class="stat-card"><div class="num debt">${money(debt)}</div><div class="label">Còn nợ</div></div>`}
 function classMatches(name,cls){const query=q();if(!query)return true;let text=name+' '+cls.schedule+' '+cls.students.map(s=>[s.name,s.phone,s.parentPhone,s.school,s.grade,s.note].join(' ')).join(' ');return text.toLowerCase().includes(query)}
@@ -619,10 +710,11 @@ function handleStudentExcelImport(e){
 }
 function exportJSON(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});download(blob,'quan_ly_lop_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON')}function csvCell(v){v=String(v??'');return '"'+v.replace(/"/g,'""')+'"'}function exportCSV(){let rows=[['Lớp','Lịch học','Họ tên','Khối','Trường','SĐT','SĐT phụ huynh','Học phí','Đã đóng','Còn nợ','Trạng thái','Ghi chú']];for(const x of getAllStudents())rows.push([x.className,x.cls.schedule,x.s.name,x.s.grade,x.s.school,x.s.phone,x.s.parentPhone,x.s.tuition,x.s.paid,debtOf(x.s),x.s.status,x.s.note]);const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'danh_sach_hoc_sinh_hoc_phi.csv');showToast('Đã xuất CSV mở bằng Excel')}function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
-function toFirestoreCollectionsSnapshot(){normalize();const centerId=getFirestoreCenterId();const classes=[];const students=[];const calendarEvents=[];const attendance=[];for(const [className,cls] of Object.entries(data.classes)){classes.push({id:cls.id,centerId,className,teacherId:cls.teacherId||getActiveUserId(),sessions:cls.sessions,sessionDates:cls.sessionDates,schedule:cls.schedule,defaultFee:cls.defaultFee,createdAt:cls.createdAt,updatedAt:cls.updatedAt});for(const s of cls.students){students.push({id:s.firestoreId,centerId,classId:cls.id,teacherId:s.teacherId||cls.teacherId||getActiveUserId(),name:s.name,grade:s.grade,school:s.school,phone:s.phone,parentPhone:s.parentPhone,status:s.status,tuition:s.tuition,paid:s.paid,paymentNote:s.paymentNote,note:s.note,createdAt:s.createdAt,updatedAt:s.updatedAt});attendance.push({id:'att_'+s.firestoreId,centerId,classId:cls.id,studentId:s.firestoreId,attendance:s.attendance,updatedAt:new Date().toISOString()})}for(const ev of cls.calendarEvents||[]){calendarEvents.push({...ev,centerId,classId:cls.id,className})}}return {center:{id:centerId,name:'Kiên Năng',schemaVersion:4.3,updatedBy:getActiveUserId()},classes,students,calendarEvents,attendance}}
+function toFirestoreCollectionsSnapshot(){normalize();const centerId=getFirestoreCenterId();const classes=[];const students=[];const calendarEvents=[];const attendance=[];for(const [className,cls] of Object.entries(data.classes)){classes.push({id:cls.id,centerId,className,teacherId:cls.teacherId||getActiveUserId(),sessions:cls.sessions,sessionDates:cls.sessionDates,schedule:cls.schedule,defaultFee:cls.defaultFee,createdAt:cls.createdAt,updatedAt:cls.updatedAt});for(const s of cls.students){students.push({id:s.firestoreId,centerId,classId:cls.id,teacherId:s.teacherId||cls.teacherId||getActiveUserId(),name:s.name,grade:s.grade,school:s.school,phone:s.phone,parentPhone:s.parentPhone,status:s.status,tuition:s.tuition,paid:s.paid,paymentNote:s.paymentNote,note:s.note,createdAt:s.createdAt,updatedAt:s.updatedAt});attendance.push({id:'att_'+s.firestoreId,centerId,classId:cls.id,studentId:s.firestoreId,attendance:s.attendance,updatedAt:new Date().toISOString()})}for(const ev of cls.calendarEvents||[]){calendarEvents.push({...ev,centerId,classId:cls.id,className})}}return {center:{id:centerId,name:'Kiên Năng',schemaVersion:4.4,updatedBy:getActiveUserId()},classes,students,calendarEvents,attendance}}
 function exportFirestoreSchemaJSON(){const blob=new Blob([JSON.stringify(toFirestoreCollectionsSnapshot(),null,2)],{type:'application/json'});download(blob,'firestore_schema_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON theo schema Firestore')}
-function importData(){fileInput.click()}function handleImport(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const imported=JSON.parse(ev.target.result);if(!imported.classes)throw new Error('File không đúng cấu trúc');if(Object.keys(data.classes).length&&!confirm('Dữ liệu hiện tại sẽ bị thay thế. Tiếp tục?'))return;data=imported;normalize();saveData();showToast('Nhập dữ liệu thành công');render()}catch(err){showToast('Lỗi nhập file: '+err.message,'error')}};r.readAsText(file);e.target.value=''}function printCurrent(){window.print()}
+function importData(){fileInput.click()}function handleImport(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const imported=JSON.parse(ev.target.result);if(!imported.classes)throw new Error('File không đúng cấu trúc');if(Object.keys(data.classes).length&&!confirm('Dữ liệu hiện tại sẽ bị thay thế. Tiếp tục?'))return;data=imported;normalize();saveData();showToast('Đã phục hồi JSON và lưu lên Firestore online');render()}catch(err){showToast('Lỗi nhập file: '+err.message,'error')}};r.readAsText(file);e.target.value=''}function printCurrent(){window.print()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllModals()});init();
 </script>
 </body>
 </html>
+<!-- Online-only upgrade: không dùng localStorage để lưu dữ liệu lớp/học sinh; localStorage chỉ còn giữ cấu hình Firebase. -->
