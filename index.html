@@ -150,6 +150,22 @@
         body.dark-mode .calendar-event{background:linear-gradient(90deg,rgba(15,23,42,.92),#111827)!important;border-color:#263244!important}
         body.dark-mode .upcoming-item{background:linear-gradient(90deg,rgba(15,23,42,.92),#111827)!important}
 
+
+
+        /* ---------- ATTENDANCE TABLE CLEAN v5.5.4 ---------- */
+        .attendance-clean-view .table-scroll{overflow-x:auto}
+        .attendance-table{min-width:1040px;table-layout:auto}
+        .attendance-table th.col-name{min-width:250px;width:25%}
+        .attendance-table th:nth-child(2){min-width:120px;width:12%}
+        .attendance-table th:last-child{min-width:130px;width:130px;text-align:center}
+        .attendance-table td:first-child{min-width:250px;max-width:360px}
+        .attendance-table .long-name{font-size:15px;line-height:1.3;white-space:normal;word-break:keep-all;overflow-wrap:break-word}
+        .attendance-table .student-profile-mini{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+        .attendance-table .checkbox-cell{min-width:76px}
+        .attendance-table td:last-child{text-align:center;white-space:nowrap}
+        .attendance-table td:last-child .btn{padding:10px 14px;border-radius:14px;margin:2px}
+        @media(max-width:768px){.attendance-table .student-profile-mini{white-space:normal}.attendance-table td:first-child{max-width:none}.attendance-table{min-width:0}}
+
         @media print{body{background:#fff;padding:0}.header,.toolbar,.actions,.btn,.modal-overlay,.toast-container{display:none!important}.app{max-width:none}.detail-view,.panel,.class-card{box-shadow:none;border:none}.print-only{display:block}.data-table th{position:static}}
     
 
@@ -842,7 +858,37 @@ function handleEditClass(){const cls=data.classes[editingClassName];if(!canEditC
 function openAddStudentModal(className,studentId=null){if(!canEditClass(data.classes[className]))return showToast('Vai trò hiện tại không được sửa học sinh lớp này','error');addingToClass=className;editingStudentId=studentId;const cls=data.classes[className];const s=studentId?cls.students.find(x=>x.id===studentId):null;studentModalTitle.textContent=s?'Sửa hồ sơ học sinh':'Thêm học sinh';studentIdInput.value=s?.id||'';studentNameInput.value=s?.name||'';studentGradeInput.value=s?.grade||'';studentPhoneInput.value=s?.phone||'';parentPhoneInput.value=s?.parentPhone||'';schoolInput.value=s?.school||'';tuitionInput.value=s?.tuition??cls.defaultFee??0;paidInput.value=s?.paid||0;statusInput.value=s?.status||'active';noteInput.value=s?.note||'';studentModalConfirm.onclick=handleSaveStudent;openModal('studentModal')}
 function handleSaveStudent(){const cls=data.classes[addingToClass];if(!canEditClass(cls))return showToast('Thầy không có quyền sửa học sinh lớp này','error');const name=studentNameInput.value.trim();if(!name)return showToast('Vui lòng nhập tên học sinh','error');const payload={name,grade:studentGradeInput.value.trim(),phone:studentPhoneInput.value.trim(),parentPhone:parentPhoneInput.value.trim(),school:schoolInput.value.trim(),tuition:Number(tuitionInput.value)||0,paid:Number(paidInput.value)||0,status:statusInput.value,note:noteInput.value.trim()};if(editingStudentId){const s=cls.students.find(x=>x.id==editingStudentId);Object.assign(s,payload,{updatedAt:new Date().toISOString()})}else{let att={};for(let i=1;i<=cls.sessions;i++)att['B'+i]=false;cls.students.push({id:nextStudentId++,...payload,attendance:att,paymentNote:'',classId:cls.id,classKey:addingToClass,classCode:cls.code,teacherId:cls.teacherId||getActiveUserId(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()})}cls.updatedAt=new Date().toISOString();saveData();closeModal('studentModal');showToast('Đã lưu hồ sơ học sinh');render()}
 function viewClass(n){currentView='detail';currentClass=n;render()}function goBack(){currentView='dashboard';currentClass=null;render()}
-function renderDetailView(className){const cls=data.classes[className],students=cls.students.filter(s=>{const query=q();return !query||[s.name,s.phone,s.parentPhone,s.school,s.grade,s.note].join(' ').toLowerCase().includes(query)});let header='<th>Họ tên</th><th>Liên hệ</th><th>Hồ sơ</th>';for(let i=1;i<=cls.sessions;i++){const d=cls.sessionDates[i-1]||'';header+=`<th style="text-align:center"><span>B${i}</span> ${canEditClass(cls)?`<button class="edit-date-btn" onclick="openEditDateModal('${esc(className)}',${i-1})">✏️</button>`:''}${d?`<span class="session-date">${esc(d)}</span>`:''}</th>`}header+='<th>Tỉ lệ</th><th>Học phí</th><th>Thao tác</th>';let rows='';if(!students.length)rows=`<tr class="empty-row"><td colspan="${cls.sessions+7}">Chưa có học sinh hoặc không khớp tìm kiếm.</td></tr>`;for(const s of students){let pc=0;let row=`<tr><td><div class="student-name">${esc(s.name)}</div><div class="subtext">${s.status==='active'?'Đang học':s.status==='paused'?'Tạm nghỉ':'Đã nghỉ'}</div></td><td>${esc(s.phone||'—')}<div class="subtext">PH: ${esc(s.parentPhone||'—')}</div></td><td>${esc(s.grade||'—')} · ${esc(s.school||'—')}<div class="subtext">${esc(s.note||'')}</div></td>`;for(let i=1;i<=cls.sessions;i++){const k='B'+i,ck=!!s.attendance[k];if(ck)pc++;row+=`<td class="checkbox-cell"><input type="checkbox" ${ck?'checked':''} ${canEditClass(cls)?'':'disabled'} onchange="toggleAttendance('${esc(className)}',${s.id},'${k}')"></td>`}const rate=cls.sessions?Math.round(pc/cls.sessions*100):0;const rowActions=canEditClass(cls)?`<button class="btn btn-warn" onclick="openAddStudentModal('${esc(className)}',${s.id})">✏️</button> <button class="btn btn-green" onclick="openPaymentModal('${esc(className)}',${s.id})">💰</button> <button class="btn btn-danger" onclick="confirmDeleteStudent('${esc(className)}',${s.id})">🗑️</button>`:'<span class="readonly-chip">Chỉ xem</span>';row+=`<td><b>${rate}%</b></td><td>HP: <b>${money(s.tuition)}</b><br><span class="subtext">Đã đóng: ${money(s.paid)} · Nợ: <b class="debt">${money(debtOf(s))}</b></span></td><td>${rowActions}</td></tr>`;rows+=row}let summary=`<tr class="summary-row"><td colspan="3">📊 Tổng điểm danh</td>`;for(let i=1;i<=cls.sessions;i++){let c=students.filter(s=>s.attendance['B'+i]).length;summary+=`<td style="text-align:center">${c}/${students.length}</td>`}summary+='<td colspan="3"></td></tr>';mainContent.innerHTML=`<div class="detail-view"><div class="detail-header"><div><h2>📘 ${esc(cls.name||className)} <span class="class-code">Mã: ${esc(cls.code||className)}</span><small>${students.length} học sinh · ${cls.sessions} buổi · ${esc(cls.schedule||'Chưa có lịch học')}</small></h2></div><div class="actions" style="border:none;padding:0"><button class="btn btn-gray" onclick="goBack()">← Quay lại</button>${canEditClass(cls)?`<button class="btn btn-green" onclick="openAddStudentModal('${esc(className)}')">➕ Thêm HS</button><button class="btn btn-warn" onclick="openCreateClassModal('${esc(className)}')">✏️ Sửa lớp</button>`:''}</div></div>${getAbsentSummaryHtml(cls).replace('absent-box','attendance-summary-bar')}<div class="table-scroll"><table class="data-table"><thead><tr>${header}</tr></thead><tbody>${rows}${summary}</tbody></table></div></div>`}
+function renderDetailView(className){
+const cls=data.classes[className],students=cls.students.filter(s=>{const query=q();return !query||[s.name,s.phone,s.parentPhone,s.school,s.grade,s.note].join(' ').toLowerCase().includes(query)});
+let header='<th class="col-name">Họ tên</th><th>Liên hệ</th>';
+for(let i=1;i<=cls.sessions;i++){
+    const d=cls.sessionDates[i-1]||'';
+    header+=`<th style="text-align:center"><span>B${i}</span> ${canEditClass(cls)?`<button class="edit-date-btn" onclick="openEditDateModal('${esc(className)}',${i-1})">✏️</button>`:''}${d?`<span class="session-date">${esc(d)}</span>`:''}</th>`
+}
+header+='<th>Tỉ lệ</th><th>Thao tác</th>';
+let rows='';
+if(!students.length)rows=`<tr class="empty-row"><td colspan="${cls.sessions+4}">Chưa có học sinh hoặc không khớp tìm kiếm.</td></tr>`;
+for(const s of students){
+    let pc=0;
+    let row=`<tr><td><div class="student-name long-name">${esc(s.name)}</div><div class="subtext student-profile-mini">${s.status==='active'?'Đang học':s.status==='paused'?'Tạm nghỉ':'Đã nghỉ'}${s.grade?' · Lớp '+esc(s.grade):''}${s.school?' · '+esc(s.school):''}</div></td><td>${esc(s.phone||'—')}<div class="subtext">PH: ${esc(s.parentPhone||'—')}</div></td>`;
+    for(let i=1;i<=cls.sessions;i++){
+        const k='B'+i,ck=!!s.attendance[k];
+        if(ck)pc++;
+        row+=`<td class="checkbox-cell"><input type="checkbox" ${ck?'checked':''} ${canEditClass(cls)?'':'disabled'} onchange="toggleAttendance('${esc(className)}',${s.id},'${k}')"></td>`
+    }
+    const rate=cls.sessions?Math.round(pc/cls.sessions*100):0;
+    const rowActions=canEditClass(cls)?`<button class="btn btn-warn" title="Sửa học sinh" onclick="openAddStudentModal('${esc(className)}',${s.id})">✏️</button> <button class="btn btn-green" title="Cập nhật học phí" onclick="openPaymentModal('${esc(className)}',${s.id})">💰</button> <button class="btn btn-danger" title="Xoá học sinh" onclick="confirmDeleteStudent('${esc(className)}',${s.id})">🗑️</button>`:'<span class="readonly-chip">Chỉ xem</span>';
+    row+=`<td><b>${rate}%</b></td><td>${rowActions}</td></tr>`;
+    rows+=row;
+}
+let summary=`<tr class="summary-row"><td colspan="2">📊 Tổng điểm danh</td>`;
+for(let i=1;i<=cls.sessions;i++){
+    let c=students.filter(s=>s.attendance['B'+i]).length;
+    summary+=`<td style="text-align:center">${c}/${students.length}</td>`
+}
+summary+='<td colspan="2"></td></tr>';
+mainContent.innerHTML=`<div class="detail-view attendance-clean-view"><div class="detail-header"><div><h2>📘 ${esc(cls.name||className)} <span class="class-code">Mã: ${esc(cls.code||className)}</span><small>${students.length} học sinh · ${cls.sessions} buổi · ${esc(cls.schedule||'Chưa có lịch học')}</small></h2></div><div class="actions" style="border:none;padding:0"><button class="btn btn-gray" onclick="goBack()">← Quay lại</button>${canEditClass(cls)?`<button class="btn btn-green" onclick="openAddStudentModal('${esc(className)}')">➕ Thêm HS</button><button class="btn btn-warn" onclick="openCreateClassModal('${esc(className)}')">✏️ Sửa lớp</button>`:''}</div></div>${getAbsentSummaryHtml(cls).replace('absent-box','attendance-summary-bar')}<div class="table-scroll"><table class="data-table attendance-table"><thead><tr>${header}</tr></thead><tbody>${rows}${summary}</tbody></table></div></div>`
+}
 function cleanupPlannedScheduleForAttendance(className,key){
     const cls=data.classes[className];
     const idx=Number(String(key).replace('B',''))-1;
