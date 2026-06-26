@@ -117,7 +117,7 @@
 
 
         /* ---------- COMPACT TEACHER HEADER ---------- */
-        .admin-only{display:none}.role-admin .admin-only,.role-superadmin .admin-only{display:inline-flex}.teacher-secondary{display:none}.role-teacher .teacher-secondary{display:none!important}.role-teacher .admin-only{display:none!important}.role-teacher .header-actions{align-items:center}.role-teacher .header-actions button{padding:10px 16px}.role-teacher .header{padding:22px 28px}.role-teacher .header h1 small:after{content:' · Giao diện giáo viên';font-weight:700;color:#fde68a}.role-admin .teacher-secondary,.role-superadmin .teacher-secondary{display:inline-flex}
+        .admin-only,.superadmin-only{display:none}.role-admin .admin-only,.role-superadmin .admin-only,.role-superadmin .superadmin-only{display:inline-flex}.teacher-secondary{display:none}.role-teacher .teacher-secondary{display:none!important}.role-teacher .admin-only,.role-teacher .superadmin-only,.role-admin .superadmin-only,.role-student .superadmin-only{display:none!important}.role-teacher .header-actions{align-items:center}.role-teacher .header-actions button{padding:10px 16px}.role-teacher .header{padding:22px 28px}.role-teacher .header h1 small:after{content:' · Giao diện giáo viên';font-weight:700;color:#fde68a}.role-admin .teacher-secondary,.role-superadmin .teacher-secondary{display:inline-flex}
 
 
         /* ---------- CLEAN / TEACHER FRIENDLY MODALS ---------- */
@@ -126,21 +126,24 @@
         .admin-hint{display:none}
         .auth-note{display:none!important}
 
+        /* ---------- SUPER ADMIN BACKUP / RESTORE ---------- */
+        .backup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:12px 0 16px}.backup-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:15px;padding:14px}.backup-card b{display:block;color:#0b3b5c;font-size:22px}.backup-card span{font-size:12px;color:#64748b;font-weight:700}.danger-note{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:14px;padding:12px 14px;font-weight:800;line-height:1.45;margin:10px 0 14px}.safe-note{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:14px;padding:10px 12px;font-weight:800;margin:10px 0}.backup-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}.backup-actions span{display:flex;gap:10px;flex-wrap:wrap}
+
         @media print{body{background:#fff;padding:0}.header,.toolbar,.actions,.btn,.modal-overlay,.toast-container{display:none!important}.app{max-width:none}.detail-view,.panel,.class-card{box-shadow:none;border:none}.print-only{display:block}.data-table th{position:static}}
     </style>
 </head>
 <body>
 <div class="app" id="app">
     <header class="header">
-        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 5.2 · Giao diện giáo viên gọn · Ẩn tìm kiếm</small></h1>
+        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 5.3 · Sao lưu/phục hồi Super Admin</small></h1>
         <div class="header-actions">
             <button class="btn-primary" onclick="openCreateClassModal()">➕ Tạo lớp</button>
             <button class="teacher-secondary" onclick="downloadStudentTemplate()">⬇️ Mẫu HS Excel</button>
             <button class="teacher-main" onclick="openImportStudentsModal()">📥 Nhập HS Excel</button>
-            <button class="admin-only" onclick="exportJSON()">💾 Sao lưu JSON</button>
+            <button class="superadmin-only" onclick="openBackupRestoreModal()">🛡️ Sao lưu/Phục hồi</button>
             <button class="admin-only" onclick="exportFirestoreSchemaJSON()">🧩 Schema Firestore</button>
             <button class="teacher-main" onclick="exportCSV()">📊 Xuất Excel/CSV</button>
-            <button class="admin-only" onclick="importData()">📤 Phục hồi JSON lên Online</button>
+            
             <button class="teacher-secondary" onclick="printCurrent()">🖨️ In báo cáo</button>
             <button class="admin-only" onclick="openFirestoreModal()">🔥 Firestore</button>
             <button onclick="openAuthModal()">👤 Tài khoản</button>
@@ -164,6 +167,18 @@
     <div id="mainContent"></div>
     <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleImport(event)" />
     <input type="file" id="studentExcelInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleStudentExcelImport(event)" />
+
+
+    <div class="modal-overlay" id="backupRestoreModal"><div class="modal">
+        <h2>🛡️ Sao lưu và phục hồi dữ liệu</h2><p class="sub">Chỉ Super Admin được dùng chức năng này. Khi phục hồi, hệ thống tự tải một bản sao lưu hiện tại trước khi ghi đè.</p>
+        <div class="backup-grid" id="backupStats"></div>
+        <div class="safe-note">Khuyến nghị: tải bản sao lưu trước mỗi lần sửa lớn hoặc trước khi nhập lại dữ liệu.</div>
+        <div class="backup-actions"><button class="btn btn-green" onclick="exportJSON()">💾 Tải sao lưu JSON</button><span><button class="btn btn-soft" onclick="exportFirestoreSchemaJSON()">🧩 Sao lưu schema Firestore</button><button class="btn btn-blue" onclick="pushOnlineToFirestore()">☁️ Lưu ngay Firestore</button></span></div>
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0">
+        <div class="danger-note">Phục hồi sẽ thay đổi dữ liệu online của trung tâm. Chỉ thực hiện khi đã chắc chắn file đúng.</div>
+        <label>Chế độ phục hồi</label><select id="restoreModeInput"><option value="replace">Ghi đè toàn bộ dữ liệu hiện tại</option><option value="merge">Gộp thêm/cập nhật theo dữ liệu trong file</option></select>
+        <div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('backupRestoreModal')">Đóng</button><button class="btn btn-danger" onclick="importData()">📤 Chọn file và phục hồi</button></div>
+    </div></div>
 
     <div class="modal-overlay" id="classModal"><div class="modal">
         <h2 id="classModalTitle">Tạo lớp mới</h2><p class="sub">Bổ sung lịch học, học phí mặc định và số buổi điểm danh.</p>
@@ -663,7 +678,7 @@ async function renderAdminDashboard(){
         <div class="admin-card"><div class="big money">${money(revenue)}</div><div class="cap">Doanh thu đã thu</div></div>
         <div class="admin-card"><div class="big debt">${money(debt)}</div><div class="cap">Công nợ còn lại</div></div>
     </div>
-    <div class="admin-section"><div class="admin-toolbar"><h2>${isSuperAdmin()?'👑 Super Admin Dashboard':'🛡️ Admin Dashboard'}</h2><div class="admin-actions"><button class="btn btn-blue" onclick="refreshAdminUsers()">↻ Tải tài khoản</button><button class="btn btn-green" onclick="pushOnlineToFirestore()">☁️ Lưu ngay Firestore</button><button class="btn btn-soft" onclick="exportJSON()">💾 Sao lưu JSON</button></div></div>
+    <div class="admin-section"><div class="admin-toolbar"><h2>${isSuperAdmin()?'👑 Super Admin Dashboard':'🛡️ Admin Dashboard'}</h2><div class="admin-actions"><button class="btn btn-blue" onclick="refreshAdminUsers()">↻ Tải tài khoản</button><button class="btn btn-green" onclick="pushOnlineToFirestore()">☁️ Lưu ngay Firestore</button><button class="btn btn-soft superadmin-only" onclick="openBackupRestoreModal()">🛡️ Sao lưu/Phục hồi</button></div></div>
     <div class="risk-box">Super Admin quản lý toàn bộ trung tâm và cấp quyền Admin. Admin quản lý giáo viên, học sinh, lớp, học phí nhưng không thể tự nâng quyền lên Super Admin. Teacher chỉ thao tác lớp của mình; Student chỉ xem dữ liệu được liên kết.</div></div>
     <div class="admin-section"><h2>📊 Phân bố học sinh</h2><div class="mini-grid"><div class="mini-card"><b>Đang học</b><div class="num money">${active}</div></div><div class="mini-card"><b>Tạm nghỉ</b><div class="num">${paused}</div></div><div class="mini-card"><b>Đã nghỉ</b><div class="num debt">${left}</div></div><div class="mini-card"><b>Firestore</b><div class="subtext">${firestoreReady?'Đang online':'Chưa kết nối'} · ${esc(getFirestoreCenterId())}</div></div></div></div>
     <div class="admin-section"><h2>🏫 Danh sách lớp</h2><div class="table-scroll"><table class="data-table"><thead><tr><th>Lớp</th><th>Mã lớp</th><th>Giáo viên</th><th>Học sinh</th><th>Tiến độ</th><th>Đã thu</th><th>Công nợ</th><th>Thao tác</th></tr></thead><tbody>${classes.map(([key,cls])=>{const st=cls.students||[];const paid=st.reduce((a,s)=>a+(+s.paid||0),0);const d=st.reduce((a,s)=>a+debtOf(s),0);const at=getAttendedSessions(cls);return `<tr><td><b>${esc(cls.name||key)}</b><div class="subtext">${esc(cls.schedule||'Chưa có lịch')}</div></td><td><span class="class-code">${esc(cls.code||key)}</span></td><td>${esc(cls.teacherName||cls.teacherEmail||cls.teacherId||'—')}</td><td>${st.length}</td><td>${at}/${cls.sessions||0} buổi</td><td class="money"><b>${money(paid)}</b></td><td class="debt"><b>${money(d)}</b></td><td><button class="btn btn-blue" onclick="viewClass('${esc(key)}')">Mở lớp</button></td></tr>`}).join('')||'<tr class="empty-row"><td colspan="8">Chưa có lớp.</td></tr>'}</tbody></table></div></div>
@@ -921,11 +936,18 @@ function handleStudentExcelImport(e){
         }
     }finally{e.target.value=''}
 }
-function exportJSON(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});download(blob,'quan_ly_lop_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON')}function csvCell(v){v=String(v??'');return '"'+v.replace(/"/g,'""')+'"'}function exportCSV(){let rows=[['Lớp','Lịch học','Họ tên','Khối','Trường','SĐT','SĐT phụ huynh','Học phí','Đã đóng','Còn nợ','Trạng thái','Ghi chú']];for(const x of getAllStudents())rows.push([x.className,x.cls.schedule,x.s.name,x.s.grade,x.s.school,x.s.phone,x.s.parentPhone,x.s.tuition,x.s.paid,debtOf(x.s),x.s.status,x.s.note]);const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'danh_sach_hoc_sinh_hoc_phi.csv');showToast('Đã xuất CSV mở bằng Excel')}function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
+function requireSuperAdminAction(name='chức năng này'){if(!isSuperAdmin()){showToast('Chỉ Super Admin được dùng '+name,'error');return false}return true}
+function buildBackupPayload(){normalize();return {backupType:'kien-nang-full-backup',schemaVersion:5.3,backupAt:new Date().toISOString(),centerId:getFirestoreCenterId(),exportedBy:{uid:getActiveUserId(),email:getActiveUserEmail(),name:getActiveUserName(),role:getActiveUserRole()},data}}
+function openBackupRestoreModal(){if(!requireSuperAdminAction('sao lưu/phục hồi'))return;updateBackupStats();openModal('backupRestoreModal')}
+function updateBackupStats(){const el=document.getElementById('backupStats');if(!el)return;const classes=Object.values(data.classes||{});const students=classes.reduce((sum,c)=>sum+(c.students||[]).length,0);const events=classes.reduce((sum,c)=>sum+(c.calendarEvents||[]).length,0);el.innerHTML=`<div class="backup-card"><b>${classes.length}</b><span>Lớp học</span></div><div class="backup-card"><b>${students}</b><span>Học sinh</span></div><div class="backup-card"><b>${events}</b><span>Lịch học</span></div><div class="backup-card"><b>${esc(getActiveUserName())}</b><span>Super Admin thao tác</span></div>`}
+function exportJSON(){if(!requireSuperAdminAction('sao lưu JSON'))return;const blob=new Blob([JSON.stringify(buildBackupPayload(),null,2)],{type:'application/json'});download(blob,'sao_luu_kien_nang_full_'+new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)+'.json');showToast('Đã tải bản sao lưu JSON đầy đủ')}function csvCell(v){v=String(v??'');return '"'+v.replace(/"/g,'""')+'"'}function exportCSV(){let rows=[['Lớp','Lịch học','Họ tên','Khối','Trường','SĐT','SĐT phụ huynh','Học phí','Đã đóng','Còn nợ','Trạng thái','Ghi chú']];for(const x of getAllStudents())rows.push([x.className,x.cls.schedule,x.s.name,x.s.grade,x.s.school,x.s.phone,x.s.parentPhone,x.s.tuition,x.s.paid,debtOf(x.s),x.s.status,x.s.note]);const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'danh_sach_hoc_sinh_hoc_phi.csv');showToast('Đã xuất CSV mở bằng Excel')}function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
 function toFirestoreCollectionsSnapshot(){normalize();const centerId=getFirestoreCenterId();const classes=[];const students=[];const calendarEvents=[];const attendance=[];for(const [classKey,cls] of Object.entries(data.classes)){classes.push({id:cls.id,code:cls.code,classKey,centerId,className:cls.name,teacherId:cls.teacherId||getActiveUserId(),teacherName:cls.teacherName||'',teacherEmail:cls.teacherEmail||'',sessions:cls.sessions,sessionDates:cls.sessionDates,schedule:cls.schedule,defaultFee:cls.defaultFee,createdAt:cls.createdAt,updatedAt:cls.updatedAt});for(const s of cls.students){students.push({id:s.firestoreId,centerId,classId:cls.id,teacherId:s.teacherId||cls.teacherId||getActiveUserId(),name:s.name,grade:s.grade,school:s.school,phone:s.phone,parentPhone:s.parentPhone,status:s.status,tuition:s.tuition,paid:s.paid,paymentNote:s.paymentNote,note:s.note,createdAt:s.createdAt,updatedAt:s.updatedAt});attendance.push({id:'att_'+s.firestoreId,centerId,classId:cls.id,studentId:s.firestoreId,attendance:s.attendance,updatedAt:new Date().toISOString()})}for(const ev of cls.calendarEvents||[]){calendarEvents.push({...ev,centerId,classKey,classId:cls.id,className:cls.name,classCode:cls.code})}}return {center:{id:centerId,name:'Kiên Năng',schemaVersion:4.9,updatedBy:getActiveUserId()},classes,students,calendarEvents,attendance}}
-function exportFirestoreSchemaJSON(){const blob=new Blob([JSON.stringify(toFirestoreCollectionsSnapshot(),null,2)],{type:'application/json'});download(blob,'firestore_schema_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON theo schema Firestore')}
-function importData(){fileInput.click()}function handleImport(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const imported=JSON.parse(ev.target.result);if(!imported.classes)throw new Error('File không đúng cấu trúc');if(Object.keys(data.classes).length&&!confirm('Dữ liệu hiện tại sẽ bị thay thế. Tiếp tục?'))return;data=imported;normalize();saveData();showToast('Đã phục hồi JSON và lưu lên Firestore online');render()}catch(err){showToast('Lỗi nhập file: '+err.message,'error')}};r.readAsText(file);e.target.value=''}function printCurrent(){window.print()}
+function exportFirestoreSchemaJSON(){if(!requireSuperAdminAction('sao lưu schema Firestore'))return;const blob=new Blob([JSON.stringify(toFirestoreCollectionsSnapshot(),null,2)],{type:'application/json'});download(blob,'firestore_schema_kien_nang_'+new Date().toISOString().slice(0,10)+'.json');showToast('Đã xuất JSON theo schema Firestore')}
+function importData(){if(!requireSuperAdminAction('phục hồi dữ liệu'))return;fileInput.click()}
+function mergeImportedClasses(importedClasses){const merged={...(data.classes||{})};for(const [key,cls] of Object.entries(importedClasses||{})){const targetKey=cls?.id||key;merged[targetKey]={...(merged[targetKey]||{}),...cls,students:[...((merged[targetKey]||{}).students||[])]};const currentStudents=merged[targetKey].students||[];const byKey=new Map(currentStudents.map(st=>[String(st.firestoreId||st.id||st.name),st]));for(const st of (cls.students||[])){const k=String(st.firestoreId||st.id||st.name);if(byKey.has(k))Object.assign(byKey.get(k),st);else currentStudents.push(st)}merged[targetKey].students=currentStudents}return merged}
+function extractImportedData(json){if(json?.backupType==='kien-nang-full-backup'&&json?.data?.classes)return json.data;if(json?.classes)return json;throw new Error('File không đúng cấu trúc sao lưu Kiên Năng')}
+function handleImport(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{if(!requireSuperAdminAction('phục hồi dữ liệu'))return;const imported=extractImportedData(JSON.parse(ev.target.result));const mode=document.getElementById('restoreModeInput')?.value||'replace';const oldCount=Object.keys(data.classes||{}).length;const newCount=Object.keys(imported.classes||{}).length;if(!newCount)throw new Error('File không có lớp học nào');const msg=mode==='replace'?`Sắp GHI ĐÈ toàn bộ ${oldCount} lớp hiện tại bằng ${newCount} lớp trong file. Tiếp tục?`:`Sắp GỘP ${newCount} lớp từ file vào dữ liệu hiện tại. Tiếp tục?`;if(!confirm(msg))return;exportJSON();if(mode==='merge'){data={...(data||{}),classes:mergeImportedClasses(imported.classes),meta:{...(data.meta||{}),restoredAt:new Date().toISOString(),restoreMode:'merge'}}}else{data=imported;data.meta={...(data.meta||{}),restoredAt:new Date().toISOString(),restoreMode:'replace'}}normalize();saveData();closeModal('backupRestoreModal');showToast('Đã phục hồi dữ liệu và lưu lên Firestore online');render()}catch(err){showToast('Lỗi phục hồi file: '+err.message,'error')}};r.readAsText(file);e.target.value=''}function printCurrent(){window.print()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllModals()});init();
 </script>
 </body>
