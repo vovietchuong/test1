@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quản lý lớp học - Kiên Năng | Giai đoạn 4.9 Sửa lọc Dashboard giáo viên</title>
+    <title>Quản lý lớp học - Kiên Năng | Giai đoạn 5.0 Dashboard giáo viên gọn</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f7fc;color:#1e293b;padding:24px;min-height:100vh}.app{max-width:1500px;margin:0 auto}
@@ -115,23 +115,27 @@
         .role-pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;background:#e0f2fe;color:#075985;padding:5px 10px;font-size:12px;font-weight:900}.role-pill.superadmin{background:#fee2e2;color:#991b1b}.role-pill.admin{background:#fef3c7;color:#92400e}.role-pill.student{background:#f3e8ff;color:#6b21a8}
         .admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px}.admin-card{background:#fff;border:1px solid #e9eef3;border-radius:18px;padding:18px;box-shadow:0 4px 16px rgba(0,0,0,.05)}.admin-card .big{font-size:30px;font-weight:900;color:#0b3b5c}.admin-card .cap{font-size:13px;color:#64748b;margin-top:4px}.admin-section{background:#fff;border:1px solid #e9eef3;border-radius:20px;padding:20px;box-shadow:0 4px 16px rgba(0,0,0,.05);margin-bottom:16px}.admin-section h2{color:#0b3b5c;margin-bottom:12px}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.risk-box{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:14px;padding:12px 14px;font-weight:700;line-height:1.45}
 
+
+        /* ---------- COMPACT TEACHER HEADER ---------- */
+        .admin-only{display:none}.role-admin .admin-only,.role-superadmin .admin-only{display:inline-flex}.teacher-secondary{display:none}.role-teacher .teacher-secondary{display:none!important}.role-teacher .admin-only{display:none!important}.role-teacher .header-actions{align-items:center}.role-teacher .header-actions button{padding:10px 16px}.role-teacher .header{padding:22px 28px}.role-teacher .header h1 small:after{content:' · Giao diện giáo viên';font-weight:700;color:#fde68a}.role-admin .teacher-secondary,.role-superadmin .teacher-secondary{display:inline-flex}
+
         @media print{body{background:#fff;padding:0}.header,.toolbar,.actions,.btn,.modal-overlay,.toast-container{display:none!important}.app{max-width:none}.detail-view,.panel,.class-card{box-shadow:none;border:none}.print-only{display:block}.data-table th{position:static}}
     </style>
 </head>
 <body>
 <div class="app" id="app">
     <header class="header">
-        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 4.9 · Dashboard giáo viên · Sửa lọc tìm kiếm</small></h1>
+        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 5.0 · Dashboard giáo viên gọn · Phân quyền nút</small></h1>
         <div class="header-actions">
             <button class="btn-primary" onclick="openCreateClassModal()">➕ Tạo lớp</button>
-            <button onclick="downloadStudentTemplate()">⬇️ Mẫu HS Excel</button>
-            <button onclick="openImportStudentsModal()">📥 Nhập HS Excel</button>
-            <button onclick="exportJSON()">💾 Sao lưu JSON</button>
-            <button onclick="exportFirestoreSchemaJSON()">🧩 Schema Firestore</button>
-            <button onclick="exportCSV()">📊 Xuất Excel/CSV</button>
-            <button onclick="importData()">📤 Phục hồi JSON lên Online</button>
-            <button onclick="printCurrent()">🖨️ In báo cáo</button>
-            <button onclick="openFirestoreModal()">🔥 Firestore</button>
+            <button class="teacher-secondary" onclick="downloadStudentTemplate()">⬇️ Mẫu HS Excel</button>
+            <button class="teacher-main" onclick="openImportStudentsModal()">📥 Nhập HS Excel</button>
+            <button class="admin-only" onclick="exportJSON()">💾 Sao lưu JSON</button>
+            <button class="admin-only" onclick="exportFirestoreSchemaJSON()">🧩 Schema Firestore</button>
+            <button class="teacher-main" onclick="exportCSV()">📊 Xuất Excel/CSV</button>
+            <button class="admin-only" onclick="importData()">📤 Phục hồi JSON lên Online</button>
+            <button class="teacher-secondary" onclick="printCurrent()">🖨️ In báo cáo</button>
+            <button class="admin-only" onclick="openFirestoreModal()">🔥 Firestore</button>
             <button onclick="openAuthModal()">👤 Tài khoản</button>
             <span class="account-badge" id="accountBadge" onclick="openAuthModal()" style="cursor:pointer"><span class="avatar">?</span><span class="txt" id="accountText">Chưa đăng nhập</span></span>
             <span class="sync-badge online" id="syncBadge"><i class="sync-dot"></i><span id="syncText">Online</span></span>
@@ -264,7 +268,7 @@ const DEFAULT_FIREBASE_CONFIG={
     appId: "1:798882238835:web:0ca9e033ae3a6b9d55b506",
     measurementId: "G-18BKNWVMDL"
 };
-let data={classes:{},meta:{version:4.9,mode:'online-firestore-rbac',updatedAt:new Date().toISOString()}};let nextStudentId=1;let currentView='dashboard';let currentClass=null;let editingClassName=null;let addingToClass=null;let editingStudentId=null;let confirmCallback=null;let editingSessionClass='',editingSessionIndex=-1;let paymentClass='',paymentStudentId=null;let calendarDate=new Date(),calendarMode='month',calendarClassFilter='all';
+let data={classes:{},meta:{version:5.0,mode:'online-firestore-rbac',updatedAt:new Date().toISOString()}};let nextStudentId=1;let currentView='dashboard';let currentClass=null;let editingClassName=null;let addingToClass=null;let editingStudentId=null;let confirmCallback=null;let editingSessionClass='',editingSessionIndex=-1;let paymentClass='',paymentStudentId=null;let calendarDate=new Date(),calendarMode='month',calendarClassFilter='all';
 let firestoreDb=null, firestoreDocRef=null, firestoreUnsub=null, firestoreSaveTimer=null, firestoreReady=false, firestoreLoading=false, firestoreRemoteAt='', suppressRemoteSave=false;
 let firebaseAuth=null, firebaseUser=null, currentUserProfile=null, authReady=false;
 function money(n){return (Number(n)||0).toLocaleString('vi-VN')+'đ'}function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}function q(){return document.getElementById('searchInput')?.value.trim().toLowerCase()||''}
@@ -310,7 +314,7 @@ function classTitle(key){const cls=data.classes?.[key];return cls?.name||key||''
 function classCode(key){const cls=data.classes?.[key];return cls?.code||cls?.id||key||''}
 function classOptionLabel(key){const cls=data.classes?.[key];return (cls?.name||key)+' · '+(cls?.code||cls?.id||key)}
 function normalize(){
-    if(!data.classes)data.classes={};if(!data.meta)data.meta={};data.meta.version=4.8;data.meta.mode='firestore-ready-classcode';data.meta.updatedAt=data.meta.updatedAt||new Date().toISOString();
+    if(!data.classes)data.classes={};if(!data.meta)data.meta={};data.meta.version=5.0;data.meta.mode='firestore-ready-classcode';data.meta.updatedAt=data.meta.updatedAt||new Date().toISOString();
     let maxId=0; const oldEntries=Object.entries(data.classes); const rebuilt={};
     for(const [oldKey,cls0] of oldEntries){
         const cls=cls0||{}; const stableId=cls.id&&String(cls.id).startsWith('class_')?cls.id:makeId('class',oldKey+'-'+(cls.name||oldKey)); const key=stableId;
@@ -322,14 +326,14 @@ function normalize(){
 }
 function loadData(){
     // Online-only: không đọc dữ liệu lớp/học sinh từ localStorage.
-    data={classes:{},meta:{version:4.9,mode:'online-firestore-rbac',updatedAt:new Date().toISOString()}};
+    data={classes:{},meta:{version:5.0,mode:'online-firestore-rbac',updatedAt:new Date().toISOString()}};
     normalize();
 }
 function saveData(){
     try{
         if(ONLINE_ONLY && (!firebaseUser || firebaseUser.isAnonymous)){showToast('Cần đăng nhập tài khoản trước khi lưu dữ liệu online','error');renderLoginRequired();return}
         if(ONLINE_ONLY && !firestoreReady){showToast('Chưa kết nối Firestore, dữ liệu chưa được lưu','error');setSyncBadge('error','Chưa kết nối');return}
-        data.meta={...(data.meta||{}),version:4.9,mode:'online-firestore-rbac',updatedAt:new Date().toISOString()};
+        data.meta={...(data.meta||{}),version:5.0,mode:'online-firestore-rbac',updatedAt:new Date().toISOString()};
         scheduleFirestoreSave();
     }catch(e){showToast('Lưu dữ liệu online thất bại','error')}
 }
@@ -408,7 +412,17 @@ function ownedClassCount(){return Object.values(data.classes||{}).filter(c=>c.te
 function roleLabel(role){return role==='superadmin'?'Super Admin':role==='admin'?'Admin':role==='student'?'Học sinh':'Giáo viên'}
 function roleIcon(role){return role==='superadmin'?'👑':role==='admin'?'🛡️':role==='student'?'🎓':'👨‍🏫'}
 function rolePill(role){return `<span class="role-pill ${role==='superadmin'?'superadmin':role==='admin'?'admin':role==='student'?'student':''}">${roleIcon(role)} ${roleLabel(role)}</span>`}
-function updateAdminVisibility(){const show=isAdmin();document.querySelectorAll('.admin-only').forEach(el=>el.style.display=show?'':'none');if(!show&&currentView==='admin'){currentView='dashboard'}updateRoleLockedUI()}
+function updateAdminVisibility(){
+    const role=getActiveUserRole();
+    const showAdmin=isAdmin();
+    document.body.classList.remove('role-teacher','role-admin','role-superadmin','role-student');
+    document.body.classList.add(role==='superadmin'?'role-superadmin':role==='admin'?'role-admin':role==='student'?'role-student':'role-teacher');
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display=showAdmin?'':'none');
+    document.querySelectorAll('.teacher-secondary').forEach(el=>el.style.display=showAdmin?'':'none');
+    document.querySelectorAll('.teacher-main').forEach(el=>el.style.display=isStudent()?'none':'');
+    if(!showAdmin&&currentView==='admin'){currentView='dashboard'}
+    updateRoleLockedUI();
+}
 function updateRoleLockedUI(){
     const role=getActiveUserRole();
     document.querySelectorAll('button').forEach(btn=>{
@@ -562,7 +576,7 @@ async function loadFromFirestoreOnce(){
         suppressRemoteSave=false;
         showToast('Đã tải dữ liệu online từ Firestore');
     }else{
-        data={classes:{},meta:{version:4.9,mode:'online-firestore-rbac',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}};
+        data={classes:{},meta:{version:5.0,mode:'online-firestore-rbac',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}};
         normalize();
         setSyncBadge('online','Online · dữ liệu mới');
     }
