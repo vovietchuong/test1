@@ -119,6 +119,13 @@
         /* ---------- COMPACT TEACHER HEADER ---------- */
         .admin-only{display:none}.role-admin .admin-only,.role-superadmin .admin-only{display:inline-flex}.teacher-secondary{display:none}.role-teacher .teacher-secondary{display:none!important}.role-teacher .admin-only{display:none!important}.role-teacher .header-actions{align-items:center}.role-teacher .header-actions button{padding:10px 16px}.role-teacher .header{padding:22px 28px}.role-teacher .header h1 small:after{content:' · Giao diện giáo viên';font-weight:700;color:#fde68a}.role-admin .teacher-secondary,.role-superadmin .teacher-secondary{display:inline-flex}
 
+
+        /* ---------- CLEAN / TEACHER FRIENDLY MODALS ---------- */
+        .login-hero.compact{padding:18px 20px;margin:0 0 14px;border-radius:18px}
+        .login-hero.compact h3{margin:0;font-size:24px}
+        .admin-hint{display:none}
+        .auth-note{display:none!important}
+
         @media print{body{background:#fff;padding:0}.header,.toolbar,.actions,.btn,.modal-overlay,.toast-container{display:none!important}.app{max-width:none}.detail-view,.panel,.class-card{box-shadow:none;border:none}.print-only{display:block}.data-table th{position:static}}
     </style>
 </head>
@@ -214,9 +221,8 @@
 
 
     <div class="modal-overlay" id="authModal"><div class="modal">
-        <div class="login-hero"><h3>🔐 Đăng nhập hệ thống Kiên Năng</h3><p>Làm việc trực tiếp với Firestore online. Hệ thống phân quyền 4 tầng: Super Admin, Admin, Teacher, Student. Mỗi vai trò chỉ nhìn thấy chức năng phù hợp.</p></div>
+        <div class="login-hero compact"><h3>🔐 Tài khoản Kiên Năng</h3></div>
         <div id="authCurrentBox" class="account-card"></div>
-        <div class="auth-note">Tài khoản mới mặc định là <b>Giáo viên</b>. Tài khoản đầu tiên cần được đặt role=<b>superadmin</b> trực tiếp trong Firestore; sau đó Super Admin cấp quyền Admin/Teacher/Student ngay trên web.</div>
         <div class="login-tabs"><button id="loginModeBtn" class="active" onclick="setAuthMode('login')">Đăng nhập</button><button id="registerModeBtn" onclick="setAuthMode('register')">Tạo tài khoản</button></div>
         <div id="registerNameBox" style="display:none"><label>Họ tên</label><input id="authNameInput" placeholder="Ví dụ: Thầy Võ Viết Chương" /></div>
         <input id="authRoleInput" type="hidden" value="teacher" />
@@ -229,21 +235,11 @@
     </div></div>
 
     <div class="modal-overlay" id="firestoreModal"><div class="modal">
-        <h2>🔥 Chuẩn bị kết nối Firestore</h2><p class="sub">Trang đã được cấy sẵn cấu hình Firebase project thionline2027. Bản này chỉ dùng dữ liệu Firestore online; cần đăng nhập Email/Password trước khi đọc/ghi dữ liệu.</p>
-        <div class="firestore-panel">
-            <b>Schema đề xuất khi lên Firestore</b>
-            <ul>
-                <li><code>centers/{centerId}</code>: thông tin trung tâm</li>
-                <li><code>centers/{centerId}/classes/{classId}</code>: lớp học</li>
-                <li><code>centers/{centerId}/classes/{classId}/students/{studentId}</code>: học sinh</li>
-                <li><code>centers/{centerId}/classes/{classId}/calendarEvents/{eventId}</code>: lịch học</li>
-                <li><code>centers/{centerId}/appState/main</code>: dữ liệu tổng hợp online của trung tâm</li>
-            </ul>
-        </div>
+        <h2>🔥 Kết nối Firestore</h2><p class="sub admin-hint">Thiết lập dành cho quản trị hệ thống.</p>
         <label>Trạng thái</label><input id="firestoreStatusInput" class="mono" readonly />
         <label>centerId</label><input id="firestoreCenterInput" class="mono" value="kien-nang" />
         <label>Cấu hình Firebase</label><textarea id="firebaseConfigInput" class="mono" placeholder='Đã có cấu hình mặc định thionline2027; chỉ sửa khi đổi Firebase project.'></textarea>
-        <div class="mini-card" style="margin-bottom:14px"><b>Ghi chú sửa lỗi quyền</b><div class="subtext">Nếu báo Missing or insufficient permissions: vào Firebase Console → Firestore Database → Rules → dán file rules online-only đi kèm → Publish. Nếu báo auth/operation-not-allowed: vào Authentication → Sign-in method → bật Email/Password.</div></div><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('firestoreModal')">Đóng</button><button class="btn btn-green" onclick="pushOnlineToFirestore()">Lưu ngay lên Firestore</button><button class="btn btn-blue" onclick="saveFirestoreSettings()">Lưu cấu hình online</button></div>
+        <div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('firestoreModal')">Đóng</button><button class="btn btn-green" onclick="pushOnlineToFirestore()">Lưu ngay lên Firestore</button><button class="btn btn-blue" onclick="saveFirestoreSettings()">Lưu cấu hình online</button></div>
     </div></div>
     <div class="modal-overlay" id="editDateModal"><div class="modal"><h2>Sửa ngày buổi học</h2><p class="sub" id="editDateSessionLabel"></p><label>Ngày</label><input id="editDateInput" placeholder="Ví dụ: 24/06/2026" /><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('editDateModal')">Huỷ</button><button class="btn btn-blue" id="editDateConfirm">Lưu</button></div></div></div>
     <div class="modal-overlay" id="confirmModal"><div class="modal"><h2>Xác nhận xoá</h2><p class="sub" id="confirmModalMsg"></p><div class="modal-actions"><button class="btn btn-gray" onclick="closeModal('confirmModal')">Huỷ</button><button class="btn btn-danger" id="confirmModalConfirm">Xoá</button></div></div></div>
@@ -467,7 +463,7 @@ function updateAccountBadge(){
         const name=getActiveUserName();
         txt.textContent=name+' · '+(roleLabel(getActiveUserRole()));
         if(av)av.textContent=(name||'U').trim().slice(0,1).toUpperCase();
-        badge.title=(firebaseUser.email||'')+' · UID: '+firebaseUser.uid;
+        badge.title=(firebaseUser.email||'');
     }else if(firebaseUser&&firebaseUser.isAnonymous){
         txt.textContent='Khách ẩn danh'; if(av)av.textContent='K'; badge.title='Đang dùng Auth ẩn danh';
     }else{
@@ -486,7 +482,7 @@ function setAuthMode(mode){
 function openAuthModal(){
     const box=document.getElementById('authCurrentBox');
     if(box){
-        if(firebaseUser&&!firebaseUser.isAnonymous)box.innerHTML=`<b>Đang đăng nhập</b><br>${esc(getActiveUserName())} ${rolePill(getActiveUserRole())}<div class="subtext">${esc(firebaseUser.email||'')} · UID: ${esc(firebaseUser.uid)}</div>`;
+        if(firebaseUser&&!firebaseUser.isAnonymous)box.innerHTML=`<b>Đang đăng nhập</b><br>${esc(getActiveUserName())} ${rolePill(getActiveUserRole())}<div class="subtext">${esc(firebaseUser.email||'')}</div>`;
         else if(firebaseUser&&firebaseUser.isAnonymous)box.innerHTML='<b>Đang dùng tài khoản ẩn danh</b><div class="subtext">Có thể tạo tài khoản email để quản lý chính thức và phân quyền sau này.</div>';
         else box.innerHTML='<b>Chưa đăng nhập</b><div class="subtext">Thầy có thể tạo tài khoản giáo viên hoặc đăng nhập bằng email đã tạo.</div>';
     }
