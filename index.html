@@ -181,6 +181,16 @@
         /* ---------- CRM HỌC SINH v5.7 ---------- */
         .crm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:14px 0}.crm-card{background:var(--ux-card,#fff);border:1px solid var(--ux-line,#e2e8f0);border-radius:16px;padding:14px;box-shadow:0 3px 12px rgba(15,23,42,.04)}.crm-card b{color:var(--ux-primary,#0b3b5c);font-size:20px}.crm-card span{display:block;color:var(--ux-muted,#64748b);font-size:12px;font-weight:800;margin-top:3px}.student-crm-mini{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}.student-crm-mini span{background:#eef6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900}.crm-profile-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin:8px 0 14px}.crm-profile-name{font-size:22px;font-weight:950;color:var(--ux-primary,#0b3b5c)}.crm-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.crm-tab{border:1px solid var(--ux-line,#e2e8f0);background:var(--ux-card,#fff);border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;color:var(--ux-text,#1e293b)}.crm-tab.active{background:#0b3b5c;color:#fff;border-color:#0b3b5c}.crm-note-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}.crm-note{border:1px solid var(--ux-line,#e2e8f0);background:#f8fafc;border-radius:14px;padding:11px 12px}.crm-note b{color:#0b3b5c}.crm-note small{display:block;color:#64748b;font-weight:700;margin-top:3px}.crm-form{background:#f8fafc;border:1px solid #eef2f7;border-radius:16px;padding:12px;margin-top:12px}.crm-form textarea{min-height:72px}.homework-chip{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:950}.homework-chip.todo{background:#fef3c7;color:#92400e}.homework-chip.done{background:#dcfce7;color:#166534}.homework-chip.missing{background:#fee2e2;color:#991b1b}.log-line{display:flex;gap:10px;border-bottom:1px solid var(--ux-line,#e2e8f0);padding:9px 0}.log-line .time{min-width:145px;color:var(--ux-muted,#64748b);font-size:12px;font-weight:800}.log-line b{color:var(--ux-primary,#0b3b5c)}body.dark-mode .student-crm-mini span{background:#10223a;color:#bfdbfe;border-color:#1e3a8a}body.dark-mode .crm-note,body.dark-mode .crm-form{background:#0b1220;border-color:#263244}
 
+
+
+        /* ---------- ATTENDANCE QUICK CHECK v6.0.2 ---------- */
+        .attendance-session-tools{display:flex;justify-content:center;gap:4px;flex-wrap:wrap;margin-top:5px}
+        .attendance-mini-btn{border:none;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:950;cursor:pointer;background:#e2f0fa;color:#0b3b5c}
+        .attendance-mini-btn:hover{filter:brightness(.97);transform:translateY(-1px)}
+        .attendance-mini-btn.clear{background:#f1f5f9;color:#64748b}
+        body.dark-mode .attendance-mini-btn{background:#10223a;color:#bfdbfe}
+        body.dark-mode .attendance-mini-btn.clear{background:#172033;color:#cbd5e1}
+
         @media print{body{background:#fff;padding:0}.header,.toolbar,.actions,.btn,.modal-overlay,.toast-container{display:none!important}.app{max-width:none}.detail-view,.panel,.class-card{box-shadow:none;border:none}.print-only{display:block}.data-table th{position:static}}
     
 
@@ -237,7 +247,7 @@
 <body>
 <div class="app" id="app">
     <header class="header">
-        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 6.0.1 · Portal học sinh/phụ huynh</small></h1>
+        <h1>📚 Quản lý lớp học <small>Học thêm – Luyện thi Kiên Năng · Giai đoạn 6.0.2 · Điểm danh nhanh</small></h1>
         <div class="header-actions">
             <button class="btn-primary" onclick="openCreateClassModal()">➕ Tạo lớp</button>
             <button class="teacher-secondary" onclick="downloadStudentTemplate()">⬇️ Mẫu HS Excel</button>
@@ -1026,7 +1036,7 @@ const cls=data.classes[className],students=cls.students.filter(s=>{const query=q
 let header='<th class="col-name">Họ tên</th><th>Liên hệ</th>';
 for(let i=1;i<=cls.sessions;i++){
     const d=cls.sessionDates[i-1]||'';
-    header+=`<th style="text-align:center"><span>B${i}</span> ${canEditClass(cls)?`<button class="edit-date-btn" onclick="openEditDateModal('${esc(className)}',${i-1})">✏️</button>`:''}${d?`<span class="session-date">${esc(d)}</span>`:''}</th>`
+    header+=`<th style="text-align:center"><span>B${i}</span> ${canEditClass(cls)?`<button class="edit-date-btn" onclick="openEditDateModal('${esc(className)}',${i-1})">✏️</button>`:''}${d?`<span class="session-date">${esc(d)}</span>`:''}${canEditClass(cls)?`<div class="attendance-session-tools"><button class="attendance-mini-btn" title="Chọn tất cả học sinh buổi này" onclick="bulkSetAttendance('${esc(className)}','B${i}',true)">✓ Tất cả</button><button class="attendance-mini-btn clear" title="Bỏ chọn tất cả học sinh buổi này" onclick="bulkSetAttendance('${esc(className)}','B${i}',false)">○ Bỏ</button></div>`:''}</th>`
 }
 header+='<th>Tỉ lệ</th><th>Thao tác</th>';
 let rows='';
@@ -1062,7 +1072,8 @@ function cleanupPlannedScheduleForAttendance(className,key){
     cls.calendarEvents=(cls.calendarEvents||[]).filter(ev=>!(ev.date===day&&(ev.status||'planned')==='planned'));
     return before-cls.calendarEvents.length;
 }
-function toggleAttendance(className,id,key){if(!canEditClass(data.classes[className]))return showToast('Vai trò hiện tại không được điểm danh lớp này','error');const cls=data.classes[className];const s=cls.students.find(x=>x.id===id);s.attendance[key]=!s.attendance[key];const removed=cleanupPlannedScheduleForAttendance(className,key);cls.updatedAt=new Date().toISOString();saveData();render();const absent=(cls.students||[]).filter(st=>st.status!=='left'&&!(st.attendance&&st.attendance[key]));let msg=absent.length?'Đã cập nhật điểm danh · Vắng: '+absent.map(st=>st.name||'Học sinh').join(', '):'Đã cập nhật điểm danh · Buổi này đủ lớp';if(removed>0)msg+=' · Đã xoá '+removed+' lịch dự kiến trong ngày';logActivity('Điểm danh',key+' · '+(s.name||''),className,id);if(absent.length)showToast(msg,'warn');else showToast(msg);}
+function toggleAttendance(className,id,key){if(!canEditClass(data.classes[className]))return showToast('Vai trò hiện tại không được điểm danh lớp này','error');const cls=data.classes[className];const s=cls.students.find(x=>x.id===id);if(!s)return;s.attendance=s.attendance||{};s.attendance[key]=!s.attendance[key];const removed=cleanupPlannedScheduleForAttendance(className,key);cls.updatedAt=new Date().toISOString();saveData();render();logActivity('Điểm danh',key+' · '+(s.name||''),className,id);}
+function bulkSetAttendance(className,key,value){if(!canEditClass(data.classes[className]))return showToast('Vai trò hiện tại không được điểm danh lớp này','error');const cls=data.classes[className];const active=(cls.students||[]).filter(st=>st.status!=='left');active.forEach(st=>{st.attendance=st.attendance||{};st.attendance[key]=!!value;st.updatedAt=new Date().toISOString()});cleanupPlannedScheduleForAttendance(className,key);cls.updatedAt=new Date().toISOString();saveData();render();logActivity(value?'Chọn tất cả điểm danh':'Bỏ chọn tất cả điểm danh',key,className,'bulk');}
 function renderDebts(){const query=q();let items=getAllStudents().filter(x=>debtOf(x.s)>0||query);items=items.filter(x=>!query||[x.className,x.s.name,x.s.phone,x.s.parentPhone,x.s.school].join(' ').toLowerCase().includes(query));let rows=items.map(x=>`<tr><td><b>${esc(x.s.name)}</b><div class="subtext">${esc(x.className)} · ${esc(x.s.school||'')}</div></td><td>${esc(x.s.phone||'—')}<div class="subtext">PH: ${esc(x.s.parentPhone||'—')}</div></td><td>${money(x.s.tuition)}</td><td class="money"><b>${money(x.s.paid)}</b></td><td class="debt"><b>${money(debtOf(x.s))}</b></td><td>${esc(x.s.paymentNote||x.s.note||'')}</td><td>${canEditClass(x.cls)?`<button class="btn btn-green" onclick="openPaymentModal('${esc(x.classKey)}',${x.s.id})">💰 Cập nhật</button>`:'<span class="readonly-chip">Chỉ xem</span>'}</td></tr>`).join('')||`<tr class="empty-row"><td colspan="7">Không có công nợ.</td></tr>`;mainContent.innerHTML=`<div class="panel"><h2 style="color:#0b3b5c;margin-bottom:14px">💰 Bảng công nợ học phí</h2><div class="table-scroll"><table class="data-table"><thead><tr><th>Học sinh</th><th>Liên hệ</th><th>Học phí</th><th>Đã đóng</th><th>Còn nợ</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody></table></div></div>`}
 function pad2(n){return String(n).padStart(2,'0')}
 function ymd(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())}
